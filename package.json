@@ -12,7 +12,13 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [],
+    "commands": [
+      {
+        "command": "effect-vscode.tracerReconnect",
+        "title": "Effect Tracer: Reconnect",
+        "icon": "$(extensions-refresh)"
+      }
+    ],
     "views": {
       "debug": [
         {
@@ -22,6 +28,15 @@
         {
           "id": "effect-metrics",
           "name": "Effect Metrics"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "effect-vscode.tracerReconnect",
+          "when": "view == effect-tracer",
+          "group": "navigation"
         }
       ]
     }

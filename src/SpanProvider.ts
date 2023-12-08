@@ -1,10 +1,16 @@
-import { TreeDataProvider, listen, treeDataProvider } from "./VsCode"
+import {
+  TreeDataProvider,
+  listen,
+  registerCommand,
+  treeDataProvider,
+} from "./VsCode"
 import {
   Duration,
   Effect,
   Fiber,
   Option,
   Order,
+  Queue,
   Schedule,
   Stream,
 } from "effect"
@@ -148,17 +154,26 @@ export const SpanProviderLive = treeDataProvider<SpanNode>("effect-tracer")(
         )
       })
 
+      const reconnectQueue = yield* _(Queue.unbounded<void>())
+
       yield* _(
-        DevTools.makeClient(),
-        Stream.runForEach(registerSpan),
+        reset,
+        Effect.zipRight(Stream.runForEach(DevTools.makeClient(), registerSpan)),
         Effect.tapErrorCause(Effect.logError),
-        Effect.ensuring(reset),
         Effect.retry(
           Schedule.exponential("500 millis").pipe(
             Schedule.union(Schedule.spaced("10 seconds")),
           ),
         ),
+        Effect.race(reconnectQueue.take),
+        Effect.forever,
         Effect.forkScoped,
+      )
+
+      yield* _(
+        registerCommand("effect-vscode.tracerReconnect", () =>
+          reconnectQueue.offer(void 0),
+        ),
       )
 
       return TreeDataProvider({

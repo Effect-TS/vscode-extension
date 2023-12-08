@@ -34,7 +34,7 @@ export const registerCommand = <R, E, A>(
     const run = Runtime.runFork(runtime)
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(command, args =>
+      vscode.commands.registerCommand(command, (...args) =>
         f(...args).pipe(
           Effect.catchAllCause(Effect.log),
           Effect.annotateLogs({ command }),
