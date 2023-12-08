@@ -6,6 +6,10 @@
   "engines": {
     "vscode": "^1.84.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tim-smart/effect-vscode.git"
+  },
   "categories": [
     "Other"
   ],
@@ -53,7 +57,7 @@
     "@effect/language-service": "^0.0.21",
     "@types/mocha": "^10.0.3",
     "@types/node": "~20.10.4",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.84.0",
     "@types/ws": "^8.5.10",
     "@vscode/test-electron": "^2.3.8",
     "effect": "2.0.0-next.59",

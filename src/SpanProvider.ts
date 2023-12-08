@@ -280,6 +280,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         vscode.TreeItemCollapsibleState.Collapsed,
       )
       const duration = node.duration
+      item.id = node.span.spanId
       item.description =
         duration._tag === "Some" ? DurationUtils.format(duration.value) : ""
       return item
@@ -289,6 +290,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         node.label,
         vscode.TreeItemCollapsibleState.None,
       )
+      item.id = node.label
       item.description = node.description
       return item
     }
@@ -299,10 +301,12 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
       )
     }
     case "ClientNode": {
-      return new vscode.TreeItem(
+      const item = new vscode.TreeItem(
         `Client #${node.id}`,
         vscode.TreeItemCollapsibleState.Collapsed,
       )
+      item.id = String(node.id)
+      return item
     }
   }
 }

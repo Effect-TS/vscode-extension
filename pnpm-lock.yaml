@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-dependencies:
-  ws:
-    specifier: ^8.14.2
-    version: 8.14.2
-
 devDependencies:
   '@effect/experimental':
     specifier: ^0.2.6
@@ -23,7 +18,7 @@ devDependencies:
     specifier: ~20.10.4
     version: 20.10.4
   '@types/vscode':
-    specifier: ^1.85.0
+    specifier: ^1.84.0
     version: 1.85.0
   '@types/ws':
     specifier: ^8.5.10
@@ -49,6 +44,9 @@ devDependencies:
   typescript:
     specifier: ^5.3.3
     version: 5.3.3
+  ws:
+    specifier: ^8.14.2
+    version: 8.14.2
 
 packages:
 
@@ -1798,6 +1796,7 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+    dev: true
 
   /y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
