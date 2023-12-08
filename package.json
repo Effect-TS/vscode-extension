@@ -1,0 +1,51 @@
+{
+  "name": "effect-vscode",
+  "displayName": "Effect Dev Tools",
+  "description": "Tools to assist development with the Effect Typescript framework",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [],
+    "views": {
+      "debug": [
+        {
+          "id": "effect-tracer",
+          "name": "Effect Tracer"
+        },
+        {
+          "id": "effect-metrics",
+          "name": "Effect Metrics"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run compile",
+    "compile": "tsup",
+    "watch": "tsup --watch src",
+    "pretest": "pnpm run compile && pnpm run lint",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@effect/experimental": "file:effect-experimental-0.2.4.tgz",
+    "@effect/language-service": "^0.0.21",
+    "@types/mocha": "^10.0.3",
+    "@types/node": "~20.10.4",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.8",
+    "effect": "2.0.0-next.59",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "prettier": "^3.1.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  },
+  "sideEffects": []
+}

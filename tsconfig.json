@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "target": "ES2022",
+    "noEmit": true,
+    "lib": ["ES2022"],
+    "sourceMap": true,
+    "rootDir": "src",
+    "baseUrl": ".",
+    "strict": true,
+    "plugins": [{ "name": "@effect/language-service" }]
+  },
+  "include": ["src/**/*"]
+}
