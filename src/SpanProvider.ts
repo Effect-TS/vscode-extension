@@ -2,7 +2,6 @@ import { TreeDataProvider, registerCommand, treeDataProvider } from "./VsCode"
 import {
   Duration,
   Effect,
-  Match,
   Option,
   Order,
   Queue,
@@ -153,13 +152,10 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         ),
       )
 
-      const children: (input: TreeNode) => Option.Option<Array<TreeNode>> =
-        Match.typeTags<TreeNode>()({
-          SpanNode: node => {
-            const nodes: Array<TreeNode> = [
-              new InfoNode("Trace ID", node.span.traceId),
-              new InfoNode("Span ID", node.span.spanId),
-            ]
+      const children = (node: TreeNode): Option.Option<Array<TreeNode>> => {
+        switch (node._tag) {
+          case "SpanNode": {
+            const nodes: Array<TreeNode> = []
 
             node.span.attributes.forEach((value, key) => {
               nodes.push(new InfoNode(key, String(value)))
@@ -170,14 +166,19 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
             }
 
             return Option.some(nodes)
-          },
-          InfoNode: () => Option.none(),
-          ChildrenNode: node => Option.some(node.children),
-        })
+          }
+          case "InfoNode": {
+            return Option.none()
+          }
+          case "ChildrenNode": {
+            return Option.some(node.children)
+          }
+        }
+      }
 
-      const treeItem: (input: TreeNode) => vscode.TreeItem =
-        Match.typeTags<TreeNode>()({
-          SpanNode: node => {
+      const treeItem = (node: TreeNode): vscode.TreeItem => {
+        switch (node._tag) {
+          case "SpanNode": {
             const item = new vscode.TreeItem(
               node.span.name,
               vscode.TreeItemCollapsibleState.Collapsed,
@@ -186,21 +187,23 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
             item.description =
               duration._tag === "Some" ? Duration.format(duration.value) : ""
             return item
-          },
-          InfoNode: node => {
+          }
+          case "InfoNode": {
             const item = new vscode.TreeItem(
               node.label,
               vscode.TreeItemCollapsibleState.None,
             )
             item.description = node.description
             return item
-          },
-          ChildrenNode: () =>
-            new vscode.TreeItem(
+          }
+          case "ChildrenNode": {
+            return new vscode.TreeItem(
               "Child spans",
               vscode.TreeItemCollapsibleState.Collapsed,
-            ),
-        })
+            )
+          }
+        }
+      }
 
       return TreeDataProvider<TreeNode>({
         children: Option.match({
