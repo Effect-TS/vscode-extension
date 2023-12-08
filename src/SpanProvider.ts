@@ -1,13 +1,8 @@
-import {
-  TreeDataProvider,
-  listen,
-  registerCommand,
-  treeDataProvider,
-} from "./VsCode"
+import { TreeDataProvider, registerCommand, treeDataProvider } from "./VsCode"
 import {
   Duration,
   Effect,
-  Fiber,
+  Match,
   Option,
   Order,
   Queue,
@@ -23,44 +18,15 @@ const SpanOrder = Order.struct({
   }),
 })
 
-const nodes = new Map<string, SpanNode>()
+class SpanNode {
+  readonly _tag = "SpanNode"
 
-class SpanNode implements vscode.Disposable {
-  private _onChildAdded = new vscode.EventEmitter<SpanNode>()
-  public readonly onChildAdded = this._onChildAdded.event
-
-  constructor(public span: DevTools.Span) {
-    nodes.set(span.spanId, this)
-    if (span.parent._tag === "Some" && span.parent.value._tag === "Span") {
-      const parent = SpanNode.fromSpan(span.parent.value)
-      parent.addChild(this)
-    }
-  }
-
-  static fromSpan(span: DevTools.Span): SpanNode {
-    const node = nodes.get(span.spanId)
-    if (node !== undefined) {
-      node.span = span
-      return node
-    }
-    return new SpanNode(span)
-  }
+  constructor(public span: DevTools.Span) {}
 
   get isRoot() {
     return (
       this.span.parent._tag === "None" || this.span.parent.value._tag !== "Span"
     )
-  }
-
-  get parent(): Option.Option<SpanNode> {
-    if (
-      this.span.parent._tag === "None" ||
-      this.span.parent.value._tag !== "Span"
-    ) {
-      return Option.none()
-    }
-    const node = SpanNode.fromSpan(this.span.parent.value)
-    return Option.some(node)
   }
 
   get duration(): Option.Option<Duration.Duration> {
@@ -83,75 +49,86 @@ class SpanNode implements vscode.Disposable {
     }
     this._children.push(child)
     this._children.sort(SpanOrder)
-    this._onChildAdded.fire(child)
-  }
-
-  dispose() {
-    this._onChildAdded.dispose()
-    nodes.delete(this.span.spanId)
   }
 }
 
-export const SpanProviderLive = treeDataProvider<SpanNode>("effect-tracer")(
+class InfoNode {
+  readonly _tag = "InfoNode"
+  constructor(
+    readonly label: string,
+    readonly description: string,
+  ) {}
+}
+
+class ChildrenNode {
+  readonly _tag = "ChildrenNode"
+  constructor(readonly children: Array<SpanNode>) {}
+}
+
+type TreeNode = SpanNode | InfoNode | ChildrenNode
+
+export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
   refresh =>
     Effect.gen(function* (_) {
-      const scope = yield* _(Effect.scope)
+      const nodes = new Map<string, SpanNode>()
+      const rootNodes: Array<SpanNode> = []
 
-      const rootSpans: Array<SpanNode> = []
-      const registeredSpans = new Map<
-        SpanNode,
-        Fiber.RuntimeFiber<never, never>
-      >()
+      function addNode(span: DevTools.Span): [SpanNode, SpanNode | undefined] {
+        let node = nodes.get(span.spanId)
+        let parent: SpanNode | undefined
+        if (node === undefined) {
+          node = new SpanNode(span)
+          nodes.set(span.spanId, node)
+
+          if (node.isRoot) {
+            rootNodes.push(node)
+            rootNodes.sort(SpanOrder)
+          }
+
+          if (
+            span.parent._tag === "Some" &&
+            span.parent.value._tag === "Span"
+          ) {
+            parent = addNode(span.parent.value)[0]
+            parent.addChild(node)
+          }
+        } else if (
+          span.parent._tag === "Some" &&
+          span.parent.value._tag === "Span"
+        ) {
+          parent = addNode(span.parent.value)[0]
+        }
+
+        node.span = span
+
+        return [node, parent]
+      }
+
       const registerSpan = (
         span: DevTools.Span,
-      ): Effect.Effect<never, never, void> => {
-        const node = SpanNode.fromSpan(span)
-        if (registeredSpans.has(node)) {
-          return refresh(node.parent)
-        }
-        return listen(node.onChildAdded, child =>
-          Effect.zipRight(registerSpan(child.span), refresh(Option.some(node))),
-        ).pipe(
-          Effect.forkIn(scope),
-          Effect.tap(fiber => {
-            registeredSpans.set(node, fiber)
-            if (node.isRoot) {
-              rootSpans.push(node)
-              rootSpans.sort(SpanOrder)
-            }
-            return refresh(node.parent)
-          }),
-          Effect.asUnit,
-        )
-      }
-      const unregisterSpan = (
-        span: DevTools.Span,
-      ): Effect.Effect<never, never, void> => {
-        const node = SpanNode.fromSpan(span)
-        const fiber = registeredSpans.get(node)
-        const index = rootSpans.indexOf(node)
-        if (fiber !== undefined) {
-          registeredSpans.delete(node)
-          if (index >= 0) {
-            rootSpans.splice(index, 1)
-          }
-          return Fiber.interrupt(fiber)
-        }
-        return Effect.unit
-      }
-      const reset = Effect.suspend(() => {
-        const entries = Array.from(registeredSpans.entries())
-        rootSpans.length = 0
-        registeredSpans.clear()
-
-        return Effect.forEach(
-          entries,
-          ([node, fiber]) => {
-            node.dispose()
-            return Fiber.interrupt(fiber)
-          },
-          { discard: true },
-        )
+      ): Effect.Effect<never, never, void> =>
+        Effect.suspend(() => {
+          const [, parent] = addNode(span)
+          return refresh(Option.fromNullable(parent))
+        })
+      // const unregisterSpan = (
+      //   span: DevTools.Span,
+      // ): Effect.Effect<never, never, void> => {
+      //   const node = SpanNode.fromSpan(span)
+      //   const fiber = registeredSpans.get(node)
+      //   const index = rootSpans.indexOf(node)
+      //   if (fiber !== undefined) {
+      //     registeredSpans.delete(node)
+      //     if (index >= 0) {
+      //       rootSpans.splice(index, 1)
+      //     }
+      //     return Fiber.interrupt(fiber)
+      //   }
+      //   return Effect.unit
+      // }
+      const reset = Effect.sync(() => {
+        rootNodes.length = 0
+        nodes.clear()
       })
 
       const reconnectQueue = yield* _(Queue.unbounded<void>())
@@ -176,28 +153,61 @@ export const SpanProviderLive = treeDataProvider<SpanNode>("effect-tracer")(
         ),
       )
 
-      return TreeDataProvider({
-        children: Option.match({
-          onNone: () => Effect.succeedSome(rootSpans),
-          onSome: node =>
-            Effect.succeed(
-              node.children.length > 0
-                ? Option.some(node.children)
-                : Option.none(),
+      const children: (input: TreeNode) => Option.Option<Array<TreeNode>> =
+        Match.typeTags<TreeNode>()({
+          SpanNode: node => {
+            const nodes: Array<TreeNode> = [
+              new InfoNode("Trace ID", node.span.traceId),
+              new InfoNode("Span ID", node.span.spanId),
+            ]
+
+            node.span.attributes.forEach((value, key) => {
+              nodes.push(new InfoNode(key, String(value)))
+            })
+
+            if (node.children.length > 0) {
+              nodes.push(new ChildrenNode(node.children))
+            }
+
+            return Option.some(nodes)
+          },
+          InfoNode: () => Option.none(),
+          ChildrenNode: node => Option.some(node.children),
+        })
+
+      const treeItem: (input: TreeNode) => vscode.TreeItem =
+        Match.typeTags<TreeNode>()({
+          SpanNode: node => {
+            const item = new vscode.TreeItem(
+              node.span.name,
+              vscode.TreeItemCollapsibleState.Collapsed,
+            )
+            const duration = node.duration
+            item.description =
+              duration._tag === "Some" ? Duration.format(duration.value) : ""
+            return item
+          },
+          InfoNode: node => {
+            const item = new vscode.TreeItem(
+              node.label,
+              vscode.TreeItemCollapsibleState.None,
+            )
+            item.description = node.description
+            return item
+          },
+          ChildrenNode: () =>
+            new vscode.TreeItem(
+              "Child spans",
+              vscode.TreeItemCollapsibleState.Collapsed,
             ),
+        })
+
+      return TreeDataProvider<TreeNode>({
+        children: Option.match({
+          onNone: () => Effect.succeedSome(rootNodes),
+          onSome: node => Effect.succeed(children(node)),
         }),
-        treeItem: node => {
-          const item = new vscode.TreeItem(
-            node.span.name,
-            node.children.length === 0
-              ? vscode.TreeItemCollapsibleState.None
-              : vscode.TreeItemCollapsibleState.Collapsed,
-          )
-          const duration = node.duration
-          item.description =
-            duration._tag === "Some" ? Duration.format(duration.value) : ""
-          return Effect.succeed(item)
-        },
+        treeItem: node => Effect.succeed(treeItem(node)),
       })
     }),
 )
