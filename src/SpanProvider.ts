@@ -110,21 +110,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
           const [, parent] = addNode(span)
           return refresh(Option.fromNullable(parent))
         })
-      // const unregisterSpan = (
-      //   span: DevTools.Span,
-      // ): Effect.Effect<never, never, void> => {
-      //   const node = SpanNode.fromSpan(span)
-      //   const fiber = registeredSpans.get(node)
-      //   const index = rootSpans.indexOf(node)
-      //   if (fiber !== undefined) {
-      //     registeredSpans.delete(node)
-      //     if (index >= 0) {
-      //       rootSpans.splice(index, 1)
-      //     }
-      //     return Fiber.interrupt(fiber)
-      //   }
-      //   return Effect.unit
-      // }
+
       const reset = Effect.sync(() => {
         rootNodes.length = 0
         nodes.clear()
@@ -152,59 +138,6 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         ),
       )
 
-      const children = (node: TreeNode): Option.Option<Array<TreeNode>> => {
-        switch (node._tag) {
-          case "SpanNode": {
-            const nodes: Array<TreeNode> = []
-
-            node.span.attributes.forEach((value, key) => {
-              nodes.push(new InfoNode(key, String(value)))
-            })
-
-            if (node.children.length > 0) {
-              nodes.push(new ChildrenNode(node.children))
-            }
-
-            return Option.some(nodes)
-          }
-          case "InfoNode": {
-            return Option.none()
-          }
-          case "ChildrenNode": {
-            return Option.some(node.children)
-          }
-        }
-      }
-
-      const treeItem = (node: TreeNode): vscode.TreeItem => {
-        switch (node._tag) {
-          case "SpanNode": {
-            const item = new vscode.TreeItem(
-              node.span.name,
-              vscode.TreeItemCollapsibleState.Collapsed,
-            )
-            const duration = node.duration
-            item.description =
-              duration._tag === "Some" ? Duration.format(duration.value) : ""
-            return item
-          }
-          case "InfoNode": {
-            const item = new vscode.TreeItem(
-              node.label,
-              vscode.TreeItemCollapsibleState.None,
-            )
-            item.description = node.description
-            return item
-          }
-          case "ChildrenNode": {
-            return new vscode.TreeItem(
-              "Child spans",
-              vscode.TreeItemCollapsibleState.Collapsed,
-            )
-          }
-        }
-      }
-
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () => Effect.succeedSome(rootNodes),
@@ -214,3 +147,61 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
       })
     }),
 )
+
+// === helpers ===
+
+const children = (node: TreeNode): Option.Option<Array<TreeNode>> => {
+  switch (node._tag) {
+    case "SpanNode": {
+      const nodes: Array<TreeNode> = [
+        new InfoNode("Trace ID", node.span.traceId),
+        new InfoNode("Span ID", node.span.spanId),
+      ]
+
+      node.span.attributes.forEach((value, key) => {
+        nodes.push(new InfoNode(key, String(value)))
+      })
+
+      if (node.children.length > 0) {
+        nodes.push(new ChildrenNode(node.children))
+      }
+
+      return Option.some(nodes)
+    }
+    case "InfoNode": {
+      return Option.none()
+    }
+    case "ChildrenNode": {
+      return Option.some(node.children)
+    }
+  }
+}
+
+const treeItem = (node: TreeNode): vscode.TreeItem => {
+  switch (node._tag) {
+    case "SpanNode": {
+      const item = new vscode.TreeItem(
+        node.span.name,
+        vscode.TreeItemCollapsibleState.Collapsed,
+      )
+      const duration = node.duration
+      item.description =
+        duration._tag === "Some" ? Duration.format(duration.value) : ""
+      return item
+    }
+    case "InfoNode": {
+      const item = new vscode.TreeItem(
+        node.label,
+        vscode.TreeItemCollapsibleState.None,
+      )
+      item.description = node.description
+      return item
+    }
+    case "ChildrenNode": {
+      return new vscode.TreeItem(
+        "Child spans",
+        vscode.TreeItemCollapsibleState.Collapsed,
+      )
+    }
+  }
+}
