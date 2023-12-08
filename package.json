@@ -34,7 +34,7 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@effect/experimental": "file:effect-experimental-0.2.4.tgz",
+    "@effect/experimental": "^0.2.5",
     "@effect/language-service": "^0.0.21",
     "@types/mocha": "^10.0.3",
     "@types/node": "~20.10.4",

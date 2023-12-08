@@ -6,8 +6,8 @@ settings:
 
 devDependencies:
   '@effect/experimental':
-    specifier: file:effect-experimental-0.2.4.tgz
-    version: file:effect-experimental-0.2.4.tgz(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)
+    specifier: ^0.2.5
+    version: 0.2.5(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)
   '@effect/language-service':
     specifier: ^0.0.21
     version: 0.0.21
@@ -43,6 +43,29 @@ devDependencies:
     version: 5.3.3
 
 packages:
+
+  /@effect/experimental@0.2.5(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59):
+    resolution: {integrity: sha512-Oo5EQNsMxewu7opm21jHHXroEAnY7H0IA3G6EOLsZAqBQC7p1K7JJoKp/izTV6lpOrap9ro1Dgemv9oX7Dcg7g==}
+    peerDependencies:
+      '@effect/platform': ^0.33.0
+      '@effect/platform-node': ^0.34.0
+      '@effect/schema': ^0.52.0
+      effect: 2.0.0-next.59
+    peerDependenciesMeta:
+      '@effect/platform-node':
+        optional: true
+    dependencies:
+      '@effect/platform': 0.33.1(@effect/schema@0.52.0)(effect@2.0.0-next.59)
+      '@effect/schema': 0.52.0(effect@2.0.0-next.59)(fast-check@3.14.0)
+      effect: 2.0.0-next.59
+      isomorphic-ws: 5.0.0(ws@8.14.2)
+      msgpackr: 1.10.0
+    optionalDependencies:
+      ws: 8.14.2
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+    dev: true
 
   /@effect/language-service@0.0.21:
     resolution: {integrity: sha512-e8vfKbjnbYiyneBincEFS0tzXluopGK77OkVFbPRtUbNDS5tJfb+jiwOQEiqASDsadcZmd+9J9+Q6v/z7GuN2g==}
@@ -1800,30 +1823,4 @@ packages:
   /yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
-    dev: true
-
-  file:effect-experimental-0.2.4.tgz(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59):
-    resolution: {integrity: sha512-R5IZNlvNjcvIT7Ah6QOBjD/El8TStQik5CJFQ7mS6exj5KEEcjHgFVART0q5v82xbBus+/VsCr/hzPgF47Ht+Q==, tarball: file:effect-experimental-0.2.4.tgz}
-    id: file:effect-experimental-0.2.4.tgz
-    name: '@effect/experimental'
-    version: 0.2.4
-    peerDependencies:
-      '@effect/platform': ^0.33.0
-      '@effect/platform-node': ^0.34.0
-      '@effect/schema': ^0.52.0
-      effect: 2.0.0-next.59
-    peerDependenciesMeta:
-      '@effect/platform-node':
-        optional: true
-    dependencies:
-      '@effect/platform': 0.33.1(@effect/schema@0.52.0)(effect@2.0.0-next.59)
-      '@effect/schema': 0.52.0(effect@2.0.0-next.59)(fast-check@3.14.0)
-      effect: 2.0.0-next.59
-      isomorphic-ws: 5.0.0(ws@8.14.2)
-      msgpackr: 1.10.0
-    optionalDependencies:
-      ws: 8.14.2
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
     dev: true
