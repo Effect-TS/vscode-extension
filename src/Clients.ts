@@ -49,23 +49,25 @@ const make = Effect.gen(function* (_) {
       id: clientId++,
       spans,
     }
+    yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
     yield* _(
-      Effect.acquireRelease(
-        SubscriptionRef.update(clients, HashSet.add(client)),
-        () =>
-          Effect.zipRight(
-            SubscriptionRef.update(clients, HashSet.remove(client)),
-            SubscriptionRef.update(
-              activeClient,
-              Option.filter(_ => _ !== client),
-            ),
-          ),
+      Effect.addFinalizer(() =>
+        SubscriptionRef.update(clients, HashSet.remove(client)),
       ),
     )
+
     yield* _(
       SubscriptionRef.update(
         activeClient,
         Option.orElse(() => Option.some(client)),
+      ),
+    )
+    yield* _(
+      Effect.addFinalizer(() =>
+        SubscriptionRef.update(
+          activeClient,
+          Option.filter(_ => _ !== client),
+        ),
       ),
     )
 
@@ -80,7 +82,7 @@ const make = Effect.gen(function* (_) {
     Effect.catchAllCause(Effect.log),
     Effect.repeat(Schedule.spaced("10 seconds")),
     Effect.forever,
-    Effect.zipLeft(take, { concurrent: true }),
+    Effect.zipRight(take, { concurrent: true }),
     Effect.fork,
   )
 
