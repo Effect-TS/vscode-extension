@@ -6,11 +6,11 @@ settings:
 
 devDependencies:
   '@effect/experimental':
-    specifier: ^0.2.6
-    version: 0.2.6(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.14.2)
+    specifier: ^0.2.7
+    version: 0.2.7(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.14.2)
   '@effect/language-service':
-    specifier: ^0.0.21
-    version: 0.0.21
+    specifier: ^0.1.0
+    version: 0.1.0
   '@types/mocha':
     specifier: ^10.0.3
     version: 10.0.6
@@ -50,8 +50,8 @@ devDependencies:
 
 packages:
 
-  /@effect/experimental@0.2.6(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.14.2):
-    resolution: {integrity: sha512-rTN9g1d3kz1OgrEnBEBBtboPKIlW4GGDHYNjI3pwq9Kakd6gKYvpmLzd0snBEJVOdSZTkgZTtj+YyVAzMFwCWg==}
+  /@effect/experimental@0.2.7(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.14.2):
+    resolution: {integrity: sha512-yHYgbZnR7oP5ZM0TDTDdQla4gpDdnevKjP5qwk7Gl71FMMM9QJinUJiNZgdZ8iGf6G0ckLItlI1lOdYZHmvkxA==}
     peerDependencies:
       '@effect/platform': ^0.33.0
       '@effect/platform-node': ^0.34.0
@@ -72,8 +72,8 @@ packages:
       ws: 8.14.2
     dev: true
 
-  /@effect/language-service@0.0.21:
-    resolution: {integrity: sha512-e8vfKbjnbYiyneBincEFS0tzXluopGK77OkVFbPRtUbNDS5tJfb+jiwOQEiqASDsadcZmd+9J9+Q6v/z7GuN2g==}
+  /@effect/language-service@0.1.0:
+    resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
     dev: true
 
   /@effect/platform@0.33.1(@effect/schema@0.52.0)(effect@2.0.0-next.59):

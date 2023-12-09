@@ -2,8 +2,9 @@ import { Effect, Layer } from "effect"
 import * as vscode from "vscode"
 import { VsCodeContext, launch } from "./VsCode"
 import { SpanProviderLive } from "./SpanProvider"
+import { ClientsProviderLive } from "./ClientsProvider"
 
-const MainLive = Layer.mergeAll(SpanProviderLive)
+const MainLive = Layer.mergeAll(SpanProviderLive, ClientsProviderLive)
 
 export function activate(context: vscode.ExtensionContext) {
   launch(MainLive).pipe(

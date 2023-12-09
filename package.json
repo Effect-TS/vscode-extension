@@ -18,31 +18,33 @@
   "contributes": {
     "commands": [
       {
-        "command": "effect-vscode.tracerReconnect",
-        "title": "Effect Tracer: Reconnect",
-        "icon": "$(extensions-refresh)"
+        "command": "effect.selectClient",
+        "title": "Effect Dev Tools: Select Client"
       }
     ],
-    "views": {
-      "debug": [
+    "viewsContainers": {
+      "activitybar": [
         {
-          "id": "effect-tracer",
-          "name": "Effect Tracer"
+          "id": "effect",
+          "title": "Effect Dev Tools",
+          "icon": "resources/icons/effect-light.svg"
+        }
+      ]
+    },
+    "views": {
+      "effect": [
+        {
+          "id": "effect-clients",
+          "name": "Clients"
         },
         {
-          "id": "effect-metrics",
-          "name": "Effect Metrics"
+          "id": "effect-tracer",
+          "name": "Tracer"
         }
       ]
     },
     "menus": {
-      "view/title": [
-        {
-          "command": "effect-vscode.tracerReconnect",
-          "when": "view == effect-tracer",
-          "group": "navigation"
-        }
-      ]
+      "view/title": []
     }
   },
   "scripts": {
@@ -53,8 +55,8 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@effect/experimental": "^0.2.6",
-    "@effect/language-service": "^0.0.21",
+    "@effect/experimental": "^0.2.7",
+    "@effect/language-service": "^0.1.0",
     "@types/mocha": "^10.0.3",
     "@types/node": "~20.10.4",
     "@types/vscode": "^1.84.0",
@@ -64,10 +66,9 @@
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
     "prettier": "^3.1.0",
-    "ws": "^8.14.2",
     "tsup": "^8.0.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "ws": "^8.14.2"
   },
-  "sideEffects": [],
-  "dependencies": {}
+  "sideEffects": []
 }
