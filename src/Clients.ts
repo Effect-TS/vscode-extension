@@ -50,6 +50,13 @@ const make = Effect.gen(function* (_) {
         }
         yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
         yield* _(
+          SubscriptionRef.update(
+            activeClient,
+            Option.orElse(() => Option.some(client)),
+          ),
+        )
+
+        yield* _(
           queue.take,
           Effect.flatMap(_ => spans.offer(_)),
           Effect.forever,
