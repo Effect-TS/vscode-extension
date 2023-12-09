@@ -40,43 +40,41 @@ const make = Effect.gen(function* (_) {
     ),
   )
 
-  const take = server.clients.take.pipe(
-    Effect.flatMap(queue =>
-      Effect.gen(function* (_) {
-        const spans = yield* _(Queue.sliding<Domain.Span>(100))
-        const client: Client = {
-          id: clientId++,
-          spans,
-        }
-        yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
-        yield* _(
-          SubscriptionRef.update(
-            activeClient,
-            Option.orElse(() => Option.some(client)),
-          ),
-        )
-
-        yield* _(
-          queue.take,
-          Effect.flatMap(_ => spans.offer(_)),
-          Effect.forever,
-          Effect.ensuring(
-            SubscriptionRef.update(clients, HashSet.remove(client)).pipe(
-              Effect.zipRight(
-                SubscriptionRef.update(
-                  activeClient,
-                  Option.filter(_ => _ !== client),
-                ),
-              ),
-              Effect.zipRight(spans.shutdown),
+  const take = Effect.gen(function* (_) {
+    const queue = yield* _(server.clients.take)
+    const spans = yield* _(
+      Effect.acquireRelease(Queue.sliding<Domain.Span>(100), Queue.shutdown),
+    )
+    const client: Client = {
+      id: clientId++,
+      spans,
+    }
+    yield* _(
+      Effect.acquireRelease(
+        SubscriptionRef.update(clients, HashSet.add(client)),
+        () =>
+          Effect.zipRight(
+            SubscriptionRef.update(clients, HashSet.remove(client)),
+            SubscriptionRef.update(
+              activeClient,
+              Option.filter(_ => _ !== client),
             ),
           ),
-          Effect.fork,
-        )
-      }),
-    ),
-    Effect.forever,
-  )
+      ),
+    )
+    yield* _(
+      SubscriptionRef.update(
+        activeClient,
+        Option.orElse(() => Option.some(client)),
+      ),
+    )
+
+    return yield* _(
+      queue.take,
+      Effect.flatMap(_ => spans.offer(_)),
+      Effect.forever,
+    )
+  }).pipe(Effect.scoped, Effect.fork, Effect.forever)
 
   const run = server.run.pipe(
     Effect.catchAllCause(Effect.log),
