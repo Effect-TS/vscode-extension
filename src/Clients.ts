@@ -1,20 +1,20 @@
-import * as Server from "@effect/experimental/DevTools/Server"
 import * as Domain from "@effect/experimental/DevTools/Domain"
+import * as Server from "@effect/experimental/DevTools/Server"
+import * as SocketServer from "@effect/experimental/SocketServer/Node"
 import {
   Context,
   Effect,
+  Fiber,
   HashSet,
   Layer,
   Option,
-  PubSub,
   Queue,
   ReadonlyArray,
   Schedule,
-  Scope,
+  Stream,
   SubscriptionRef,
 } from "effect"
-import * as SocketServer from "@effect/experimental/SocketServer/Node"
-import { registerCommand } from "./VsCode"
+import { executeCommand, registerCommand } from "./VsCode"
 
 export interface Client {
   readonly id: number
@@ -40,8 +40,7 @@ const make = Effect.gen(function* (_) {
     ),
   )
 
-  yield* _(
-    server.clients.take,
+  const take = server.clients.take.pipe(
     Effect.flatMap(queue =>
       Effect.gen(function* (_) {
         const spans = yield* _(Queue.sliding<Domain.Span>(100))
@@ -70,17 +69,49 @@ const make = Effect.gen(function* (_) {
       }),
     ),
     Effect.forever,
+  )
+
+  const run = server.run.pipe(
+    Effect.catchAllCause(Effect.log),
+    Effect.repeat(Schedule.spaced("10 seconds")),
+    Effect.forever,
+    Effect.zipLeft(take, { concurrent: true }),
+    Effect.fork,
+  )
+
+  const running = yield* _(SubscriptionRef.make(false))
+  let fiber: Fiber.RuntimeFiber<never, never> | undefined
+  yield* _(
+    running.changes,
+    Stream.runForEach(running =>
+      Effect.gen(function* (_) {
+        yield* _(executeCommand("setContext", "effect:running", running))
+        if (running) {
+          if (!fiber) {
+            fiber = yield* _(run)
+          }
+        } else if (fiber) {
+          yield* _(Fiber.interrupt(fiber))
+          fiber = undefined
+        }
+      }),
+    ),
     Effect.forkScoped,
   )
 
   yield* _(
-    server.run,
-    Effect.tapErrorCause(Effect.log),
-    Effect.retry(Schedule.spaced("10 seconds")),
-    Effect.forkScoped,
+    registerCommand("effect.startServer", () =>
+      SubscriptionRef.set(running, true),
+    ),
   )
 
-  return { clients, activeClient } as const
+  yield* _(
+    registerCommand("effect.stopServer", () =>
+      SubscriptionRef.set(running, false),
+    ),
+  )
+
+  return { clients, activeClient, running } as const
 })
 
 export interface Clients {

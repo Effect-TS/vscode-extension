@@ -10,6 +10,7 @@
     "type": "git",
     "url": "https://github.com/tim-smart/effect-vscode.git"
   },
+  "license": "MIT",
   "categories": [
     "Other"
   ],
@@ -20,6 +21,16 @@
       {
         "command": "effect.selectClient",
         "title": "Effect Dev Tools: Select Client"
+      },
+      {
+        "command": "effect.startServer",
+        "title": "Effect Dev Tools: Start Server",
+        "icon": "$(play)"
+      },
+      {
+        "command": "effect.stopServer",
+        "title": "Effect Dev Tools: Stop Server",
+        "icon": "$(debug-stop)"
       }
     ],
     "viewsContainers": {
@@ -44,7 +55,18 @@
       ]
     },
     "menus": {
-      "view/title": []
+      "view/title": [
+        {
+          "command": "effect.startServer",
+          "when": "view === effect-clients && effect:running === false",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.stopServer",
+          "when": "view === effect-clients && effect:running === true",
+          "group": "navigation"
+        }
+      ]
     }
   },
   "scripts": {
