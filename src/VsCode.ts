@@ -9,6 +9,7 @@ import {
   Option,
   Runtime,
   Scope,
+  Stream,
   SubscriptionRef,
 } from "effect"
 import * as vscode from "vscode"
@@ -62,7 +63,10 @@ export const config = <A>(namespace: string, setting: string) =>
         SubscriptionRef.set(ref, Option.fromNullable(get())),
       ),
     )
-    return ref
+    return {
+      get: SubscriptionRef.get(ref),
+      changes: Stream.changes(ref.changes),
+    }
   })
 
 export const configWithDefault = <A>(
@@ -79,7 +83,10 @@ export const configWithDefault = <A>(
         SubscriptionRef.set(ref, get() ?? defaultValue),
       ),
     )
-    return ref
+    return {
+      get: SubscriptionRef.get(ref),
+      changes: Stream.changes(ref.changes),
+    }
   })
 
 export const listen = <A, R>(
