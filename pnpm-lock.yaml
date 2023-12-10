@@ -6,8 +6,8 @@ settings:
 
 devDependencies:
   '@effect/experimental':
-    specifier: ^0.2.8
-    version: 0.2.8(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.15.0)
+    specifier: ^0.3.0
+    version: 0.3.0(@effect/platform@0.34.0)(@effect/schema@0.53.0)(effect@2.0.0-next.60)(ws@8.15.0)
   '@effect/language-service':
     specifier: ^0.1.0
     version: 0.1.0
@@ -27,8 +27,8 @@ devDependencies:
     specifier: ^2.3.8
     version: 2.3.8
   effect:
-    specifier: 2.0.0-next.59
-    version: 2.0.0-next.59
+    specifier: 2.0.0-next.60
+    version: 2.0.0-next.60
   glob:
     specifier: ^10.3.10
     version: 10.3.10
@@ -50,23 +50,23 @@ devDependencies:
 
 packages:
 
-  /@effect/experimental@0.2.8(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.15.0):
-    resolution: {integrity: sha512-IpuXLOrOBoG84rP4134hQiKfo0CkL2euXOcsa2Po97tXBbpIIncngHQ7d6xFPkXyxykgv2WGKeNwukJoe+pFzA==}
+  /@effect/experimental@0.3.0(@effect/platform@0.34.0)(@effect/schema@0.53.0)(effect@2.0.0-next.60)(ws@8.15.0):
+    resolution: {integrity: sha512-wi4XPcyftSBCFuSq9Eb+tV9q7jSDr12OC45zgiAxBrsJooq6zSLKVYG7uCTdGpwIMkEPnsTtDdMvBIao4KgKjQ==}
     peerDependencies:
-      '@effect/platform': ^0.33.0
-      '@effect/platform-node': ^0.34.0
-      '@effect/schema': ^0.52.0
-      effect: 2.0.0-next.59
-      ws: ^8.14.2
+      '@effect/platform': ^0.34.0
+      '@effect/platform-node': ^0.35.0
+      '@effect/schema': ^0.53.0
+      effect: 2.0.0-next.60
+      ws: ^8.14
     peerDependenciesMeta:
       '@effect/platform-node':
         optional: true
       ws:
         optional: true
     dependencies:
-      '@effect/platform': 0.33.1(@effect/schema@0.52.0)(effect@2.0.0-next.59)
-      '@effect/schema': 0.52.0(effect@2.0.0-next.59)(fast-check@3.14.0)
-      effect: 2.0.0-next.59
+      '@effect/platform': 0.34.0(@effect/schema@0.53.0)(effect@2.0.0-next.60)
+      '@effect/schema': 0.53.0(effect@2.0.0-next.60)(fast-check@3.14.0)
+      effect: 2.0.0-next.60
       isomorphic-ws: 5.0.0(ws@8.15.0)
       msgpackr: 1.10.0
       ws: 8.15.0
@@ -76,26 +76,26 @@ packages:
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
     dev: true
 
-  /@effect/platform@0.33.1(@effect/schema@0.52.0)(effect@2.0.0-next.59):
-    resolution: {integrity: sha512-0NVh8Rt22kYrVrgKpivSuPT27d+JgpENyfdzpOy09/9EQpA/33XKgCXrGSBpkRGrCsH7DIpmeWIVSHMrkcpCUw==}
+  /@effect/platform@0.34.0(@effect/schema@0.53.0)(effect@2.0.0-next.60):
+    resolution: {integrity: sha512-S/skGZ/ny/vvAurmtYLCalASzYE/6VRmPtBJQXFPZrOPQZJpxXzjff+yrHDiEDXxhxcIDUDtD0koshIm6vd3pA==}
     peerDependencies:
-      '@effect/schema': ^0.52.0
-      effect: 2.0.0-next.59
+      '@effect/schema': ^0.53.0
+      effect: 2.0.0-next.60
     dependencies:
-      '@effect/schema': 0.52.0(effect@2.0.0-next.59)(fast-check@3.14.0)
-      effect: 2.0.0-next.59
+      '@effect/schema': 0.53.0(effect@2.0.0-next.60)(fast-check@3.14.0)
+      effect: 2.0.0-next.60
       find-my-way: 7.7.0
       multipasta: 0.1.19
       path-browserify: 1.0.1
     dev: true
 
-  /@effect/schema@0.52.0(effect@2.0.0-next.59)(fast-check@3.14.0):
-    resolution: {integrity: sha512-x6SmSdoL6PeZVAaK895NoRkKF8D/w+XyO8i17cUsQYFJBHNyUTi9Y1H2wrO8TkxhTmC93ejburpM+35/OKCi2Q==}
+  /@effect/schema@0.53.0(effect@2.0.0-next.60)(fast-check@3.14.0):
+    resolution: {integrity: sha512-hrKiXA5+sXt2xqos0lRBWx89Od7Y166YEjhDDokVZ3vHjHKf0huFBeKssnl8V5L7XU2mgQNPCeBii3+JB1WjHg==}
     peerDependencies:
-      effect: 2.0.0-next.59
+      effect: 2.0.0-next.60
       fast-check: ^3.13.2
     dependencies:
-      effect: 2.0.0-next.59
+      effect: 2.0.0-next.60
       fast-check: 3.14.0
     dev: true
 
@@ -764,8 +764,8 @@ packages:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
     dev: true
 
-  /effect@2.0.0-next.59:
-    resolution: {integrity: sha512-EE87vFl0/zIN5lKDtFccU3YCnbPqjxg9rY72obNN65/GE4JOJsXciyX8XC4pIDr3lE6KeJ0le8IXf+A7d92ntQ==}
+  /effect@2.0.0-next.60:
+    resolution: {integrity: sha512-23KhlVACgrg5UPFu9i4szybSU4cCU4T/7CX4pe0jV84QBZX0zm96WzwCtg6dqOnmUzBL7hm6S+iiPW2Rab13Uw==}
     dev: true
 
   /emoji-regex@8.0.0:
