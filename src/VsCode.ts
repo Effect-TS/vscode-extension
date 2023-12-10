@@ -51,7 +51,15 @@ export const registerCommand = <R, E, A>(
     )
   })
 
-export const config = <A>(namespace: string, setting: string) =>
+export interface ConfigRef<A> {
+  readonly get: Effect.Effect<never, never, A>
+  readonly changes: Stream.Stream<never, never, A>
+}
+
+export const config = <A>(
+  namespace: string,
+  setting: string,
+): Effect.Effect<Scope.Scope, never, ConfigRef<Option.Option<A>>> =>
   Effect.gen(function* (_) {
     const get = () =>
       vscode.workspace.getConfiguration(namespace).get<A>(setting)
@@ -73,7 +81,7 @@ export const configWithDefault = <A>(
   namespace: string,
   setting: string,
   defaultValue: A,
-) =>
+): Effect.Effect<Scope.Scope, never, ConfigRef<A>> =>
   Effect.gen(function* (_) {
     const get = () =>
       vscode.workspace.getConfiguration(namespace).get<A>(setting)

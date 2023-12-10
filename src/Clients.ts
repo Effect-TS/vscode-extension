@@ -17,7 +17,12 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect"
-import { configWithDefault, executeCommand, registerCommand } from "./VsCode"
+import {
+  ConfigRef,
+  configWithDefault,
+  executeCommand,
+  registerCommand,
+} from "./VsCode"
 
 export interface Client {
   readonly id: number
@@ -37,96 +42,101 @@ export class RunningState extends Data.TaggedClass("RunningState")<{
   }
 }
 
-const runServer = ({
-  clients,
-  activeClient,
-  running,
-  clientId,
-}: {
+interface ClientsContext {
   readonly clients: SubscriptionRef.SubscriptionRef<HashSet.HashSet<Client>>
   readonly activeClient: SubscriptionRef.SubscriptionRef<Option.Option<Client>>
   readonly running: SubscriptionRef.SubscriptionRef<RunningState>
   readonly clientId: Ref.Ref<number>
-}) =>
+  readonly port: ConfigRef<number>
+}
+const ClientsContext = Context.Tag<ClientsContext>(
+  "effect-vscode/Clients/ClientsContext",
+)
+const ClientsContextLive = Layer.scoped(
+  ClientsContext,
   Effect.gen(function* (_) {
-    const server = yield* _(Server.make)
-
-    const take = Effect.gen(function* (_) {
-      const queue = yield* _(server.clients.take)
-      const spans = yield* _(Queue.sliding<Domain.Span>(100))
-      const id = yield* _(Ref.getAndUpdate(clientId, _ => _ + 1))
-      const client: Client = { id, spans }
-      yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
-      const removeClient = SubscriptionRef.update(
-        clients,
-        HashSet.remove(client),
-      )
-
-      yield* _(
-        SubscriptionRef.update(
-          activeClient,
-          Option.orElse(() => Option.some(client)),
-        ),
-      )
-      const removeIfActive = SubscriptionRef.update(
-        activeClient,
-        Option.filter(_ => _ !== client),
-      )
-
-      return yield* _(
-        queue.take,
-        Effect.flatMap(_ => spans.offer(_)),
-        Effect.forever,
-        Effect.ensuring(
-          Effect.all([spans.shutdown, removeClient, removeIfActive]),
-        ),
-        Effect.fork,
-      )
-    }).pipe(Effect.forever)
-
-    const fiber = yield* _(ScopedRef.make(() => Fiber.unit))
-    const run = server.run.pipe(
-      Effect.zipRight(take, { concurrent: true }),
-      Effect.catchAllCause(cause =>
-        SubscriptionRef.update(
-          running,
-          _ => new RunningState({ ..._, running: false, cause }),
-        ),
-      ),
-      Effect.forkScoped,
-    )
-
-    yield* _(
-      running.changes,
-      Stream.runForEach(({ running }) =>
-        Effect.gen(function* (_) {
-          yield* _(
-            ScopedRef.set(fiber, running ? run : Effect.succeed(Fiber.unit)),
-          )
-          yield* _(executeCommand("setContext", "effect:running", running))
+    const clients = yield* _(SubscriptionRef.make(HashSet.empty<Client>()))
+    const port = yield* _(configWithDefault("effect", "devServerPort", 34437))
+    const running = yield* _(
+      SubscriptionRef.make(
+        new RunningState({
+          running: false,
+          cause: Cause.empty,
+          port: yield* _(port.get),
         }),
       ),
-      Effect.forkScoped,
     )
-  })
+    const activeClient = yield* _(SubscriptionRef.make(Option.none<Client>()))
+    const clientId = yield* _(Ref.make(1))
+    return ClientsContext.of({ clients, running, activeClient, clientId, port })
+  }),
+)
 
-const make = Effect.gen(function* (_) {
-  const clients = yield* _(SubscriptionRef.make(HashSet.empty<Client>()))
-  const port = yield* _(configWithDefault("effect", "devServerPort", 34437))
-  const running = yield* _(
-    SubscriptionRef.make(
-      new RunningState({
-        running: false,
-        cause: Cause.empty,
-        port: yield* _(port.get),
+const runServer = Effect.gen(function* (_) {
+  const { clients, activeClient, running, clientId } = yield* _(ClientsContext)
+  const server = yield* _(Server.make)
+
+  const take = Effect.gen(function* (_) {
+    const queue = yield* _(server.clients.take)
+    const spans = yield* _(Queue.sliding<Domain.Span>(100))
+    const id = yield* _(Ref.getAndUpdate(clientId, _ => _ + 1))
+    const client: Client = { id, spans }
+    yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
+    const removeClient = SubscriptionRef.update(clients, HashSet.remove(client))
+
+    yield* _(
+      SubscriptionRef.update(
+        activeClient,
+        Option.orElse(() => Option.some(client)),
+      ),
+    )
+    const removeIfActive = SubscriptionRef.update(
+      activeClient,
+      Option.filter(_ => _ !== client),
+    )
+
+    return yield* _(
+      queue.take,
+      Effect.flatMap(_ => spans.offer(_)),
+      Effect.forever,
+      Effect.ensuring(
+        Effect.all([spans.shutdown, removeClient, removeIfActive]),
+      ),
+      Effect.fork,
+    )
+  }).pipe(Effect.forever)
+
+  const fiber = yield* _(ScopedRef.make(() => Fiber.unit))
+  const run = server.run.pipe(
+    Effect.zipRight(take, { concurrent: true }),
+    Effect.catchAllCause(cause =>
+      SubscriptionRef.update(
+        running,
+        _ => new RunningState({ ..._, running: false, cause }),
+      ),
+    ),
+    Effect.forkScoped,
+  )
+
+  yield* _(
+    running.changes,
+    Stream.runForEach(({ running }) =>
+      Effect.gen(function* (_) {
+        yield* _(
+          ScopedRef.set(fiber, running ? run : Effect.succeed(Fiber.unit)),
+        )
+        yield* _(executeCommand("setContext", "effect:running", running))
       }),
     ),
+    Effect.forkScoped,
   )
-  const activeClient = yield* _(SubscriptionRef.make(Option.none<Client>()))
-  const clientId = yield* _(Ref.make(1))
+})
+
+const make = Effect.gen(function* (_) {
+  const { clients, activeClient, running, port } = yield* _(ClientsContext)
 
   const makeServer = Effect.provideServiceEffect(
-    runServer({ clients, activeClient, running, clientId }),
+    runServer,
     SocketServer.SocketServer,
     Effect.flatMap(port.get, port => SocketServer.makeWebSocket({ port })),
   )
@@ -173,4 +183,6 @@ export interface Clients {
 export const Clients = Context.Tag<Clients, Effect.Effect.Success<typeof make>>(
   "effect-vscode/Clients",
 )
-export const ClientsLive = Layer.scoped(Clients, make)
+export const ClientsLive = Layer.scoped(Clients, make).pipe(
+  Layer.provide(ClientsContextLive),
+)
