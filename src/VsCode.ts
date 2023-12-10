@@ -4,6 +4,8 @@ import {
   Effect,
   Exit,
   Layer,
+  LogLevel,
+  Logger,
   Option,
   Runtime,
   Scope,
@@ -197,3 +199,35 @@ export const launch = <E>(
     })
     yield* _(Layer.buildWithScope(layer, scope))
   }).pipe(Effect.catchAllCause(Effect.logFatal))
+
+export const vsCodeLogger = (name: string) =>
+  Logger.replaceScoped(
+    Logger.defaultLogger,
+    Effect.gen(function* (_) {
+      const channel = yield* _(
+        Effect.acquireRelease(
+          Effect.sync(() =>
+            vscode.window.createOutputChannel(name, { log: true }),
+          ),
+          channel => Effect.sync(() => channel.dispose()),
+        ),
+      )
+      return Logger.make(options => {
+        const message = Logger.logfmtLogger.log(options)
+
+        switch (options.logLevel) {
+          case LogLevel.Trace:
+          case LogLevel.Debug:
+            channel.debug(message)
+            break
+          case LogLevel.Error:
+          case LogLevel.Fatal:
+            channel.error(message)
+            break
+          default:
+            channel.info(message)
+            break
+        }
+      })
+    }),
+  )
