@@ -6,8 +6,8 @@ settings:
 
 devDependencies:
   '@effect/experimental':
-    specifier: ^0.2.7
-    version: 0.2.7(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.14.2)
+    specifier: ^0.2.8
+    version: 0.2.8(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.15.0)
   '@effect/language-service':
     specifier: ^0.1.0
     version: 0.1.0
@@ -36,8 +36,8 @@ devDependencies:
     specifier: ^10.2.0
     version: 10.2.0
   prettier:
-    specifier: ^3.1.0
-    version: 3.1.0
+    specifier: ^3.1.1
+    version: 3.1.1
   tsup:
     specifier: ^8.0.1
     version: 8.0.1(typescript@5.3.3)
@@ -45,13 +45,13 @@ devDependencies:
     specifier: ^5.3.3
     version: 5.3.3
   ws:
-    specifier: ^8.14.2
-    version: 8.14.2
+    specifier: ^8.15.0
+    version: 8.15.0
 
 packages:
 
-  /@effect/experimental@0.2.7(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.14.2):
-    resolution: {integrity: sha512-yHYgbZnR7oP5ZM0TDTDdQla4gpDdnevKjP5qwk7Gl71FMMM9QJinUJiNZgdZ8iGf6G0ckLItlI1lOdYZHmvkxA==}
+  /@effect/experimental@0.2.8(@effect/platform@0.33.1)(@effect/schema@0.52.0)(effect@2.0.0-next.59)(ws@8.15.0):
+    resolution: {integrity: sha512-IpuXLOrOBoG84rP4134hQiKfo0CkL2euXOcsa2Po97tXBbpIIncngHQ7d6xFPkXyxykgv2WGKeNwukJoe+pFzA==}
     peerDependencies:
       '@effect/platform': ^0.33.0
       '@effect/platform-node': ^0.34.0
@@ -67,9 +67,9 @@ packages:
       '@effect/platform': 0.33.1(@effect/schema@0.52.0)(effect@2.0.0-next.59)
       '@effect/schema': 0.52.0(effect@2.0.0-next.59)(fast-check@3.14.0)
       effect: 2.0.0-next.59
-      isomorphic-ws: 5.0.0(ws@8.14.2)
+      isomorphic-ws: 5.0.0(ws@8.15.0)
       msgpackr: 1.10.0
-      ws: 8.14.2
+      ws: 8.15.0
     dev: true
 
   /@effect/language-service@0.1.0:
@@ -1089,12 +1089,12 @@ packages:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
     dev: true
 
-  /isomorphic-ws@5.0.0(ws@8.14.2):
+  /isomorphic-ws@5.0.0(ws@8.15.0):
     resolution: {integrity: sha512-muId7Zzn9ywDsyXgTIafTry2sV3nySZeUDe6YedVd1Hvuuep5AsIlqK+XefWpYTyJG5e503F2xIuT2lcU6rCSw==}
     peerDependencies:
       ws: '*'
     dependencies:
-      ws: 8.14.2
+      ws: 8.15.0
     dev: true
 
   /jackspeak@2.3.6:
@@ -1414,8 +1414,8 @@ packages:
       yaml: 2.3.4
     dev: true
 
-  /prettier@3.1.0:
-    resolution: {integrity: sha512-TQLvXjq5IAibjh8EpBIkNKxO749UEWABoiIZehEPiY4GNpVdhaFKqSTu+QrlU6D2dPAfubRmtJTi4K4YkQ5eXw==}
+  /prettier@3.1.1:
+    resolution: {integrity: sha512-22UbSzg8luF4UuZtzgiUOfcGM8s4tjBv6dJRT7j275NXsy2jb4aJa4NNveul5x4eqlF1wuhuR2RElK71RvmVaw==}
     engines: {node: '>=14'}
     hasBin: true
     dev: true
@@ -1784,10 +1784,9 @@ packages:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: true
 
-  /ws@8.14.2:
-    resolution: {integrity: sha512-wEBG1ftX4jcglPxgFCMJmZ2PLtSbJ2Peg6TmpJFTbe9GZYOQCDPdMYu/Tm0/bGZkw8paZnJY45J4K2PZrLYq8g==}
+  /ws@8.15.0:
+    resolution: {integrity: sha512-H/Z3H55mrcrgjFwI+5jKavgXvwQLtfPCUEp6pi35VhoB0pfcHnSoyuTzkBEZpzq49g1193CUEwIvmsjcotenYw==}
     engines: {node: '>=10.0.0'}
-    requiresBuild: true
     peerDependencies:
       bufferutil: ^4.0.1
       utf-8-validate: '>=5.0.2'

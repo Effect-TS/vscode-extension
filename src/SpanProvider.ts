@@ -1,34 +1,18 @@
-import * as DevTools from "@effect/experimental/DevTools"
-import * as SocketServer from "@effect/experimental/SocketServer/Node"
+import * as Domain from "@effect/experimental/DevTools/Domain"
 import {
-  Deferred,
   Duration,
   Effect,
   Fiber,
   Layer,
   Option,
   Order,
-  Queue,
-  Ref,
-  Schedule,
+  ScopedRef,
   Stream,
-  pipe,
 } from "effect"
 import * as vscode from "vscode"
-import { TreeDataProvider, registerCommand, treeDataProvider } from "./VsCode"
-import * as DurationUtils from "./utils/Duration"
 import { Client, Clients, ClientsLive } from "./Clients"
-import * as Domain from "@effect/experimental/DevTools/Domain"
-
-const SpanOrder = Order.struct({
-  span: Order.struct({
-    status: Order.struct({ startTime: Order.reverse(Order.bigint) }),
-  }),
-})
-
-const ClientOrder = Order.struct({
-  id: Order.reverse(Order.number),
-})
+import { TreeDataProvider, treeDataProvider } from "./VsCode"
+import * as DurationUtils from "./utils/Duration"
 
 class SpanNode {
   readonly _tag = "SpanNode"
@@ -84,13 +68,10 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
       const clients = yield* _(Clients)
       const rootNodes: Array<SpanNode> = []
       const nodes = new Map<string, SpanNode>()
-      let currentClient: Fiber.RuntimeFiber<never, never> | undefined
+      const currentClient = yield* _(ScopedRef.make(() => Fiber.never))
 
       const reset = Effect.gen(function* (_) {
-        if (currentClient) {
-          yield* _(Fiber.interrupt(currentClient))
-          currentClient = undefined
-        }
+        yield* _(ScopedRef.set(currentClient, Effect.succeed(Fiber.never)))
         rootNodes.length = 0
         nodes.clear()
         return yield* _(refresh(Option.none()))
@@ -98,10 +79,12 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
 
       yield* _(
         clients.activeClient.changes,
+        Stream.tap(() => reset),
         Stream.runForEach(_ =>
           Option.match(_, {
-            onNone: () => reset,
-            onSome: handleClient,
+            onNone: () => Effect.unit,
+            onSome: client =>
+              ScopedRef.set(currentClient, handleClient(client)),
           }),
         ),
         Effect.forkScoped,
@@ -111,10 +94,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         client.spans.take.pipe(
           Effect.flatMap(registerSpan),
           Effect.forever,
-          Effect.fork,
-          Effect.tap(fiber => {
-            currentClient = fiber
-          }),
+          Effect.forkScoped,
         )
 
       function addNode(span: Domain.Span): [SpanNode, SpanNode | undefined] {
