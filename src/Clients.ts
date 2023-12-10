@@ -135,17 +135,18 @@ const runServer = Effect.gen(function* (_) {
 const make = Effect.gen(function* (_) {
   const { clients, activeClient, running, port } = yield* _(ClientsContext)
 
-  const makeServer = Effect.provideServiceEffect(
-    runServer,
-    SocketServer.SocketServer,
-    Effect.flatMap(port.get, port => SocketServer.makeWebSocket({ port })),
-  )
-  const server = yield* _(ScopedRef.fromAcquire(makeServer))
+  const makeServer = (port: number) =>
+    Effect.provideServiceEffect(
+      runServer,
+      SocketServer.SocketServer,
+      SocketServer.makeWebSocket({ port }),
+    )
+  const server = yield* _(ScopedRef.fromAcquire(makeServer(yield* _(port.get))))
   yield* _(
     port.changes,
     Stream.drop(1),
     Stream.tap(port => SubscriptionRef.update(running, _ => _.setPort(port))),
-    Stream.runForEach(() => ScopedRef.set(server, makeServer)),
+    Stream.runForEach(port => ScopedRef.set(server, makeServer(port))),
     Effect.forkScoped,
   )
 
