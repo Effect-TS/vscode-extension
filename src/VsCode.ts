@@ -9,6 +9,7 @@ import {
   Option,
   Runtime,
   Scope,
+  SubscriptionRef,
 } from "effect"
 import * as vscode from "vscode"
 
@@ -47,6 +48,38 @@ export const registerCommand = <R, E, A>(
         ),
       ),
     )
+  })
+
+export const config = <A>(namespace: string, setting: string) =>
+  Effect.gen(function* (_) {
+    const get = () =>
+      vscode.workspace.getConfiguration(namespace).get<A>(setting)
+    const ref = yield* _(
+      SubscriptionRef.make<Option.Option<A>>(Option.fromNullable(get())),
+    )
+    yield* _(
+      listenFork(vscode.workspace.onDidChangeConfiguration, _ =>
+        SubscriptionRef.set(ref, Option.fromNullable(get())),
+      ),
+    )
+    return ref
+  })
+
+export const configWithDefault = <A>(
+  namespace: string,
+  setting: string,
+  defaultValue: A,
+) =>
+  Effect.gen(function* (_) {
+    const get = () =>
+      vscode.workspace.getConfiguration(namespace).get<A>(setting)
+    const ref = yield* _(SubscriptionRef.make(get() ?? defaultValue))
+    yield* _(
+      listenFork(vscode.workspace.onDidChangeConfiguration, _ =>
+        SubscriptionRef.set(ref, get() ?? defaultValue),
+      ),
+    )
+    return ref
   })
 
 export const listen = <A, R>(
@@ -200,7 +233,7 @@ export const launch = <E>(
     yield* _(Layer.buildWithScope(layer, scope))
   }).pipe(Effect.catchAllCause(Effect.logFatal))
 
-export const vsCodeLogger = (name: string) =>
+export const logger = (name: string) =>
   Logger.replaceScoped(
     Logger.defaultLogger,
     Effect.gen(function* (_) {

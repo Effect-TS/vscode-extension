@@ -6,5 +6,4 @@ export default defineConfig({
   clean: true,
   external: ["vscode"],
   treeshake: "smallest",
-  sourcemap: true,
 })

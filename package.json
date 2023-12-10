@@ -17,11 +17,17 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Effect Dev Tools",
+      "properties": {
+        "effect.devServerPort": {
+          "type": "integer",
+          "default": 34437,
+          "description": "The port to run the Effect dev server on"
+        }
+      }
+    },
     "commands": [
-      {
-        "command": "effect.selectClient",
-        "title": "Effect Dev Tools: Select Client"
-      },
       {
         "command": "effect.startServer",
         "title": "Effect Dev Tools: Start Server",
