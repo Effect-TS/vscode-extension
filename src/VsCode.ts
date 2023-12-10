@@ -217,8 +217,13 @@ export const vsCodeLogger = (name: string) =>
 
         switch (options.logLevel) {
           case LogLevel.Trace:
+            channel.trace(message)
+            break
           case LogLevel.Debug:
             channel.debug(message)
+            break
+          case LogLevel.Warning:
+            channel.warn(message)
             break
           case LogLevel.Error:
           case LogLevel.Fatal:
