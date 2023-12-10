@@ -42,19 +42,13 @@ const make = Effect.gen(function* (_) {
 
   const take = Effect.gen(function* (_) {
     const queue = yield* _(server.clients.take)
-    const spans = yield* _(
-      Effect.acquireRelease(Queue.sliding<Domain.Span>(100), Queue.shutdown),
-    )
+    const spans = yield* _(Queue.sliding<Domain.Span>(100))
     const client: Client = {
       id: clientId++,
       spans,
     }
     yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
-    yield* _(
-      Effect.addFinalizer(() =>
-        SubscriptionRef.update(clients, HashSet.remove(client)),
-      ),
-    )
+    const removeClient = SubscriptionRef.update(clients, HashSet.remove(client))
 
     yield* _(
       SubscriptionRef.update(
@@ -62,21 +56,21 @@ const make = Effect.gen(function* (_) {
         Option.orElse(() => Option.some(client)),
       ),
     )
-    yield* _(
-      Effect.addFinalizer(() =>
-        SubscriptionRef.update(
-          activeClient,
-          Option.filter(_ => _ !== client),
-        ),
-      ),
+    const removeIfActive = SubscriptionRef.update(
+      activeClient,
+      Option.filter(_ => _ !== client),
     )
 
     return yield* _(
       queue.take,
       Effect.flatMap(_ => spans.offer(_)),
       Effect.forever,
+      Effect.ensuring(
+        Effect.all([spans.shutdown, removeClient, removeIfActive]),
+      ),
+      Effect.fork,
     )
-  }).pipe(Effect.scoped, Effect.fork, Effect.forever)
+  }).pipe(Effect.forever)
 
   const run = server.run.pipe(
     Effect.catchAllCause(Effect.log),

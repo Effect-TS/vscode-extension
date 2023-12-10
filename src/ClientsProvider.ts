@@ -2,7 +2,6 @@ import { Effect, Layer, Option, Stream, SubscriptionRef } from "effect"
 import { Client, Clients, ClientsLive } from "./Clients"
 import { TreeDataProvider, treeDataProvider } from "./VsCode"
 import * as vscode from "vscode"
-import { running } from "effect/FiberStatus"
 
 class ClientNode {
   readonly _tag = "ClientNode"
