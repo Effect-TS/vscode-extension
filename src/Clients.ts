@@ -78,57 +78,66 @@ const runServer = Effect.gen(function* (_) {
   const { clients, activeClient, running, clientId } = yield* _(ClientsContext)
   const server = yield* _(Server.make)
 
-  const take = Effect.gen(function* (_) {
-    const serverClient = yield* _(server.clients.take)
-    const spans = yield* _(Queue.sliding<Domain.Span>(100))
-    const metrics = yield* _(Queue.sliding<Domain.MetricsSnapshot>(2))
-    const id = yield* _(Ref.getAndUpdate(clientId, _ => _ + 1))
-    const client: Client = {
-      id,
-      spans,
-      metrics,
-      requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
-    }
-    yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
-    const removeClient = SubscriptionRef.update(clients, HashSet.remove(client))
+  const makeClient = (serverClient: Server.Client) =>
+    Effect.gen(function* (_) {
+      const spans = yield* _(
+        Effect.acquireRelease(Queue.sliding<Domain.Span>(100), Queue.shutdown),
+      )
+      const metrics = yield* _(
+        Effect.acquireRelease(
+          Queue.sliding<Domain.MetricsSnapshot>(2),
+          Queue.shutdown,
+        ),
+      )
+      const id = yield* _(Ref.getAndUpdate(clientId, _ => _ + 1))
+      const client: Client = {
+        id,
+        spans,
+        metrics,
+        requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
+      }
+      yield* _(
+        Effect.acquireRelease(
+          SubscriptionRef.update(clients, HashSet.add(client)),
+          () => SubscriptionRef.update(clients, HashSet.remove(client)),
+        ),
+      )
+      yield* _(
+        Effect.acquireRelease(
+          SubscriptionRef.update(
+            activeClient,
+            Option.orElse(() => Option.some(client)),
+          ),
+          () =>
+            SubscriptionRef.update(
+              activeClient,
+              Option.filter(_ => _ !== client),
+            ),
+        ),
+      )
 
-    yield* _(
-      SubscriptionRef.update(
-        activeClient,
-        Option.orElse(() => Option.some(client)),
-      ),
-    )
-    const removeIfActive = SubscriptionRef.update(
-      activeClient,
-      Option.filter(_ => _ !== client),
-    )
-
-    return yield* _(
-      serverClient.queue.take,
-      Effect.flatMap(res => {
-        switch (res._tag) {
-          case "MetricsSnapshot": {
-            return metrics.offer(res)
+      return yield* _(
+        serverClient.queue.take,
+        Effect.flatMap(res => {
+          switch (res._tag) {
+            case "MetricsSnapshot": {
+              return metrics.offer(res)
+            }
+            case "Span": {
+              return spans.offer(res)
+            }
           }
-          case "Span": {
-            return spans.offer(res)
-          }
-        }
-      }),
-      Effect.forever,
-      Effect.ensuring(
-        Effect.all([
-          spans.shutdown,
-          metrics.shutdown,
-          removeClient,
-          removeIfActive,
-        ]),
-      ),
-      Effect.fork,
-    )
-  }).pipe(Effect.forever)
+        }),
+        Effect.forever,
+      )
+    }).pipe(Effect.scoped, Effect.fork)
 
-  const fiber = yield* _(ScopedRef.make(() => Fiber.unit))
+  const take = server.clients.take.pipe(
+    Effect.flatMap(makeClient),
+    Effect.forever,
+  )
+
+  const serverRef = yield* _(ScopedRef.make(() => {}))
   const run = server.run.pipe(
     Effect.zipRight(take, { concurrent: true }),
     Effect.catchAllCause(cause =>
@@ -144,9 +153,7 @@ const runServer = Effect.gen(function* (_) {
     running.changes,
     Stream.runForEach(({ running }) =>
       Effect.gen(function* (_) {
-        yield* _(
-          ScopedRef.set(fiber, running ? run : Effect.succeed(Fiber.unit)),
-        )
+        yield* _(ScopedRef.set(serverRef, running ? run : Effect.unit))
         yield* _(executeCommand("setContext", "effect:running", running))
       }),
     ),
@@ -163,10 +170,9 @@ const make = Effect.gen(function* (_) {
       SocketServer.SocketServer,
       SocketServer.makeWebSocket({ port }),
     )
-  const server = yield* _(ScopedRef.fromAcquire(makeServer(yield* _(port.get))))
+  const server = yield* _(ScopedRef.make(() => {}))
   yield* _(
     port.changes,
-    Stream.drop(1),
     Stream.tap(port => SubscriptionRef.update(running, _ => _.setPort(port))),
     Stream.runForEach(port => ScopedRef.set(server, makeServer(port))),
     Effect.forkScoped,
