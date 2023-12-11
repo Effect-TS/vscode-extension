@@ -20,10 +20,15 @@
     "configuration": {
       "title": "Effect Dev Tools",
       "properties": {
-        "effect.devServerPort": {
+        "effect.devServer.port": {
           "type": "integer",
           "default": 34437,
           "description": "The port to run the Effect dev server on"
+        },
+        "effect.metrics.pollInterval": {
+          "type": "integer",
+          "default": 500,
+          "description": "The time in milliseconds between polling for metrics"
         }
       }
     },
@@ -57,6 +62,10 @@
         {
           "id": "effect-tracer",
           "name": "Tracer"
+        },
+        {
+          "id": "effect-metrics",
+          "name": "Metrics"
         }
       ]
     },
@@ -83,7 +92,7 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@effect/experimental": "^0.3.0",
+    "@effect/experimental": "^0.3.1",
     "@effect/language-service": "^0.1.0",
     "@types/mocha": "^10.0.3",
     "@types/node": "~20.10.4",

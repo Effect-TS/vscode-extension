@@ -27,6 +27,8 @@ import {
 export interface Client {
   readonly id: number
   readonly spans: Queue.Dequeue<Domain.Span>
+  readonly metrics: Queue.Dequeue<Domain.MetricsSnapshot>
+  readonly requestMetrics: Effect.Effect<never, never, void>
 }
 
 export class RunningState extends Data.TaggedClass("RunningState")<{
@@ -56,7 +58,7 @@ const ClientsContextLive = Layer.scoped(
   ClientsContext,
   Effect.gen(function* (_) {
     const clients = yield* _(SubscriptionRef.make(HashSet.empty<Client>()))
-    const port = yield* _(configWithDefault("effect", "devServerPort", 34437))
+    const port = yield* _(configWithDefault("effect.devServer", "port", 34437))
     const running = yield* _(
       SubscriptionRef.make(
         new RunningState({
@@ -77,10 +79,16 @@ const runServer = Effect.gen(function* (_) {
   const server = yield* _(Server.make)
 
   const take = Effect.gen(function* (_) {
-    const queue = yield* _(server.clients.take)
+    const serverClient = yield* _(server.clients.take)
     const spans = yield* _(Queue.sliding<Domain.Span>(100))
+    const metrics = yield* _(Queue.sliding<Domain.MetricsSnapshot>(2))
     const id = yield* _(Ref.getAndUpdate(clientId, _ => _ + 1))
-    const client: Client = { id, spans }
+    const client: Client = {
+      id,
+      spans,
+      metrics,
+      requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
+    }
     yield* _(SubscriptionRef.update(clients, HashSet.add(client)))
     const removeClient = SubscriptionRef.update(clients, HashSet.remove(client))
 
@@ -96,11 +104,25 @@ const runServer = Effect.gen(function* (_) {
     )
 
     return yield* _(
-      queue.take,
-      Effect.flatMap(_ => spans.offer(_)),
+      serverClient.queue.take,
+      Effect.flatMap(res => {
+        switch (res._tag) {
+          case "MetricsSnapshot": {
+            return metrics.offer(res)
+          }
+          case "Span": {
+            return spans.offer(res)
+          }
+        }
+      }),
       Effect.forever,
       Effect.ensuring(
-        Effect.all([spans.shutdown, removeClient, removeIfActive]),
+        Effect.all([
+          spans.shutdown,
+          metrics.shutdown,
+          removeClient,
+          removeIfActive,
+        ]),
       ),
       Effect.fork,
     )

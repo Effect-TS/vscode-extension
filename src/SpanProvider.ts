@@ -11,7 +11,7 @@ import {
 } from "effect"
 import * as vscode from "vscode"
 import { Client, Clients, ClientsLive } from "./Clients"
-import { TreeDataProvider, treeDataProvider } from "./VsCode"
+import { TreeDataProvider, configWithDefault, treeDataProvider } from "./VsCode"
 import * as DurationUtils from "./utils/Duration"
 
 class SpanNode {
@@ -68,6 +68,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
       const clients = yield* _(Clients)
       const rootNodes: Array<SpanNode> = []
       const nodes = new Map<string, SpanNode>()
+
       const currentClient = yield* _(ScopedRef.make(() => Fiber.never))
 
       const reset = Effect.gen(function* (_) {
