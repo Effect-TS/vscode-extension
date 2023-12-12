@@ -117,6 +117,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         vscode.TreeItemCollapsibleState.Collapsed,
       )
       item.description = node.pair.service.value
+      item.tooltip = node.pair.service.value
       return item
     }
     case "VariableNode": {
@@ -127,6 +128,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
           : vscode.TreeItemCollapsibleState.Collapsed,
       )
       item.description = node.variable.value
+      item.tooltip = node.variable.value
       return item
     }
   }
