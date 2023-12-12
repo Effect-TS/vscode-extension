@@ -73,7 +73,7 @@
       "debug": [
         {
           "id": "effect-context",
-          "name": "Effect Env",
+          "name": "Effect Context",
           "when": "inDebugMode"
         }
       ]
