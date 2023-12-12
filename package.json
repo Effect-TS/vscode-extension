@@ -78,6 +78,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "effect-clients",
+        "contents": "The Effect Dev Tools server is currently stopped.\n[Start the server](command:effect.startServer)"
+      }
+    ],
     "menus": {
       "view/title": [
         {

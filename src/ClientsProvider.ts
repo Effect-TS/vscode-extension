@@ -41,7 +41,9 @@ export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () =>
-            Effect.succeedSome(nodes.length ? nodes : [runningState]),
+            runningState.running
+              ? Effect.succeedSome(nodes.length ? nodes : [runningState])
+              : Effect.succeedNone,
           onSome: _node => Effect.succeedNone,
         }),
         treeItem: node => Effect.succeed(treeItem(node)),
