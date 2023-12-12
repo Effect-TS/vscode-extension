@@ -1,4 +1,11 @@
-import { Effect, Layer, Option, ReadonlyArray, SubscriptionRef } from "effect"
+import {
+  Effect,
+  Layer,
+  Option,
+  ReadonlyArray,
+  Stream,
+  SubscriptionRef,
+} from "effect"
 import * as vscode from "vscode"
 import * as Debug from "./DebugEnv"
 import {
@@ -26,19 +33,38 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
       const debug = yield* _(Debug.DebugEnv)
       let nodes: Array<TagNode> = []
 
+      const capture = Effect.gen(function* (_) {
+        const sessionOption = yield* _(SubscriptionRef.get(debug.session))
+        if (Option.isNone(sessionOption)) {
+          nodes = []
+        } else {
+          const session = sessionOption.value
+          const pairs = yield* _(session.context)
+          nodes = pairs.map(_ => new TagNode(_))
+        }
+        yield* _(refresh(Option.none()))
+      })
+
       yield* _(
-        registerCommand("effect.captureContext", () =>
-          Effect.gen(function* (_) {
-            const sessionOption = yield* _(SubscriptionRef.get(debug.session))
-            if (Option.isNone(sessionOption)) {
-              return
+        Stream.fromPubSub(debug.messages),
+        Stream.mapEffect(event => {
+          if (event.type !== "event") return Effect.unit
+
+          switch (event.event) {
+            case "stopped": {
+              return Effect.delay(capture, 500)
             }
-            const session = sessionOption.value
-            const pairs = yield* _(session.context)
-            nodes = pairs.map(_ => new TagNode(_))
-            yield* _(refresh(Option.none()))
-          }),
-        ),
+            case "continued": {
+              nodes = []
+              return refresh(Option.none())
+            }
+            default: {
+              return Effect.unit
+            }
+          }
+        }),
+        Stream.runDrain,
+        Effect.forkScoped,
       )
 
       return TreeDataProvider<TreeNode>({
@@ -87,7 +113,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
   switch (node._tag) {
     case "TagNode": {
       const item = new vscode.TreeItem(
-        node.pair.tag,
+        node.pair.tag + ":",
         vscode.TreeItemCollapsibleState.Collapsed,
       )
       item.description = node.pair.service.value
@@ -95,8 +121,10 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
     }
     case "VariableNode": {
       const item = new vscode.TreeItem(
-        node.variable.name,
-        vscode.TreeItemCollapsibleState.Collapsed,
+        node.variable.name + ":",
+        node.variable.variablesReference === 0
+          ? vscode.TreeItemCollapsibleState.None
+          : vscode.TreeItemCollapsibleState.Collapsed,
       )
       item.description = node.variable.value
       return item

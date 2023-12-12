@@ -4,27 +4,27 @@ import {
   Effect,
   Layer,
   Option,
+  PubSub,
   ReadonlyArray,
   SubscriptionRef,
 } from "effect"
-import { VsCodeDebugSession, debugRequest, debugSessionHandler } from "./VsCode"
 import * as vscode from "vscode"
+import {
+  VsCodeContext,
+  VsCodeDebugSession,
+  debugRequest,
+  listenFork,
+} from "./VsCode"
 
 export interface DebugEnv {
   readonly _: unique symbol
 }
-export interface DebugContext {
+export interface DebugEnvImpl {
   readonly session: SubscriptionRef.SubscriptionRef<Option.Option<Session>>
+  readonly messages: PubSub.PubSub<Message>
 }
-export const DebugEnv = Context.Tag<DebugEnv, DebugContext>(
+export const DebugEnv = Context.Tag<DebugEnv, DebugEnvImpl>(
   "effect-vscode/DebugEnv",
-)
-const DebugContextLive = Layer.effect(
-  DebugEnv,
-  Effect.gen(function* (_) {
-    const session = yield* _(SubscriptionRef.make(Option.none<Session>()))
-    return { session }
-  }),
 )
 
 export interface Session {
@@ -32,22 +32,59 @@ export interface Session {
   readonly context: Effect.Effect<never, never, Array<ContextPair>>
 }
 
-export const DebugEnvLive = debugSessionHandler(
+export type Message =
+  | {
+      readonly seq: number
+      readonly type: "event"
+      readonly event: string
+      readonly body?: any
+    }
+  | {
+      readonly seq: number
+      readonly type: "response"
+      readonly command: string
+      readonly success: boolean
+      readonly body?: any
+      readonly request_seq: number
+      readonly message?: string
+    }
+
+export const DebugEnvLive = Layer.scoped(
+  DebugEnv,
   Effect.gen(function* (_) {
-    const vscodeSession = yield* _(VsCodeDebugSession)
-    const context = getContext.pipe(
-      Effect.provideService(VsCodeDebugSession, vscodeSession),
-    )
-    const session: Session = { vscode: vscodeSession, context }
-    const debug = yield* _(DebugEnv)
+    const sessionRef = yield* _(SubscriptionRef.make(Option.none<Session>()))
+    const messages = yield* _(PubSub.sliding<Message>(100))
+
     yield* _(
-      Effect.acquireRelease(
-        SubscriptionRef.set(debug.session, Option.some(session)),
-        () => SubscriptionRef.set(debug.session, Option.none()),
+      listenFork(vscode.debug.onDidChangeActiveDebugSession, session =>
+        SubscriptionRef.set(
+          sessionRef,
+          Option.map(Option.fromNullable(session), vscode => ({
+            vscode,
+            context: getContext.pipe(
+              Effect.provideService(VsCodeDebugSession, vscode),
+            ),
+          })),
+        ),
       ),
     )
+
+    const context = yield* _(VsCodeContext)
+    context.subscriptions.push(
+      vscode.debug.registerDebugAdapterTrackerFactory("*", {
+        createDebugAdapterTracker(_) {
+          return {
+            onDidSendMessage(message) {
+              messages.unsafeOffer(message)
+            },
+          }
+        },
+      }),
+    )
+
+    return { session: sessionRef, messages }
   }),
-).pipe(Layer.provideMerge(DebugContextLive))
+)
 
 // --
 

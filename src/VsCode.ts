@@ -308,34 +308,6 @@ export const VsCodeDebugSession = Context.Tag<
   vscode.DebugSession
 >("vscode/DebugSession")
 
-export const debugSessionHandler = <R, E>(
-  effect: Effect.Effect<R, E, void>,
-): Layer.Layer<
-  Exclude<Exclude<R, VsCodeDebugSession>, Scope.Scope>,
-  never,
-  never
-> =>
-  ScopedRef.make(() => {}).pipe(
-    Effect.flatMap(ref =>
-      listenFork(vscode.debug.onDidChangeActiveDebugSession, session =>
-        session
-          ? ScopedRef.set(
-              ref,
-              effect.pipe(
-                Effect.provideService(VsCodeDebugSession, session),
-                Effect.catchAllCause(Effect.log),
-                Effect.forkScoped,
-              ),
-            )
-          : ScopedRef.set(ref, Effect.unit),
-      ),
-    ),
-    Effect.annotateLogs({
-      service: "debugSessionHandler",
-    }),
-    Layer.scopedDiscard,
-  )
-
 export const debugRequest = <A = unknown>(
   command: string,
   args?: any,
