@@ -14,7 +14,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onDebug"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
@@ -42,6 +44,11 @@
         "command": "effect.stopServer",
         "title": "Effect Dev Tools: Stop Server",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "effect.captureContext",
+        "title": "Effect Dev Tools: Capture Context",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -67,6 +74,12 @@
           "id": "effect-metrics",
           "name": "Metrics"
         }
+      ],
+      "debug": [
+        {
+          "id": "effect-context",
+          "name": "Effect Env"
+        }
       ]
     },
     "menus": {
@@ -79,6 +92,11 @@
         {
           "command": "effect.stopServer",
           "when": "view === effect-clients && effect:running === true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.captureContext",
+          "when": "view === effect-context",
           "group": "navigation"
         }
       ]
