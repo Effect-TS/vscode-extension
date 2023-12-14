@@ -5,13 +5,12 @@ import {
   Fiber,
   Layer,
   Option,
-  Order,
   ScopedRef,
   Stream,
 } from "effect"
 import * as vscode from "vscode"
 import { Client, Clients, ClientsLive } from "./Clients"
-import { TreeDataProvider, configWithDefault, treeDataProvider } from "./VsCode"
+import { TreeDataProvider, treeDataProvider } from "./VsCode"
 import * as DurationUtils from "./utils/Duration"
 
 class SpanNode {

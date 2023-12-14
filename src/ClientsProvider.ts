@@ -1,7 +1,7 @@
 import { Cause, Effect, Layer, Option, Stream, SubscriptionRef } from "effect"
+import * as vscode from "vscode"
 import { Client, Clients, ClientsLive, RunningState } from "./Clients"
 import { TreeDataProvider, treeDataProvider } from "./VsCode"
-import * as vscode from "vscode"
 
 class ClientNode {
   readonly _tag = "ClientNode"

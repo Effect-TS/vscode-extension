@@ -11,7 +11,6 @@ import * as Debug from "./DebugEnv"
 import {
   TreeDataProvider,
   VsCodeDebugSession,
-  registerCommand,
   treeDataProvider,
 } from "./VsCode"
 
