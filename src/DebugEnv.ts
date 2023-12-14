@@ -1,13 +1,11 @@
-import {
-  Context,
-  Data,
-  Effect,
-  Layer,
-  Option,
-  PubSub,
-  ReadonlyArray,
-  SubscriptionRef,
-} from "effect"
+import * as Context from "effect/Context"
+import * as Data from "effect/Data"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as PubSub from "effect/PubSub"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import {
   VsCodeContext,

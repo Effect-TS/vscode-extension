@@ -1,21 +1,19 @@
 import * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Server from "@effect/experimental/DevTools/Server"
 import * as SocketServer from "@effect/experimental/SocketServer/Node"
-import {
-  Cause,
-  Context,
-  Data,
-  Effect,
-  HashSet,
-  Layer,
-  Option,
-  Queue,
-  ReadonlyArray,
-  Ref,
-  ScopedRef,
-  Stream,
-  SubscriptionRef,
-} from "effect"
+import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
+import * as Data from "effect/Data"
+import * as Effect from "effect/Effect"
+import * as HashSet from "effect/HashSet"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Queue from "effect/Queue"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Ref from "effect/Ref"
+import * as ScopedRef from "effect/ScopedRef"
+import * as Stream from "effect/Stream"
+import * as SubscriptionRef from "effect/SubscriptionRef"
 import {
   ConfigRef,
   configWithDefault,

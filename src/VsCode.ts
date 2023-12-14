@@ -1,18 +1,16 @@
-import {
-  Cause,
-  Context,
-  Effect,
-  Either,
-  Exit,
-  Layer,
-  LogLevel,
-  Logger,
-  Option,
-  Runtime,
-  Scope,
-  Stream,
-  SubscriptionRef,
-} from "effect"
+import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import * as Exit from "effect/Exit"
+import * as Layer from "effect/Layer"
+import * as LogLevel from "effect/LogLevel"
+import * as Logger from "effect/Logger"
+import * as Option from "effect/Option"
+import * as Runtime from "effect/Runtime"
+import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
+import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 
 export const VsCodeContext = Context.Tag<vscode.ExtensionContext>(

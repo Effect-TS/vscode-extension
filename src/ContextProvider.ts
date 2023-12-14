@@ -1,11 +1,9 @@
-import {
-  Effect,
-  Layer,
-  Option,
-  ReadonlyArray,
-  Stream,
-  SubscriptionRef,
-} from "effect"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Stream from "effect/Stream"
+import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import * as Debug from "./DebugEnv"
 import {

@@ -1,4 +1,4 @@
-import { Duration } from "effect"
+import * as Duration from "effect/Duration"
 
 export const format = (self: Duration.Duration) => {
   const nanos = Number(Duration.unsafeToNanos(self))

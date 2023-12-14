@@ -1,13 +1,11 @@
 import * as Domain from "@effect/experimental/DevTools/Domain"
-import {
-  Duration,
-  Effect,
-  Fiber,
-  Layer,
-  Option,
-  ScopedRef,
-  Stream,
-} from "effect"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as ScopedRef from "effect/ScopedRef"
+import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
 import { Client, Clients, ClientsLive } from "./Clients"
 import { TreeDataProvider, treeDataProvider } from "./VsCode"
