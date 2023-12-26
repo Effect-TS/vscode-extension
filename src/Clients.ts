@@ -127,16 +127,10 @@ const runServer = Effect.gen(function* (_) {
         }),
         Effect.forever,
       )
-    }).pipe(Effect.scoped, Effect.fork)
-
-  const take = server.clients.take.pipe(
-    Effect.flatMap(makeClient),
-    Effect.forever,
-  )
+    }).pipe(Effect.scoped)
 
   const serverRef = yield* _(ScopedRef.make(() => {}))
-  const run = server.run.pipe(
-    Effect.zipRight(take, { concurrent: true }),
+  const run = server.run(makeClient).pipe(
     Effect.catchAllCause(cause =>
       SubscriptionRef.update(
         running,
