@@ -231,14 +231,16 @@ export const runWithToken = <R>(runtime: Runtime.Runtime<R>) => {
     token: vscode.CancellationToken,
   ) =>
     new Promise<A | undefined>(resolve => {
-      const cancel = runCallback(effect, exit => {
-        tokenDispose.dispose()
+      const cancel = runCallback(effect, {
+        onExit: exit => {
+          tokenDispose.dispose()
 
-        if (exit._tag === "Success") {
-          resolve(exit.value)
-        } else {
-          resolve(undefined)
-        }
+          if (exit._tag === "Success") {
+            resolve(exit.value)
+          } else {
+            resolve(undefined)
+          }
+        },
       })
       const tokenDispose = token.onCancellationRequested(() => {
         cancel()

@@ -125,21 +125,21 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@effect/experimental": "^0.5.3",
+    "@effect/experimental": "^0.6.5",
     "@effect/language-service": "^0.1.0",
-    "@types/mocha": "^10.0.3",
-    "@types/node": "~20.10.5",
-    "@types/vscode": "^1.84.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "~20.11.3",
+    "@types/vscode": "^1.85.0",
     "@types/ws": "^8.5.10",
     "@vscode/test-electron": "^2.3.8",
-    "effect": "2.0.0-next.62",
+    "effect": "2.1.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
-    "prettier": "^3.1.1",
+    "prettier": "^3.2.2",
     "tslib": "^2.6.2",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
-    "ws": "^8.15.1"
+    "ws": "^8.16.0"
   },
   "sideEffects": []
 }
