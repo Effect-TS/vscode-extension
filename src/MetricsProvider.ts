@@ -8,7 +8,12 @@ import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
 import { Client, Clients, ClientsLive } from "./Clients"
-import { TreeDataProvider, configWithDefault, treeDataProvider } from "./VsCode"
+import {
+  TreeDataProvider,
+  configWithDefault,
+  registerCommand,
+  treeDataProvider,
+} from "./VsCode"
 
 const MetricOrder = Order.make<Domain.Metric>(
   Order.struct({
@@ -62,7 +67,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
 
       yield* _(
         clients.activeClient.changes,
-        Stream.tap(() => reset),
+        Stream.tap(_ => (Option.isSome(_) ? reset : Effect.unit)),
         Stream.runForEach(_ =>
           Option.match(_, {
             onNone: () => Effect.unit,
@@ -72,6 +77,8 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
         ),
         Effect.forkScoped,
       )
+
+      yield* _(registerCommand("effect.resetMetrics", () => reset))
 
       const handleClient = (client: Client) =>
         Effect.gen(function* (_) {

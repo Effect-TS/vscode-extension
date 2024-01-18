@@ -44,6 +44,16 @@
         "command": "effect.stopServer",
         "title": "Effect Dev Tools: Stop Server",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "effect.resetMetrics",
+        "title": "Effect Dev Tools: Reset Metrics",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "effect.resetTracer",
+        "title": "Effect Dev Tools: Reset Tracer",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -95,6 +105,16 @@
           "command": "effect.stopServer",
           "when": "view === effect-clients && effect:running === true",
           "group": "navigation"
+        },
+        {
+          "command": "effect.resetMetrics",
+          "when": "view === effect-metrics",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.resetTracer",
+          "when": "view === effect-tracer",
+          "group": "navigation"
         }
       ]
     },
@@ -125,17 +145,17 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@effect/experimental": "^0.6.5",
+    "@effect/experimental": "^0.6.8",
     "@effect/language-service": "^0.1.0",
     "@types/mocha": "^10.0.6",
-    "@types/node": "~20.11.3",
+    "@types/node": "~20.11.5",
     "@types/vscode": "^1.84.0",
     "@types/ws": "^8.5.10",
     "@vscode/test-electron": "^2.3.8",
-    "effect": "2.1.0",
+    "effect": "2.1.1",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
-    "prettier": "^3.2.2",
+    "prettier": "^3.2.4",
     "tslib": "^2.6.2",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",

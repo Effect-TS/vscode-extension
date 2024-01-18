@@ -7,7 +7,7 @@ import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
 import { Client, Clients, ClientsLive } from "./Clients"
-import { TreeDataProvider, treeDataProvider } from "./VsCode"
+import { TreeDataProvider, registerCommand, treeDataProvider } from "./VsCode"
 import * as DurationUtils from "./utils/Duration"
 
 class SpanNode {
@@ -84,15 +84,13 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         nodes.clear()
         return yield* _(refresh(Option.none()))
       })
+      yield* _(registerCommand("effect.resetTracer", () => reset))
 
       const handleClient = (client: Client) =>
         client.spans.take.pipe(Effect.flatMap(registerSpan), Effect.forever)
 
       yield* _(
         clients.clients.changes,
-        Stream.tap(clients =>
-          HashSet.size(clients) === 0 ? reset : Effect.unit,
-        ),
         Stream.flatMap(
           Effect.forEach(handleClient, { concurrency: "unbounded" }),
           { switch: true },
