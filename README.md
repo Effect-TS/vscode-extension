@@ -1,3 +1,3 @@
-# effect-vscode
+# Effect Dev Tools
 
 WIP

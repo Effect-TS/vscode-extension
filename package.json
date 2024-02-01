@@ -2,6 +2,7 @@
   "name": "effect-vscode",
   "displayName": "Effect Dev Tools",
   "description": "Tools to assist development with the Effect Typescript framework",
+  "icon": "resources/icons/effect-dark.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.84.0"
@@ -138,21 +139,25 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run compile",
-    "compile": "tsup",
+    "vscode:prepublish": "pnpm build",
+    "build": "tsup",
     "watch": "tsup --watch",
     "pretest": "pnpm run compile && pnpm run lint",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "ci:publish": "vsce publish"
   },
   "devDependencies": {
-    "@effect/experimental": "^0.6.8",
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.1",
+    "@effect/experimental": "^0.8.6",
     "@effect/language-service": "^0.1.0",
     "@types/mocha": "^10.0.6",
-    "@types/node": "~20.11.5",
-    "@types/vscode": "^1.84.0",
+    "@types/node": "~20.11.16",
+    "@types/vscode": "^1.86.0",
     "@types/ws": "^8.5.10",
-    "@vscode/test-electron": "^2.3.8",
-    "effect": "2.1.1",
+    "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^2.23.0",
+    "effect": "2.2.3",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
     "prettier": "^3.2.4",
@@ -161,5 +166,5 @@
     "typescript": "^5.3.3",
     "ws": "^8.16.0"
   },
-  "sideEffects": []
+  "sideEffects": false
 }
