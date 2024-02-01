@@ -1,0 +1,19 @@
+name: Release VSCode
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Publish
+        run: pnpm ci:publish
+        env:
+          VSCE_PAT: ${{ secrets.AZURE_TOKEN }}
