@@ -2,7 +2,7 @@ name: Release VSCode
 on:
   push:
     tags:
-      - *
+      - "*"
   workflow_dispatch:
 
 jobs:
