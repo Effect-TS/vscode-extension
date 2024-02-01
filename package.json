@@ -4,6 +4,7 @@
   "description": "Tools to assist development with the Effect Typescript framework",
   "icon": "resources/icons/effect-dark.png",
   "version": "0.0.1",
+  "packageManager": "pnpm@8.15.1",
   "engines": {
     "vscode": "^1.84.0"
   },
