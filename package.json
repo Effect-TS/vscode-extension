@@ -4,6 +4,7 @@
   "description": "Tools to assist development with the Effect Typescript framework",
   "icon": "resources/icons/effect-dark.png",
   "version": "0.0.2",
+  "private": true,
   "packageManager": "pnpm@8.15.1",
   "engines": {
     "vscode": "^1.84.0"
@@ -20,7 +21,7 @@
     "onDebug"
   ],
   "main": "./out/extension.js",
-  "publisher": "Effectful Technologies",
+  "publisher": "EffectfulTechnologies",
   "contributes": {
     "configuration": {
       "title": "Effect Dev Tools",
