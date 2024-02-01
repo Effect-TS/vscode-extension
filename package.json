@@ -20,6 +20,7 @@
     "onDebug"
   ],
   "main": "./out/extension.js",
+  "publisher": "Effectful Technologies",
   "contributes": {
     "configuration": {
       "title": "Effect Dev Tools",
