@@ -122,25 +122,7 @@
           "group": "navigation"
         }
       ]
-    },
-    "colors": [
-      {
-        "id": "effect.context.tag",
-        "description": "The color of a tag in the Effect context view",
-        "defaults": {
-          "light": "debugTokenExpression.name",
-          "dark": "debugTokenExpression.name"
-        }
-      },
-      {
-        "id": "effect.context.variable",
-        "description": "The color of a variable in the Effect context view",
-        "defaults": {
-          "light": "debugTokenExpression.name",
-          "dark": "debugTokenExpression.name"
-        }
-      }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm build",
