@@ -1,8 +1,7 @@
 name: Release VSCode
 on:
-  push:
-    tags:
-      - "*"
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
