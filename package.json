@@ -3,7 +3,7 @@
   "displayName": "Effect Dev Tools",
   "description": "Tools to assist development with the Effect Typescript framework",
   "icon": "resources/icons/effect-dark.png",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@8.15.1",
   "engines": {
@@ -15,13 +15,14 @@
   },
   "license": "MIT",
   "categories": [
-    "Other"
+    "Debuggers",
+    "Visualization"
   ],
   "activationEvents": [
     "onDebug"
   ],
   "main": "./out/extension.js",
-  "publisher": "EffectfulTechnologies",
+  "publisher": "effectful-tech",
   "contributes": {
     "configuration": {
       "title": "Effect Dev Tools",
