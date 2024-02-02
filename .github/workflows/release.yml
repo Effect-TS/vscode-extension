@@ -17,4 +17,4 @@ jobs:
         with:
           publish: pnpm changeset publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
