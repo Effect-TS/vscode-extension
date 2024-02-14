@@ -242,9 +242,7 @@ export const runWithToken = <R>(runtime: Runtime.Runtime<R>) => {
 }
 export const runWithTokenDefault = runWithToken(Runtime.defaultRuntime)
 
-export const launch = <E>(
-  layer: Layer.Layer<never, E, vscode.ExtensionContext>,
-) =>
+export const launch = <E>(layer: Layer.Layer<never, E, VsCodeContext>) =>
   Effect.gen(function* (_) {
     const context = yield* _(VsCodeContext)
     const scope = yield* _(Scope.make())
