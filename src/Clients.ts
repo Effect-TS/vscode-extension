@@ -11,7 +11,6 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
-import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import {
@@ -20,6 +19,7 @@ import {
   executeCommand,
   registerCommand,
 } from "./VsCode"
+import * as FiberMap from "effect/FiberMap"
 
 export interface Client {
   readonly id: number
@@ -142,7 +142,6 @@ const runServer = Effect.gen(function* (_) {
       )
     }).pipe(Effect.scoped)
 
-  const serverRef = yield* _(ScopedRef.make(() => {}))
   const run = server.run(makeClient).pipe(
     Effect.catchAllCause(cause =>
       SubscriptionRef.update(
@@ -153,11 +152,16 @@ const runServer = Effect.gen(function* (_) {
     Effect.forkScoped,
   )
 
+  const serverFiber = yield* _(FiberMap.make<"server">())
   yield* _(
     running.changes,
     Stream.runForEach(({ running }) =>
       Effect.gen(function* (_) {
-        yield* _(ScopedRef.set(serverRef, running ? run : Effect.unit))
+        yield* _(
+          running
+            ? FiberMap.run(serverFiber, "server", run)
+            : FiberMap.remove(serverFiber, "server"),
+        )
         yield* _(executeCommand("setContext", "effect:running", running))
       }),
     ),
@@ -174,11 +178,11 @@ const make = Effect.gen(function* (_) {
       SocketServer.SocketServer,
       SocketServer.makeWebSocket({ port }),
     )
-  const server = yield* _(ScopedRef.make(() => {}))
+  const server = yield* _(FiberMap.make<"server">())
   yield* _(
     port.changes,
     Stream.tap(port => SubscriptionRef.update(running, _ => _.setPort(port))),
-    Stream.runForEach(port => ScopedRef.set(server, makeServer(port))),
+    Stream.runForEach(port => FiberMap.run(server, "server", makeServer(port))),
     Effect.forkScoped,
   )
 
