@@ -7,7 +7,7 @@ import * as Schedule from "effect/Schedule"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
-import { Client, Clients, ClientsLive } from "./Clients"
+import { Client, Clients } from "./Clients"
 import {
   TreeDataProvider,
   configWithDefault,
@@ -118,7 +118,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
         treeItem: node => Effect.succeed(treeItem(node)),
       })
     }),
-).pipe(Layer.provide(ClientsLive))
+).pipe(Layer.provide(Clients.Live))
 
 // === helpers ===
 

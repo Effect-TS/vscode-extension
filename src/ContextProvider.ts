@@ -85,7 +85,7 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
         treeItem: node => Effect.succeed(treeItem(node)),
       })
     }),
-).pipe(Layer.provide(Debug.DebugEnvLive))
+).pipe(Layer.provide(Debug.DebugEnv.Live))
 
 // === helpers ===
 

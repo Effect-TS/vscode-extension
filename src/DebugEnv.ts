@@ -14,20 +14,14 @@ import {
   listenFork,
 } from "./VsCode"
 
-export interface DebugEnv {
-  readonly _: unique symbol
-}
 export interface DebugEnvImpl {
   readonly session: SubscriptionRef.SubscriptionRef<Option.Option<Session>>
   readonly messages: PubSub.PubSub<Message>
 }
-export const DebugEnv = Context.Tag<DebugEnv, DebugEnvImpl>(
-  "effect-vscode/DebugEnv",
-)
 
 export interface Session {
   readonly vscode: vscode.DebugSession
-  readonly context: Effect.Effect<never, never, Array<ContextPair>>
+  readonly context: Effect.Effect<Array<ContextPair>>
 }
 
 export type Message =
@@ -46,43 +40,47 @@ export type Message =
       readonly request_seq: number
       readonly message?: string
     }
-
-export const DebugEnvLive = Layer.scoped(
+export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
   DebugEnv,
-  Effect.gen(function* (_) {
-    const sessionRef = yield* _(SubscriptionRef.make(Option.none<Session>()))
-    const messages = yield* _(PubSub.sliding<Message>(100))
+  DebugEnvImpl
+>() {
+  static readonly Live = Layer.scoped(
+    DebugEnv,
+    Effect.gen(function* (_) {
+      const sessionRef = yield* _(SubscriptionRef.make(Option.none<Session>()))
+      const messages = yield* _(PubSub.sliding<Message>(100))
 
-    yield* _(
-      listenFork(vscode.debug.onDidChangeActiveDebugSession, session =>
-        SubscriptionRef.set(
-          sessionRef,
-          Option.map(Option.fromNullable(session), vscode => ({
-            vscode,
-            context: getContext.pipe(
-              Effect.provideService(VsCodeDebugSession, vscode),
-            ),
-          })),
+      yield* _(
+        listenFork(vscode.debug.onDidChangeActiveDebugSession, session =>
+          SubscriptionRef.set(
+            sessionRef,
+            Option.map(Option.fromNullable(session), vscode => ({
+              vscode,
+              context: getContext.pipe(
+                Effect.provideService(VsCodeDebugSession, vscode),
+              ),
+            })),
+          ),
         ),
-      ),
-    )
+      )
 
-    const context = yield* _(VsCodeContext)
-    context.subscriptions.push(
-      vscode.debug.registerDebugAdapterTrackerFactory("*", {
-        createDebugAdapterTracker(_) {
-          return {
-            onDidSendMessage(message) {
-              messages.unsafeOffer(message)
-            },
-          }
-        },
-      }),
-    )
+      const context = yield* _(VsCodeContext)
+      context.subscriptions.push(
+        vscode.debug.registerDebugAdapterTrackerFactory("*", {
+          createDebugAdapterTracker(_) {
+            return {
+              onDidSendMessage(message) {
+                messages.unsafeOffer(message)
+              },
+            }
+          },
+        }),
+      )
 
-    return { session: sessionRef, messages }
-  }),
-)
+      return { session: sessionRef, messages }
+    }),
+  )
+}
 
 // --
 
@@ -112,7 +110,7 @@ const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.loc
     .map(_ => _[0][1])
     .filter(_ => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
     .flatMap(context => [...context.unsafeMap.entries()])
-    .map(([tag, service]) => [tag.identifier ? String(tag.identifier) : "Unknown Tag", service])`
+    .map(([tag, service]) => [tag.key, service])`
 
 const getContext = debugRequest<any>("evaluate", {
   expression: contextExpression,

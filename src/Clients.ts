@@ -25,7 +25,7 @@ export interface Client {
   readonly id: number
   readonly spans: Queue.Dequeue<Domain.Span>
   readonly metrics: Queue.Dequeue<Domain.MetricsSnapshot>
-  readonly requestMetrics: Effect.Effect<never, never, void>
+  readonly requestMetrics: Effect.Effect<void>
 }
 
 export class RunningState extends Data.TaggedClass("RunningState")<{
@@ -41,35 +41,48 @@ export class RunningState extends Data.TaggedClass("RunningState")<{
   }
 }
 
-interface ClientsContext {
-  readonly clients: SubscriptionRef.SubscriptionRef<HashSet.HashSet<Client>>
-  readonly activeClient: SubscriptionRef.SubscriptionRef<Option.Option<Client>>
-  readonly running: SubscriptionRef.SubscriptionRef<RunningState>
-  readonly clientId: Ref.Ref<number>
-  readonly port: ConfigRef<number>
-}
-const ClientsContext = Context.Tag<ClientsContext>(
+export class ClientsContext extends Context.Tag(
   "effect-vscode/Clients/ClientsContext",
-)
-const ClientsContextLive = Layer.scoped(
+)<
   ClientsContext,
-  Effect.gen(function* (_) {
-    const clients = yield* _(SubscriptionRef.make(HashSet.empty<Client>()))
-    const port = yield* _(configWithDefault("effect.devServer", "port", 34437))
-    const running = yield* _(
-      SubscriptionRef.make(
-        new RunningState({
-          running: false,
-          cause: Cause.empty,
-          port: yield* _(port.get),
-        }),
-      ),
-    )
-    const activeClient = yield* _(SubscriptionRef.make(Option.none<Client>()))
-    const clientId = yield* _(Ref.make(1))
-    return ClientsContext.of({ clients, running, activeClient, clientId, port })
-  }),
-)
+  {
+    readonly clients: SubscriptionRef.SubscriptionRef<HashSet.HashSet<Client>>
+    readonly activeClient: SubscriptionRef.SubscriptionRef<
+      Option.Option<Client>
+    >
+    readonly running: SubscriptionRef.SubscriptionRef<RunningState>
+    readonly clientId: Ref.Ref<number>
+    readonly port: ConfigRef<number>
+  }
+>() {
+  static readonly Live = Layer.scoped(
+    ClientsContext,
+    Effect.gen(function* (_) {
+      const clients = yield* _(SubscriptionRef.make(HashSet.empty<Client>()))
+      const port = yield* _(
+        configWithDefault("effect.devServer", "port", 34437),
+      )
+      const running = yield* _(
+        SubscriptionRef.make(
+          new RunningState({
+            running: false,
+            cause: Cause.empty,
+            port: yield* _(port.get),
+          }),
+        ),
+      )
+      const activeClient = yield* _(SubscriptionRef.make(Option.none<Client>()))
+      const clientId = yield* _(Ref.make(1))
+      return ClientsContext.of({
+        clients,
+        running,
+        activeClient,
+        clientId,
+        port,
+      })
+    }),
+  )
+}
 
 const runServer = Effect.gen(function* (_) {
   const { clients, activeClient, running, clientId } = yield* _(ClientsContext)
@@ -197,12 +210,11 @@ const make = Effect.gen(function* (_) {
   return { clients, running, activeClient } as const
 })
 
-export interface Clients {
-  readonly _: unique symbol
+export class Clients extends Context.Tag("effect-vscode/Clients")<
+  Clients,
+  Effect.Effect.Success<typeof make>
+>() {
+  static readonly Live = Layer.scoped(Clients, make).pipe(
+    Layer.provide(ClientsContext.Live),
+  )
 }
-export const Clients = Context.Tag<Clients, Effect.Effect.Success<typeof make>>(
-  "effect-vscode/Clients",
-)
-export const ClientsLive = Layer.scoped(Clients, make).pipe(
-  Layer.provide(ClientsContextLive),
-)

@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
-import { Client, Clients, ClientsLive } from "./Clients"
+import { Client, Clients } from "./Clients"
 import { TreeDataProvider, registerCommand, treeDataProvider } from "./VsCode"
 import * as DurationUtils from "./utils/Duration"
 
@@ -134,9 +134,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         return [node, parent, isUpgrade]
       }
 
-      const registerSpan = (
-        span: Domain.Span,
-      ): Effect.Effect<never, never, void> =>
+      const registerSpan = (span: Domain.Span): Effect.Effect<void> =>
         Effect.suspend(() => {
           const [, parent, refreshRoot] = addNode(span)
           if (parent !== undefined && refreshRoot) {
@@ -156,7 +154,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         treeItem: node => Effect.succeed(treeItem(node)),
       })
     }),
-).pipe(Layer.provide(ClientsLive))
+).pipe(Layer.provide(Clients.Live))
 
 // === helpers ===
 
