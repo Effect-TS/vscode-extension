@@ -20,8 +20,10 @@ import {
   registerCommand,
 } from "./VsCode"
 import * as FiberMap from "effect/FiberMap"
+import * as Equal from "effect/Equal"
+import * as Hash from "effect/Hash"
 
-export interface Client {
+export interface Client extends Equal.Equal {
   readonly id: number
   readonly spans: Queue.Dequeue<Domain.Span>
   readonly metrics: Queue.Dequeue<Domain.MetricsSnapshot>
@@ -105,6 +107,12 @@ const runServer = Effect.gen(function* (_) {
         spans,
         metrics,
         requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
+        [Equal.symbol](that: Client) {
+          return id === that.id
+        },
+        [Hash.symbol]() {
+          return Hash.number(id)
+        },
       }
       yield* _(
         Effect.acquireRelease(
@@ -116,7 +124,7 @@ const runServer = Effect.gen(function* (_) {
         Effect.acquireRelease(
           SubscriptionRef.update(
             activeClient,
-            Option.orElse(() => Option.some(client)),
+            Option.orElseSome(() => client),
           ),
           () =>
             SubscriptionRef.update(

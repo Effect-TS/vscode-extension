@@ -67,12 +67,16 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
 
       yield* _(
         clients.activeClient.changes,
+        Stream.changes,
         Stream.tap(_ => (Option.isSome(_) ? reset : Effect.unit)),
         Stream.runForEach(_ =>
           Option.match(_, {
             onNone: () => Effect.unit,
             onSome: client =>
-              ScopedRef.set(currentClient, handleClient(client)),
+              ScopedRef.set(
+                currentClient,
+                Effect.interruptible(handleClient(client)),
+              ),
           }),
         ),
         Effect.forkScoped,
