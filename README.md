@@ -21,7 +21,7 @@ const program = Effect.sleep("1 seconds").pipe(Effect.withSpan("hello world"))
 program.pipe(Effect.provide(DevTools.layer()), Effect.runFork)
 ```
 
-If you are using `@effect/opentelemetry` in your project, then it is important that you provide the `DevTools` layer **after** your tracing layers, so the tracer is patched correctly.
+If you are using `@effect/opentelemetry` in your project, then it is important that you provide the `DevTools` layer **before** your tracing layers, so the tracer is patched correctly.
 
 ## Usage
 
