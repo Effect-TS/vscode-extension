@@ -110,7 +110,7 @@ const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.loc
     .map(_ => _[0][1])
     .filter(_ => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
     .flatMap(context => [...context.unsafeMap.entries()])
-    .map(([tag, service]) => [tag.key, service])`
+    .map(([tag, service]) => [tag, service])`
 
 const getContext = debugRequest<any>("evaluate", {
   expression: contextExpression,
