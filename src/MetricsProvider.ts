@@ -1,4 +1,5 @@
 import * as Domain from "@effect/experimental/DevTools/Domain"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -91,8 +92,16 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
             Effect.flatMap(snapshot =>
               Effect.suspend(() => {
                 const metrics = snapshot.metrics as Array<Domain.Metric>
+                const names = new Set<string>()
                 metrics.sort(MetricOrder)
-                nodes = metrics.map(metric => new MetricNode(metric))
+                nodes = ReadonlyArray.filterMap(metrics, metric => {
+                  const name = metric.name
+                  if (names.has(name)) {
+                    return Option.none()
+                  }
+                  names.add(name)
+                  return Option.some(new MetricNode(metric))
+                })
                 return refresh(Option.none())
               }),
             ),

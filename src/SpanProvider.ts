@@ -142,6 +142,11 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
               refresh(Option.some(parent)),
               refresh(Option.none()),
             )
+          } else if (
+            parent !== undefined &&
+            parent.span._tag === "ExternalSpan"
+          ) {
+            return refresh(Option.none())
           }
           return refresh(Option.fromNullable(parent))
         })
