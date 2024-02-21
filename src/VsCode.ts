@@ -118,13 +118,11 @@ export const listen = <A, R>(
   )
 
 export const listenStream = <A>(event: vscode.Event<A>): Stream.Stream<A> =>
-  Stream.asyncInterrupt<A>(emit => {
+  Stream.async<A>(emit => {
     const d = event(data => emit.single(data))
-    return Either.left(
-      Effect.sync(() => {
-        d.dispose()
-      }),
-    )
+    return Effect.sync(() => {
+      d.dispose()
+    })
   })
 
 export const listenFork = <A, R>(
