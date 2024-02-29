@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tim-smart/effect-vscode.git"
+    "url": "https://github.com/effect-ts/vscode-extension.git"
   },
   "license": "MIT",
   "categories": [
