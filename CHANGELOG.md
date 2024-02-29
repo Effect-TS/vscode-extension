@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.0.3
+
+### Patch Changes
+
+- [`7dfa0dc`](https://github.com/Effect-TS/vscode-extension/commit/7dfa0dca7e930e48d9f81139fe29507202f7da7c) Thanks [@tim-smart](https://github.com/tim-smart)! - update repository url
+
 ## 0.0.2
 
 ### Patch Changes
