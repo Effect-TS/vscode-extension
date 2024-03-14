@@ -1,5 +1,13 @@
 # effect-vscode
 
+## 0.1.0
+
+### Minor Changes
+
+- [#3](https://github.com/Effect-TS/vscode-extension/pull/3) [`b0fbfd4`](https://github.com/Effect-TS/vscode-extension/commit/b0fbfd4331511a7b66d6042bc75e697d158317e0) Thanks [@tim-smart](https://github.com/tim-smart)! - support span events in tracer
+
+- [#3](https://github.com/Effect-TS/vscode-extension/pull/3) [`b0fbfd4`](https://github.com/Effect-TS/vscode-extension/commit/b0fbfd4331511a7b66d6042bc75e697d158317e0) Thanks [@tim-smart](https://github.com/tim-smart)! - switch to ndjson protocol
+
 ## 0.0.3
 
 ### Patch Changes
