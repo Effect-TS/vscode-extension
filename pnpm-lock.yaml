@@ -27,7 +27,7 @@ devDependencies:
     specifier: ~20.11.27
     version: 20.11.27
   '@types/vscode':
-    specifier: ^1.87.0
+    specifier: ^1.84.0
     version: 1.87.0
   '@types/ws':
     specifier: ^8.5.10
