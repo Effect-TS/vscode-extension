@@ -25,7 +25,7 @@ import * as Hash from "effect/Hash"
 
 export interface Client extends Equal.Equal {
   readonly id: number
-  readonly spans: Queue.Dequeue<Domain.Span>
+  readonly spans: Queue.Dequeue<Domain.Span | Domain.SpanEvent>
   readonly metrics: Queue.Dequeue<Domain.MetricsSnapshot>
   readonly requestMetrics: Effect.Effect<void>
 }
@@ -93,7 +93,10 @@ const runServer = Effect.gen(function* (_) {
   const makeClient = (serverClient: Server.Client) =>
     Effect.gen(function* (_) {
       const spans = yield* _(
-        Effect.acquireRelease(Queue.sliding<Domain.Span>(100), Queue.shutdown),
+        Effect.acquireRelease(
+          Queue.sliding<Domain.Span | Domain.SpanEvent>(100),
+          Queue.shutdown,
+        ),
       )
       const metrics = yield* _(
         Effect.acquireRelease(
@@ -141,6 +144,7 @@ const runServer = Effect.gen(function* (_) {
             case "MetricsSnapshot": {
               return metrics.offer(res)
             }
+            case "SpanEvent":
             case "Span": {
               return spans.offer(res)
             }

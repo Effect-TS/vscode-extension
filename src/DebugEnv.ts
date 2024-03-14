@@ -109,8 +109,7 @@ export class ContextPair extends Data.TaggedClass("ContextPair")<{
 const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.locals.values() ?? []]
     .map(_ => _[0][1])
     .filter(_ => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
-    .flatMap(context => [...context.unsafeMap.entries()])
-    .map(([tag, service]) => [tag, service])`
+    .flatMap(context => [...context.unsafeMap.entries()]);`
 
 const getContext = debugRequest<any>("evaluate", {
   expression: contextExpression,

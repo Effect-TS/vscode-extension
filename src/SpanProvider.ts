@@ -1,5 +1,4 @@
 import * as Domain from "@effect/experimental/DevTools/Domain"
-import * as HashSet from "effect/HashSet"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -14,6 +13,8 @@ class SpanNode {
   readonly _tag = "SpanNode"
 
   constructor(public span: Domain.ParentSpan) {}
+
+  events: EventsNode = new EventsNode([])
 
   get label() {
     return this.span._tag === "Span" ? this.span.name : "External Span"
@@ -65,12 +66,41 @@ class InfoNode {
   ) {}
 }
 
+class EventsNode {
+  readonly _tag = "EventsNode"
+  constructor(readonly events: Array<SpanEventNode>) {}
+  get hasEvents() {
+    return this.events.length > 0
+  }
+}
+
+class SpanEventNode {
+  readonly _tag = "SpanEventNode"
+  constructor(
+    readonly span: Domain.ParentSpan,
+    readonly event: Domain.SpanEvent,
+  ) {}
+
+  get hasAttributes() {
+    return Object.keys(this.event.attributes).length > 0
+  }
+
+  get duration(): Option.Option<Duration.Duration> {
+    if (this.span._tag === "ExternalSpan") {
+      return Option.none()
+    }
+    return Option.some(
+      Duration.nanos(this.event.startTime - this.span.status.startTime),
+    )
+  }
+}
+
 class ChildrenNode {
   readonly _tag = "ChildrenNode"
   constructor(readonly childrenSpanIds: Array<string>) {}
 }
 
-type TreeNode = SpanNode | InfoNode | ChildrenNode
+type TreeNode = SpanNode | InfoNode | ChildrenNode | EventsNode | SpanEventNode
 
 export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
   refresh =>
@@ -87,7 +117,19 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
       yield* _(registerCommand("effect.resetTracer", () => reset))
 
       const handleClient = (client: Client) =>
-        client.spans.take.pipe(Effect.flatMap(registerSpan), Effect.forever)
+        client.spans.take.pipe(
+          Effect.flatMap(data => {
+            switch (data._tag) {
+              case "Span": {
+                return registerSpan(data)
+              }
+              case "SpanEvent": {
+                return registerSpanEvent(data)
+              }
+            }
+          }),
+          Effect.forever,
+        )
 
       yield* _(
         clients.clients.changes,
@@ -151,6 +193,18 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
           return refresh(Option.fromNullable(parent))
         })
 
+      const registerSpanEvent = (
+        event: Domain.SpanEvent,
+      ): Effect.Effect<void> =>
+        Effect.suspend(() => {
+          const span = nodes.get(event.spanId)
+          if (span === undefined) {
+            return Effect.unit
+          }
+          span.events.events.push(new SpanEventNode(span.span, event))
+          return refresh(Option.some(span))
+        })
+
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () => Effect.succeedSome(rootNodes),
@@ -178,6 +232,10 @@ const children = (
         nodes.push(new InfoNode(key, String(value)))
       })
 
+      if (node.events.hasEvents) {
+        nodes.push(node.events)
+      }
+
       if (node.children.length > 0) {
         nodes.push(new ChildrenNode(node.children))
       }
@@ -189,6 +247,18 @@ const children = (
     }
     case "ChildrenNode": {
       return Option.some(node.childrenSpanIds.map(id => nodes.get(id)!))
+    }
+    case "EventsNode": {
+      return Option.some(node.events)
+    }
+    case "SpanEventNode": {
+      const attributes = Object.entries(node.event.attributes)
+      if (attributes.length === 0) {
+        return Option.none()
+      }
+      return Option.some(
+        attributes.map(([key, value]) => new InfoNode(key, String(value))),
+      )
     }
   }
 }
@@ -219,6 +289,25 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         "Child spans",
         vscode.TreeItemCollapsibleState.Expanded,
       )
+    }
+    case "EventsNode": {
+      return new vscode.TreeItem(
+        `Events (${node.events.length})`,
+        vscode.TreeItemCollapsibleState.Collapsed,
+      )
+    }
+    case "SpanEventNode": {
+      const item = new vscode.TreeItem(
+        node.event.name,
+        node.hasAttributes
+          ? vscode.TreeItemCollapsibleState.Collapsed
+          : vscode.TreeItemCollapsibleState.None,
+      )
+      const duration = node.duration
+      if (duration._tag === "Some") {
+        item.description = DurationUtils.format(duration.value)
+      }
+      return item
     }
   }
 }
