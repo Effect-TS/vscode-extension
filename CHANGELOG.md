@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.1.1
+
+### Patch Changes
+
+- [#6](https://github.com/Effect-TS/vscode-extension/pull/6) [`2ad61d2`](https://github.com/Effect-TS/vscode-extension/commit/2ad61d2269e17f3166b69465cd3686e81831daa1) Thanks [@tim-smart](https://github.com/tim-smart)! - improve mean metric calculation
+
 ## 0.1.0
 
 ### Minor Changes
