@@ -209,7 +209,6 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         let previous = 0
         let previousAcc: number | undefined
         let multiplied = 0
-        let total = 0
         for (let i = 0, len = metric.state.buckets.length; i < len; i++) {
           const [bucket, acc] = metric.state.buckets[i]
           if (!Number.isFinite(bucket)) {
@@ -218,11 +217,10 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
           const count = previousAcc === undefined ? acc : acc - previousAcc
           const mid = (bucket + previous) / 2
           multiplied += mid * count
-          total += count
           previous = bucket
           previousAcc = acc
         }
-        const mean = multiplied / total
+        const mean = multiplied / metric.state.count
         item.description = formatNumber(mean) + node.unitSuffix + " (mean)"
       } else if (metric._tag === "Frequency") {
         item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded
