@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.1.2
+
+### Patch Changes
+
+- [#9](https://github.com/Effect-TS/vscode-extension/pull/9) [`3a4148e`](https://github.com/Effect-TS/vscode-extension/commit/3a4148e3713fb2402054b917c27b5cafe84e6335) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure server can be shutdown
+
 ## 0.1.1
 
 ### Patch Changes
