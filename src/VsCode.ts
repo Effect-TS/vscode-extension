@@ -245,7 +245,7 @@ export const launch = <E>(layer: Layer.Layer<never, E, VsCodeContext>) =>
     const context = yield* _(VsCodeContext)
     const scope = yield* _(Scope.make())
     context.subscriptions.push({
-      dispose: () => Effect.runFork(Scope.close(scope, Exit.unit)),
+      dispose: () => Effect.runFork(Scope.close(scope, Exit.void)),
     })
     yield* _(Layer.buildWithScope(layer, scope))
   }).pipe(Effect.catchAllCause(Effect.logFatal))

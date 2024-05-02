@@ -1,5 +1,5 @@
 import * as Domain from "@effect/experimental/DevTools/Domain"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -61,7 +61,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
       const currentClient = yield* _(ScopedRef.make<void>(() => void 0))
 
       const reset = Effect.gen(function* (_) {
-        yield* _(ScopedRef.set(currentClient, Effect.unit))
+        yield* _(ScopedRef.set(currentClient, Effect.void))
         nodes = []
         return yield* _(refresh(Option.none()))
       })
@@ -69,10 +69,10 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
       yield* _(
         clients.activeClient.changes,
         Stream.changes,
-        Stream.tap(_ => (Option.isSome(_) ? reset : Effect.unit)),
+        Stream.tap(_ => (Option.isSome(_) ? reset : Effect.void)),
         Stream.runForEach(_ =>
           Option.match(_, {
-            onNone: () => Effect.unit,
+            onNone: () => Effect.void,
             onSome: client =>
               ScopedRef.set(
                 currentClient,
@@ -94,7 +94,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
                 const metrics = snapshot.metrics as Array<Domain.Metric>
                 const names = new Set<string>()
                 metrics.sort(MetricOrder)
-                nodes = ReadonlyArray.filterMap(metrics, metric => {
+                nodes = Array.filterMap(metrics, metric => {
                   const name = metric.name
                   if (names.has(name)) {
                     return Option.none()

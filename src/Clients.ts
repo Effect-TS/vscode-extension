@@ -1,15 +1,18 @@
 import * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Server from "@effect/experimental/DevTools/Server"
 import * as SocketServer from "@effect/experimental/SocketServer/Node"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
+import * as FiberHandle from "effect/FiberHandle"
+import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
@@ -19,9 +22,6 @@ import {
   executeCommand,
   registerCommand,
 } from "./VsCode"
-import * as FiberMap from "effect/FiberMap"
-import * as Equal from "effect/Equal"
-import * as Hash from "effect/Hash"
 
 export interface Client extends Equal.Equal {
   readonly id: number
@@ -154,32 +154,30 @@ const runServer = Effect.gen(function* (_) {
       )
     }).pipe(Effect.scoped)
 
-  const run = server.run(makeClient).pipe(
-    Effect.catchAllCause(cause =>
-      SubscriptionRef.update(
-        running,
-        _ => new RunningState({ ..._, running: false, cause }),
+  const run = server
+    .run(makeClient)
+    .pipe(
+      Effect.catchAllCause(cause =>
+        SubscriptionRef.update(
+          running,
+          _ => new RunningState({ ..._, running: false, cause }),
+        ),
       ),
-    ),
-    Effect.forkScoped,
-  )
+    )
 
-  const serverFiber = yield* _(FiberMap.make<"server">())
+  const serverHandle = yield* FiberHandle.make()
   yield* _(
     running.changes,
     Stream.runForEach(({ running }) =>
       Effect.gen(function* (_) {
-        yield* _(
-          running
-            ? FiberMap.run(serverFiber, "server", run)
-            : FiberMap.remove(serverFiber, "server"),
-        )
-        yield* _(executeCommand("setContext", "effect:running", running))
+        yield* running
+          ? FiberHandle.run(serverHandle, run, { onlyIfMissing: true })
+          : FiberHandle.clear(serverHandle)
+        yield* executeCommand("setContext", "effect:running", running)
       }),
     ),
-    Effect.forkScoped,
   )
-})
+}).pipe(Effect.scoped)
 
 const make = Effect.gen(function* (_) {
   const { clients, activeClient, running, port } = yield* _(ClientsContext)
@@ -190,11 +188,11 @@ const make = Effect.gen(function* (_) {
       SocketServer.SocketServer,
       SocketServer.makeWebSocket({ port }),
     )
-  const server = yield* _(FiberMap.make<"server">())
+  const server = yield* FiberHandle.make()
   yield* _(
     port.changes,
     Stream.tap(port => SubscriptionRef.update(running, _ => _.setPort(port))),
-    Stream.runForEach(port => FiberMap.run(server, "server", makeServer(port))),
+    Stream.runForEach(port => FiberHandle.run(server, makeServer(port))),
     Effect.forkScoped,
   )
 
@@ -202,7 +200,7 @@ const make = Effect.gen(function* (_) {
     registerCommand("effect.selectClient", (id: number) =>
       Effect.gen(function* (_) {
         const current = yield* _(SubscriptionRef.get(clients))
-        const client = ReadonlyArray.findFirst(current, _ => _.id === id)
+        const client = Array.findFirst(current, _ => _.id === id)
         if (client._tag === "None") {
           return
         }

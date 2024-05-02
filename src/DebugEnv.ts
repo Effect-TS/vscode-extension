@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Array from "effect/Array"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import {
@@ -122,7 +122,7 @@ const getContext = debugRequest<any>("evaluate", {
     }),
   ),
   Effect.map(
-    ReadonlyArray.map(
+    Array.map(
       ([tag, service]) =>
         new ContextPair({ tag: tag.value.replace(/'/g, ""), service }),
     ),

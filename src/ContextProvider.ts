@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Array from "effect/Array"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
@@ -45,7 +45,7 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
       yield* _(
         Stream.fromPubSub(debug.messages),
         Stream.mapEffect(event => {
-          if (event.type !== "event") return Effect.unit
+          if (event.type !== "event") return Effect.void
 
           switch (event.event) {
             case "stopped": {
@@ -56,7 +56,7 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
               return refresh(Option.none())
             }
             default: {
-              return Effect.unit
+              return Effect.void
             }
           }
         }),
@@ -93,13 +93,13 @@ const children = (node: TreeNode) => {
   switch (node._tag) {
     case "TagNode": {
       return node.pair.service.children.pipe(
-        Effect.map(ReadonlyArray.map(_ => new VariableNode(_))),
+        Effect.map(Array.map(_ => new VariableNode(_))),
         Effect.asSome,
       )
     }
     case "VariableNode": {
       return node.variable.children.pipe(
-        Effect.map(ReadonlyArray.map(_ => new VariableNode(_))),
+        Effect.map(Array.map(_ => new VariableNode(_))),
         Effect.asSome,
       )
     }

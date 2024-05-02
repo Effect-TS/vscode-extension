@@ -199,7 +199,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         Effect.suspend(() => {
           const span = nodes.get(event.spanId)
           if (span === undefined) {
-            return Effect.unit
+            return Effect.void
           }
           span.events.events.push(new SpanEventNode(span.span, event))
           return refresh(Option.some(span))
