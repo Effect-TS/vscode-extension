@@ -2,6 +2,8 @@
 
 View traces, metrics and inspect the context for your Effect app - all without leaving VSCode!
 
+![Annotated code](resources/preview.png)
+
 ## Setup
 
 To use Effect Dev Tools in your Effect project, first you need to install the following dependency:
