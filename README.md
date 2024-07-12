@@ -28,3 +28,5 @@ If you are using `@effect/opentelemetry` in your project, then it is important t
 Once you have added the Layer to your project, open the Effect Dev Tools panel in vscode & click "Start the server" in the "Clients" panel.
 
 You can then start your Effect app, and then begin to inspect the results!
+
+> Requires node version `>=22` with support for `globalThis.WebSocket`
