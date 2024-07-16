@@ -1,5 +1,13 @@
 # effect-vscode
 
+## 0.1.3
+
+### Patch Changes
+
+- [#11](https://github.com/Effect-TS/vscode-extension/pull/11) [`ac416cd`](https://github.com/Effect-TS/vscode-extension/commit/ac416cdabf24a24dcf6bf3119d20e8e037bc372d) Thanks [@joshamaju](https://github.com/joshamaju)! - Update README.md example
+
+- [#13](https://github.com/Effect-TS/vscode-extension/pull/13) [`15007dd`](https://github.com/Effect-TS/vscode-extension/commit/15007dd0ddef50ad3ef78298918adc7d63427c14) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
 ## 0.1.2
 
 ### Patch Changes
