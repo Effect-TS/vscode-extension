@@ -14,11 +14,19 @@ You can then import and use the `DevTools` module in your Effect app:
 
 ```ts
 import { DevTools } from "@effect/experimental"
+import { NodeRuntime, NodeSocket } from "@effect/platform-node"
 import { Effect, Layer } from "effect"
 
-const program = Effect.sleep("1 seconds").pipe(Effect.withSpan("hello world"))
+const program = Effect.log("Hello!").pipe(
+  Effect.delay(2000),
+  Effect.withSpan("Hi", { attributes: { foo: "bar" } }),
+  Effect.forever,
+)
+const DevToolsLive = DevTools.layerWebSocket().pipe(
+  Layer.provide(NodeSocket.layerWebSocketConstructor),
+)
 
-program.pipe(Effect.provide(DevTools.layer()), Effect.runFork)
+program.pipe(Effect.provide(DevToolsLive), NodeRuntime.runMain)
 ```
 
 If you are using `@effect/opentelemetry` in your project, then it is important that you provide the `DevTools` layer **before** your tracing layers, so the tracer is patched correctly.
@@ -28,5 +36,3 @@ If you are using `@effect/opentelemetry` in your project, then it is important t
 Once you have added the Layer to your project, open the Effect Dev Tools panel in vscode & click "Start the server" in the "Clients" panel.
 
 You can then start your Effect app, and then begin to inspect the results!
-
-> Requires node version `>=22` with support for `globalThis.WebSocket`
