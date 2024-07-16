@@ -35,9 +35,9 @@ export const registerCommand = <R, E, A>(
   command: string,
   f: (...args: Array<any>) => Effect.Effect<A, E, R>,
 ) =>
-  Effect.gen(function* (_) {
-    const context = yield* _(VsCodeContext)
-    const runtime = yield* _(Effect.runtime<R>())
+  Effect.gen(function* () {
+    const context = yield* VsCodeContext
+    const runtime = yield* Effect.runtime<R>()
     const run = Runtime.runFork(runtime)
 
     context.subscriptions.push(
@@ -60,16 +60,14 @@ export const config = <A>(
   namespace: string,
   setting: string,
 ): Effect.Effect<ConfigRef<Option.Option<A>>, never, Scope.Scope> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const get = () =>
       vscode.workspace.getConfiguration(namespace).get<A>(setting)
-    const ref = yield* _(
-      SubscriptionRef.make<Option.Option<A>>(Option.fromNullable(get())),
+    const ref = yield* SubscriptionRef.make<Option.Option<A>>(
+      Option.fromNullable(get()),
     )
-    yield* _(
-      listenFork(vscode.workspace.onDidChangeConfiguration, _ =>
-        SubscriptionRef.set(ref, Option.fromNullable(get())),
-      ),
+    yield* listenFork(vscode.workspace.onDidChangeConfiguration, _ =>
+      SubscriptionRef.set(ref, Option.fromNullable(get())),
     )
     return {
       get: SubscriptionRef.get(ref),
@@ -82,14 +80,12 @@ export const configWithDefault = <A>(
   setting: string,
   defaultValue: A,
 ): Effect.Effect<ConfigRef<A>, never, Scope.Scope> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const get = () =>
       vscode.workspace.getConfiguration(namespace).get<A>(setting)
-    const ref = yield* _(SubscriptionRef.make(get() ?? defaultValue))
-    yield* _(
-      listenFork(vscode.workspace.onDidChangeConfiguration, _ =>
-        SubscriptionRef.set(ref, get() ?? defaultValue),
-      ),
+    const ref = yield* SubscriptionRef.make(get() ?? defaultValue)
+    yield* listenFork(vscode.workspace.onDidChangeConfiguration, _ =>
+      SubscriptionRef.set(ref, get() ?? defaultValue),
     )
     return {
       get: SubscriptionRef.get(ref),
@@ -136,9 +132,9 @@ export interface Emitter<A> {
 }
 
 export const emitter = <A>() =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     const emitter = new vscode.EventEmitter<A>()
-    yield* _(Effect.addFinalizer(() => Effect.sync(() => emitter.dispose())))
+    yield* Effect.addFinalizer(() => Effect.sync(() => emitter.dispose()))
     const fire = (data: A) => Effect.sync(() => emitter.fire(data))
     return {
       event: emitter.event,
@@ -173,9 +169,9 @@ export const treeDataProvider =
       refresh: (data: Option.Option<A | Array<A>>) => Effect.Effect<void>,
     ) => Effect.Effect<TreeDataProvider<A>, E, R>,
   ): Layer.Layer<never, E, Exclude<R, Scope.Scope> | VsCodeContext> =>
-    Effect.gen(function* (_) {
-      const onChange = yield* _(emitterOptional<A | Array<A>>())
-      const provider = yield* _(create(onChange.fire))
+    Effect.gen(function* () {
+      const onChange = yield* emitterOptional<A | Array<A>>()
+      const provider = yield* create(onChange.fire)
       const vscodeProvider: vscode.TreeDataProvider<A> = {
         onDidChangeTreeData: onChange.event,
         getTreeItem(element) {
@@ -206,7 +202,7 @@ export const treeDataProvider =
               )
           : undefined,
       }
-      const context = yield* _(VsCodeContext)
+      const context = yield* VsCodeContext
       context.subscriptions.push(
         vscode.window.createTreeView(name, {
           treeDataProvider: vscodeProvider,
@@ -241,26 +237,24 @@ export const runWithToken = <R>(runtime: Runtime.Runtime<R>) => {
 export const runWithTokenDefault = runWithToken(Runtime.defaultRuntime)
 
 export const launch = <E>(layer: Layer.Layer<never, E, VsCodeContext>) =>
-  Effect.gen(function* (_) {
-    const context = yield* _(VsCodeContext)
-    const scope = yield* _(Scope.make())
+  Effect.gen(function* () {
+    const context = yield* VsCodeContext
+    const scope = yield* Scope.make()
     context.subscriptions.push({
       dispose: () => Effect.runFork(Scope.close(scope, Exit.void)),
     })
-    yield* _(Layer.buildWithScope(layer, scope))
+    yield* Layer.buildWithScope(layer, scope)
   }).pipe(Effect.catchAllCause(Effect.logFatal))
 
 export const logger = (name: string) =>
   Logger.replaceScoped(
     Logger.defaultLogger,
-    Effect.gen(function* (_) {
-      const channel = yield* _(
-        Effect.acquireRelease(
-          Effect.sync(() =>
-            vscode.window.createOutputChannel(name, { log: true }),
-          ),
-          channel => Effect.sync(() => channel.dispose()),
+    Effect.gen(function* () {
+      const channel = yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          vscode.window.createOutputChannel(name, { log: true }),
         ),
+        channel => Effect.sync(() => channel.dispose()),
       )
       return Logger.make(options => {
         const message = Logger.logfmtLogger.log(options)

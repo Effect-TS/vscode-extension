@@ -22,6 +22,7 @@ import {
   executeCommand,
   registerCommand,
 } from "./VsCode"
+import { pipe } from "effect/Function"
 
 export interface Client extends Equal.Equal {
   readonly id: number
@@ -59,22 +60,18 @@ export class ClientsContext extends Context.Tag(
 >() {
   static readonly Live = Layer.scoped(
     ClientsContext,
-    Effect.gen(function* (_) {
-      const clients = yield* _(SubscriptionRef.make(HashSet.empty<Client>()))
-      const port = yield* _(
-        configWithDefault("effect.devServer", "port", 34437),
+    Effect.gen(function* () {
+      const clients = yield* SubscriptionRef.make(HashSet.empty<Client>())
+      const port = yield* configWithDefault("effect.devServer", "port", 34437)
+      const running = yield* SubscriptionRef.make(
+        new RunningState({
+          running: false,
+          cause: Cause.empty,
+          port: yield* port.get,
+        }),
       )
-      const running = yield* _(
-        SubscriptionRef.make(
-          new RunningState({
-            running: false,
-            cause: Cause.empty,
-            port: yield* _(port.get),
-          }),
-        ),
-      )
-      const activeClient = yield* _(SubscriptionRef.make(Option.none<Client>()))
-      const clientId = yield* _(Ref.make(1))
+      const activeClient = yield* SubscriptionRef.make(Option.none<Client>())
+      const clientId = yield* Ref.make(1)
       return ClientsContext.of({
         clients,
         running,
@@ -86,25 +83,21 @@ export class ClientsContext extends Context.Tag(
   )
 }
 
-const runServer = Effect.gen(function* (_) {
-  const { clients, activeClient, running, clientId } = yield* _(ClientsContext)
-  const server = yield* _(Server.make)
+const runServer = Effect.gen(function* () {
+  const { clients, activeClient, running, clientId } = yield* ClientsContext
+  const server = yield* Server.make
 
   const makeClient = (serverClient: Server.Client) =>
-    Effect.gen(function* (_) {
-      const spans = yield* _(
-        Effect.acquireRelease(
-          Queue.sliding<Domain.Span | Domain.SpanEvent>(100),
-          Queue.shutdown,
-        ),
+    Effect.gen(function* () {
+      const spans = yield* Effect.acquireRelease(
+        Queue.sliding<Domain.Span | Domain.SpanEvent>(100),
+        Queue.shutdown,
       )
-      const metrics = yield* _(
-        Effect.acquireRelease(
-          Queue.sliding<Domain.MetricsSnapshot>(2),
-          Queue.shutdown,
-        ),
+      const metrics = yield* Effect.acquireRelease(
+        Queue.sliding<Domain.MetricsSnapshot>(2),
+        Queue.shutdown,
       )
-      const id = yield* _(Ref.getAndUpdate(clientId, _ => _ + 1))
+      const id = yield* Ref.getAndUpdate(clientId, _ => _ + 1)
       const client: Client = {
         id,
         spans,
@@ -117,28 +110,23 @@ const runServer = Effect.gen(function* (_) {
           return Hash.number(id)
         },
       }
-      yield* _(
-        Effect.acquireRelease(
-          SubscriptionRef.update(clients, HashSet.add(client)),
-          () => SubscriptionRef.update(clients, HashSet.remove(client)),
-        ),
+      yield* Effect.acquireRelease(
+        SubscriptionRef.update(clients, HashSet.add(client)),
+        () => SubscriptionRef.update(clients, HashSet.remove(client)),
       )
-      yield* _(
-        Effect.acquireRelease(
+      yield* Effect.acquireRelease(
+        SubscriptionRef.update(
+          activeClient,
+          Option.orElseSome(() => client),
+        ),
+        () =>
           SubscriptionRef.update(
             activeClient,
-            Option.orElseSome(() => client),
+            Option.filter(_ => _ !== client),
           ),
-          () =>
-            SubscriptionRef.update(
-              activeClient,
-              Option.filter(_ => _ !== client),
-            ),
-        ),
       )
 
-      return yield* _(
-        serverClient.queue.take,
+      yield* serverClient.queue.take.pipe(
         Effect.flatMap(res => {
           switch (res._tag) {
             case "MetricsSnapshot": {
@@ -151,36 +139,33 @@ const runServer = Effect.gen(function* (_) {
           }
         }),
         Effect.forever,
+        Effect.fork,
       )
-    }).pipe(Effect.scoped)
+    }).pipe(Effect.awaitAllChildren, Effect.scoped)
 
-  const run = server
-    .run(makeClient)
-    .pipe(
-      Effect.catchAllCause(cause =>
-        SubscriptionRef.update(
-          running,
-          _ => new RunningState({ ..._, running: false, cause }),
-        ),
+  const run = pipe(
+    server.run(makeClient),
+    Effect.catchAllCause(cause =>
+      SubscriptionRef.update(
+        running,
+        _ => new RunningState({ ..._, running: false, cause }),
       ),
-    )
+    ),
+  )
 
   const serverHandle = yield* FiberHandle.make()
-  yield* _(
-    running.changes,
-    Stream.runForEach(({ running }) =>
-      Effect.gen(function* (_) {
-        yield* running
-          ? FiberHandle.run(serverHandle, run, { onlyIfMissing: true })
-          : FiberHandle.clear(serverHandle)
-        yield* executeCommand("setContext", "effect:running", running)
-      }),
-    ),
+  yield* Stream.runForEach(running.changes, ({ running }) =>
+    Effect.gen(function* (_) {
+      yield* running
+        ? FiberHandle.run(serverHandle, run, { onlyIfMissing: true })
+        : FiberHandle.clear(serverHandle)
+      yield* executeCommand("setContext", "effect:running", running)
+    }),
   )
 }).pipe(Effect.scoped)
 
-const make = Effect.gen(function* (_) {
-  const { clients, activeClient, running, port } = yield* _(ClientsContext)
+const make = Effect.gen(function* () {
+  const { clients, activeClient, running, port } = yield* ClientsContext
 
   const makeServer = (port: number) =>
     Effect.provideServiceEffect(
@@ -189,36 +174,29 @@ const make = Effect.gen(function* (_) {
       SocketServer.makeWebSocket({ port }),
     )
   const server = yield* FiberHandle.make()
-  yield* _(
-    port.changes,
+  yield* port.changes.pipe(
     Stream.tap(port => SubscriptionRef.update(running, _ => _.setPort(port))),
     Stream.runForEach(port => FiberHandle.run(server, makeServer(port))),
     Effect.forkScoped,
   )
 
-  yield* _(
-    registerCommand("effect.selectClient", (id: number) =>
-      Effect.gen(function* (_) {
-        const current = yield* _(SubscriptionRef.get(clients))
-        const client = Array.findFirst(current, _ => _.id === id)
-        if (client._tag === "None") {
-          return
-        }
-        yield* _(SubscriptionRef.set(activeClient, client))
-      }),
-    ),
+  yield* registerCommand("effect.selectClient", (id: number) =>
+    Effect.gen(function* () {
+      const current = yield* SubscriptionRef.get(clients)
+      const client = Array.findFirst(current, _ => _.id === id)
+      if (client._tag === "None") {
+        return
+      }
+      yield* SubscriptionRef.set(activeClient, client)
+    }),
   )
 
-  yield* _(
-    registerCommand("effect.startServer", () =>
-      SubscriptionRef.update(running, _ => _.setRunning(true)),
-    ),
+  yield* registerCommand("effect.startServer", () =>
+    SubscriptionRef.update(running, _ => _.setRunning(true)),
   )
 
-  yield* _(
-    registerCommand("effect.stopServer", () =>
-      SubscriptionRef.update(running, _ => _.setRunning(false)),
-    ),
+  yield* registerCommand("effect.stopServer", () =>
+    SubscriptionRef.update(running, _ => _.setRunning(false)),
   )
 
   return { clients, running, activeClient } as const

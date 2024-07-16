@@ -52,22 +52,23 @@ type TreeNode = MetricNode | InfoNode
 
 export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
   refresh =>
-    Effect.gen(function* (_) {
-      const clients = yield* _(Clients)
+    Effect.gen(function* () {
+      const clients = yield* Clients
       let nodes: Array<MetricNode> = []
-      const pollMillis = yield* _(
-        configWithDefault("effect.metrics", "pollInterval", 500),
+      const pollMillis = yield* configWithDefault(
+        "effect.metrics",
+        "pollInterval",
+        500,
       )
-      const currentClient = yield* _(ScopedRef.make<void>(() => void 0))
+      const currentClient = yield* ScopedRef.make<void>(() => void 0)
 
-      const reset = Effect.gen(function* (_) {
-        yield* _(ScopedRef.set(currentClient, Effect.void))
+      const reset = Effect.gen(function* () {
+        yield* ScopedRef.set(currentClient, Effect.void)
         nodes = []
-        return yield* _(refresh(Option.none()))
+        return yield* refresh(Option.none())
       })
 
-      yield* _(
-        clients.activeClient.changes,
+      yield* clients.activeClient.changes.pipe(
         Stream.changes,
         Stream.tap(_ => (Option.isSome(_) ? reset : Effect.void)),
         Stream.runForEach(_ =>
@@ -83,12 +84,11 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
         Effect.forkScoped,
       )
 
-      yield* _(registerCommand("effect.resetMetrics", () => reset))
+      yield* registerCommand("effect.resetMetrics", () => reset)
 
       const handleClient = (client: Client) =>
-        Effect.gen(function* (_) {
-          yield* _(
-            client.metrics.take,
+        Effect.gen(function* () {
+          yield* client.metrics.take.pipe(
             Effect.flatMap(snapshot =>
               Effect.suspend(() => {
                 const metrics = snapshot.metrics as Array<Domain.Metric>
@@ -109,8 +109,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
             Effect.forkScoped,
           )
 
-          yield* _(
-            pollMillis.changes,
+          yield* pollMillis.changes.pipe(
             Stream.flatMap(
               millis =>
                 client.requestMetrics.pipe(

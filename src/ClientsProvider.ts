@@ -17,13 +17,12 @@ type TreeNode = ClientNode | RunningState
 
 export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
   refresh =>
-    Effect.gen(function* (_) {
-      const clients = yield* _(Clients)
+    Effect.gen(function* () {
+      const clients = yield* Clients
       let nodes: Array<ClientNode> = []
-      let runningState = yield* _(SubscriptionRef.get(clients.running))
+      let runningState = yield* SubscriptionRef.get(clients.running)
 
-      yield* _(
-        clients.clients.changes,
+      yield* clients.clients.changes.pipe(
         Stream.runForEach(clients =>
           Effect.suspend(() => {
             nodes = [...clients].map(client => new ClientNode(client))
@@ -32,8 +31,7 @@ export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
         ),
         Effect.forkScoped,
       )
-      yield* _(
-        clients.running.changes,
+      yield* clients.running.changes.pipe(
         Stream.runForEach(state =>
           Effect.suspend(() => {
             runningState = state

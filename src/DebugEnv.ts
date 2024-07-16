@@ -46,25 +46,23 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
 >() {
   static readonly Live = Layer.scoped(
     DebugEnv,
-    Effect.gen(function* (_) {
-      const sessionRef = yield* _(SubscriptionRef.make(Option.none<Session>()))
-      const messages = yield* _(PubSub.sliding<Message>(100))
+    Effect.gen(function* () {
+      const sessionRef = yield* SubscriptionRef.make(Option.none<Session>())
+      const messages = yield* PubSub.sliding<Message>(100)
 
-      yield* _(
-        listenFork(vscode.debug.onDidChangeActiveDebugSession, session =>
-          SubscriptionRef.set(
-            sessionRef,
-            Option.map(Option.fromNullable(session), vscode => ({
-              vscode,
-              context: getContext.pipe(
-                Effect.provideService(VsCodeDebugSession, vscode),
-              ),
-            })),
-          ),
+      yield* listenFork(vscode.debug.onDidChangeActiveDebugSession, session =>
+        SubscriptionRef.set(
+          sessionRef,
+          Option.map(Option.fromNullable(session), vscode => ({
+            vscode,
+            context: getContext.pipe(
+              Effect.provideService(VsCodeDebugSession, vscode),
+            ),
+          })),
         ),
       )
 
-      const context = yield* _(VsCodeContext)
+      const context = yield* VsCodeContext
       context.subscriptions.push(
         vscode.debug.registerDebugAdapterTrackerFactory("*", {
           createDebugAdapterTracker(_) {

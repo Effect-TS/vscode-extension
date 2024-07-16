@@ -26,8 +26,8 @@ type TreeNode = TagNode | VariableNode
 
 export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
   refresh =>
-    Effect.gen(function* (_) {
-      const debug = yield* _(Debug.DebugEnv)
+    Effect.gen(function* () {
+      const debug = yield* Debug.DebugEnv
       let nodes: Array<TagNode> = []
 
       const capture = Effect.gen(function* (_) {
@@ -42,8 +42,7 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
         yield* _(refresh(Option.none()))
       })
 
-      yield* _(
-        Stream.fromPubSub(debug.messages),
+      yield* Stream.fromPubSub(debug.messages).pipe(
         Stream.mapEffect(event => {
           if (event.type !== "event") return Effect.void
 

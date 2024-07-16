@@ -104,17 +104,17 @@ type TreeNode = SpanNode | InfoNode | ChildrenNode | EventsNode | SpanEventNode
 
 export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
   refresh =>
-    Effect.gen(function* (_) {
-      const clients = yield* _(Clients)
+    Effect.gen(function* () {
+      const clients = yield* Clients
       const rootNodes: Array<SpanNode> = []
       const nodes = new Map<string, SpanNode>()
 
-      const reset = Effect.gen(function* (_) {
+      const reset = Effect.suspend(() => {
         rootNodes.length = 0
         nodes.clear()
-        return yield* _(refresh(Option.none()))
+        return refresh(Option.none())
       })
-      yield* _(registerCommand("effect.resetTracer", () => reset))
+      yield* registerCommand("effect.resetTracer", () => reset)
 
       const handleClient = (client: Client) =>
         client.spans.take.pipe(
@@ -131,8 +131,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
           Effect.forever,
         )
 
-      yield* _(
-        clients.clients.changes,
+      yield* clients.clients.changes.pipe(
         Stream.flatMap(
           Effect.forEach(handleClient, { concurrency: "unbounded" }),
           { switch: true },
