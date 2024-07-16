@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.1.4
+
+### Patch Changes
+
+- [#15](https://github.com/Effect-TS/vscode-extension/pull/15) [`34a79d1`](https://github.com/Effect-TS/vscode-extension/commit/34a79d19fe062f5893114520c082c8dc97de6aa1) Thanks [@tim-smart](https://github.com/tim-smart)! - fix vscode types version
+
 ## 0.1.3
 
 ### Patch Changes
