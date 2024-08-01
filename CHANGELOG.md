@@ -1,5 +1,13 @@
 # effect-vscode
 
+## 0.1.5
+
+### Patch Changes
+
+- [#18](https://github.com/Effect-TS/vscode-extension/pull/18) [`e3ac54d`](https://github.com/Effect-TS/vscode-extension/commit/e3ac54d60e6b244509a558b14fb54a44a59e3cb4) Thanks [@tim-smart](https://github.com/tim-smart)! - make info node value copyable
+
+- [#18](https://github.com/Effect-TS/vscode-extension/pull/18) [`e3ac54d`](https://github.com/Effect-TS/vscode-extension/commit/e3ac54d60e6b244509a558b14fb54a44a59e3cb4) Thanks [@tim-smart](https://github.com/tim-smart)! - fix info node tooltips
+
 ## 0.1.4
 
 ### Patch Changes
