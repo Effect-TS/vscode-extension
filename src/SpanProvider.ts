@@ -58,7 +58,7 @@ class SpanNode {
   }
 }
 
-class InfoNode {
+export class InfoNode {
   readonly _tag = "InfoNode"
   constructor(
     readonly label: string,
@@ -281,6 +281,8 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         vscode.TreeItemCollapsibleState.None,
       )
       item.description = node.description
+      item.tooltip = node.description
+      item.contextValue = "info"
       return item
     }
     case "ChildrenNode": {
