@@ -59,6 +59,11 @@
         "command": "effect.resetTracer",
         "title": "Effect Dev Tools: Reset Tracer",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "effect.copyInfoValue",
+        "title": "Copy value",
+        "icon": "$(copy)"
       }
     ],
     "viewsContainers": {
@@ -121,6 +126,12 @@
           "when": "view === effect-tracer",
           "group": "navigation"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "effect.copyInfoValue",
+          "when": "viewItem == info"
+        }
       ]
     }
   },
@@ -135,22 +146,22 @@
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.0",
     "@changesets/cli": "^2.27.7",
-    "@effect/experimental": "^0.19.0",
+    "@effect/experimental": "^0.21.1",
     "@effect/language-service": "^0.1.0",
-    "@effect/platform-node": "^0.54.0",
+    "@effect/platform-node": "^0.56.1",
     "@types/mocha": "^10.0.7",
-    "@types/node": "~20.14.10",
+    "@types/node": "~22.0.2",
     "@types/vscode": "1.84.0",
-    "@types/ws": "^8.5.11",
+    "@types/ws": "^8.5.12",
     "@vscode/test-electron": "^2.4.1",
-    "@vscode/vsce": "^2.30.0",
-    "effect": "3.5.4",
+    "@vscode/vsce": "^2.31.1",
+    "effect": "3.6.0",
     "glob": "^11.0.0",
-    "mocha": "^10.6.0",
+    "mocha": "^10.7.0",
     "prettier": "^3.3.3",
     "tslib": "^2.6.3",
-    "tsup": "^8.1.0",
-    "typescript": "^5.5.3",
+    "tsup": "^8.2.3",
+    "typescript": "^5.5.4",
     "ws": "^8.18.0"
   },
   "sideEffects": false

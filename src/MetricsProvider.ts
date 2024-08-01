@@ -241,6 +241,8 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         vscode.TreeItemCollapsibleState.None,
       )
       item.description = node.value
+      item.tooltip = node.value
+      item.contextValue = "info"
       return item
     }
   }

@@ -1,7 +1,6 @@
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as LogLevel from "effect/LogLevel"
