@@ -8,6 +8,7 @@ import * as vscode from "vscode"
 import { Client, Clients } from "./Clients"
 import { TreeDataProvider, registerCommand, treeDataProvider } from "./VsCode"
 import * as DurationUtils from "./utils/Duration"
+import * as Inspectable from "effect/Inspectable"
 
 class SpanNode {
   readonly _tag = "SpanNode"
@@ -228,7 +229,7 @@ const children = (
       ]
 
       node.attributes.forEach((value, key) => {
-        nodes.push(new InfoNode(key, String(value)))
+        nodes.push(new InfoNode(key, Inspectable.toStringUnknown(value)))
       })
 
       if (node.events.hasEvents) {
@@ -256,7 +257,10 @@ const children = (
         return Option.none()
       }
       return Option.some(
-        attributes.map(([key, value]) => new InfoNode(key, String(value))),
+        attributes.map(
+          ([key, value]) =>
+            new InfoNode(key, Inspectable.toStringUnknown(value)),
+        ),
       )
     }
   }
