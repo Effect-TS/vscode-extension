@@ -5,6 +5,7 @@
     "noEmit": true,
     "lib": ["ES2022"],
     "sourceMap": true,
+    "skipLibCheck": true,
     "rootDir": "src",
     "baseUrl": ".",
     "strict": true,
