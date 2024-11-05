@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.1.7
+
+### Patch Changes
+
+- [#24](https://github.com/Effect-TS/vscode-extension/pull/24) [`448f658`](https://github.com/Effect-TS/vscode-extension/commit/448f658f6854a258d2ca3c68cbb4d4bfc2ff81cc) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.1.6
 
 ### Patch Changes
