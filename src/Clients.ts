@@ -11,8 +11,8 @@ import * as FiberHandle from "effect/FiberHandle"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
+import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
-import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
@@ -22,12 +22,11 @@ import {
   executeCommand,
   registerCommand,
 } from "./VsCode"
-import { pipe } from "effect/Function"
 
 export interface Client extends Equal.Equal {
   readonly id: number
-  readonly spans: Queue.Dequeue<Domain.Span | Domain.SpanEvent>
-  readonly metrics: Queue.Dequeue<Domain.MetricsSnapshot>
+  readonly spans: Mailbox.ReadonlyMailbox<Domain.Span | Domain.SpanEvent>
+  readonly metrics: Mailbox.ReadonlyMailbox<Domain.MetricsSnapshot>
   readonly requestMetrics: Effect.Effect<void>
 }
 
@@ -83,130 +82,134 @@ export class ClientsContext extends Context.Tag(
   )
 }
 
-const runServer = Effect.gen(function* () {
-  const { clients, activeClient, running, clientId } = yield* ClientsContext
-  const server = yield* Server.make
+const runServer = (port: number) =>
+  Effect.gen(function* () {
+    const { clients, activeClient, running, clientId } = yield* ClientsContext
 
-  const makeClient = (serverClient: Server.Client) =>
-    Effect.gen(function* () {
-      const spans = yield* Effect.acquireRelease(
-        Queue.sliding<Domain.Span | Domain.SpanEvent>(100),
-        Queue.shutdown,
-      )
-      const metrics = yield* Effect.acquireRelease(
-        Queue.sliding<Domain.MetricsSnapshot>(2),
-        Queue.shutdown,
-      )
-      const id = yield* Ref.getAndUpdate(clientId, _ => _ + 1)
-      const client: Client = {
-        id,
-        spans,
-        metrics,
-        requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
-        [Equal.symbol](that: Client) {
-          return id === that.id
-        },
-        [Hash.symbol]() {
-          return Hash.number(id)
-        },
-      }
-      yield* Effect.acquireRelease(
-        SubscriptionRef.update(clients, HashSet.add(client)),
-        () => SubscriptionRef.update(clients, HashSet.remove(client)),
-      )
-      yield* Effect.acquireRelease(
-        SubscriptionRef.update(
-          activeClient,
-          Option.orElseSome(() => client),
-        ),
-        () =>
+    const makeClient = (serverClient: Server.Client) =>
+      Effect.gen(function* () {
+        const spans = yield* Effect.acquireRelease(
+          Mailbox.make<Domain.Span | Domain.SpanEvent>({
+            capacity: 100,
+            strategy: "sliding",
+          }),
+          mailbox => mailbox.end,
+        )
+        const metrics = yield* Effect.acquireRelease(
+          Mailbox.make<Domain.MetricsSnapshot>({
+            capacity: 2,
+            strategy: "sliding",
+          }),
+          mailbox => mailbox.end,
+        )
+        const id = yield* Ref.getAndUpdate(clientId, _ => _ + 1)
+        const client: Client = {
+          id,
+          spans,
+          metrics,
+          requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
+          [Equal.symbol](that: Client) {
+            return id === that.id
+          },
+          [Hash.symbol]() {
+            return Hash.number(id)
+          },
+        }
+        yield* Effect.acquireRelease(
+          SubscriptionRef.update(clients, HashSet.add(client)),
+          () => SubscriptionRef.update(clients, HashSet.remove(client)),
+        )
+        yield* Effect.acquireRelease(
           SubscriptionRef.update(
             activeClient,
-            Option.filter(_ => _ !== client),
+            Option.orElseSome(() => client),
           ),
-      )
+          () =>
+            SubscriptionRef.update(
+              activeClient,
+              Option.filter(_ => _ !== client),
+            ),
+        )
 
-      yield* serverClient.queue.take.pipe(
-        Effect.flatMap(res => {
-          switch (res._tag) {
-            case "MetricsSnapshot": {
-              return metrics.offer(res)
+        yield* serverClient.queue.take.pipe(
+          Effect.flatMap(res => {
+            switch (res._tag) {
+              case "MetricsSnapshot": {
+                return metrics.offer(res)
+              }
+              case "SpanEvent":
+              case "Span": {
+                return spans.offer(res)
+              }
             }
-            case "SpanEvent":
-            case "Span": {
-              return spans.offer(res)
-            }
-          }
-        }),
-        Effect.forever,
-        Effect.fork,
-      )
-    }).pipe(Effect.awaitAllChildren, Effect.scoped)
+          }),
+          Effect.forever,
+          Effect.fork,
+        )
+      }).pipe(Effect.awaitAllChildren, Effect.scoped)
 
-  const run = pipe(
-    server.run(makeClient),
-    Effect.catchAllCause(cause =>
-      SubscriptionRef.update(
-        running,
-        _ => new RunningState({ ..._, running: false, cause }),
+    const run = Server.run(makeClient).pipe(
+      Effect.provideServiceEffect(
+        SocketServer.SocketServer,
+        SocketServer.makeWebSocket({ port }),
       ),
-    ),
-  )
-
-  const serverHandle = yield* FiberHandle.make()
-  yield* Stream.runForEach(running.changes, ({ running }) =>
-    Effect.gen(function* (_) {
-      yield* running
-        ? FiberHandle.run(serverHandle, run, { onlyIfMissing: true })
-        : FiberHandle.clear(serverHandle)
-      yield* executeCommand("setContext", "effect:running", running)
-    }),
-  )
-}).pipe(Effect.scoped)
-
-const make = Effect.gen(function* () {
-  const { clients, activeClient, running, port } = yield* ClientsContext
-
-  const makeServer = (port: number) =>
-    Effect.provideServiceEffect(
-      runServer,
-      SocketServer.SocketServer,
-      SocketServer.makeWebSocket({ port }),
+      Effect.scoped,
+      Effect.catchAllCause(cause =>
+        SubscriptionRef.update(
+          running,
+          _ => new RunningState({ ..._, running: false, cause }),
+        ),
+      ),
+      Effect.interruptible,
     )
-  const server = yield* FiberHandle.make()
-  yield* port.changes.pipe(
-    Stream.tap(port => SubscriptionRef.update(running, _ => _.setPort(port))),
-    Stream.runForEach(port => FiberHandle.run(server, makeServer(port))),
-    Effect.forkScoped,
-  )
 
-  yield* registerCommand("effect.selectClient", (id: number) =>
-    Effect.gen(function* () {
-      const current = yield* SubscriptionRef.get(clients)
-      const client = Array.findFirst(current, _ => _.id === id)
-      if (client._tag === "None") {
-        return
-      }
-      yield* SubscriptionRef.set(activeClient, client)
+    const serverHandle = yield* FiberHandle.make()
+    yield* Stream.runForEach(running.changes, ({ running }) =>
+      Effect.gen(function* (_) {
+        yield* running
+          ? FiberHandle.run(serverHandle, run, { onlyIfMissing: true })
+          : FiberHandle.clear(serverHandle)
+        yield* executeCommand("setContext", "effect:running", running)
+      }),
+    )
+  }).pipe(Effect.scoped)
+
+export class Clients extends Effect.Service<Clients>()(
+  "effect-vscode/Clients",
+  {
+    scoped: Effect.gen(function* () {
+      const { clients, activeClient, running, port } = yield* ClientsContext
+
+      const server = yield* FiberHandle.make()
+      yield* port.changes.pipe(
+        Stream.tap(port =>
+          SubscriptionRef.update(running, _ => _.setPort(port)),
+        ),
+        Stream.runForEach(port => FiberHandle.run(server, runServer(port))),
+        Effect.forkScoped,
+      )
+
+      yield* registerCommand("effect.selectClient", (id: number) =>
+        Effect.gen(function* () {
+          const current = yield* SubscriptionRef.get(clients)
+          const client = Array.findFirst(current, _ => _.id === id)
+          if (client._tag === "None") {
+            return
+          }
+          yield* SubscriptionRef.set(activeClient, client)
+        }),
+      )
+
+      yield* registerCommand("effect.startServer", () =>
+        SubscriptionRef.update(running, _ => _.setRunning(true)),
+      )
+
+      yield* registerCommand("effect.stopServer", () =>
+        SubscriptionRef.update(running, _ => _.setRunning(false)),
+      )
+
+      return { clients, running, activeClient } as const
     }),
-  )
-
-  yield* registerCommand("effect.startServer", () =>
-    SubscriptionRef.update(running, _ => _.setRunning(true)),
-  )
-
-  yield* registerCommand("effect.stopServer", () =>
-    SubscriptionRef.update(running, _ => _.setRunning(false)),
-  )
-
-  return { clients, running, activeClient } as const
-})
-
-export class Clients extends Context.Tag("effect-vscode/Clients")<
-  Clients,
-  Effect.Effect.Success<typeof make>
->() {
-  static readonly Live = Layer.scoped(Clients, make).pipe(
-    Layer.provide(ClientsContext.Live),
-  )
-}
+    dependencies: [ClientsContext.Live],
+  },
+) {}

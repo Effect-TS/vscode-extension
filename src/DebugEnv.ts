@@ -40,6 +40,7 @@ export type Message =
       readonly request_seq: number
       readonly message?: string
     }
+
 export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
   DebugEnv,
   DebugEnvImpl

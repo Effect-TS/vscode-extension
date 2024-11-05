@@ -145,24 +145,31 @@
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.0",
-    "@changesets/cli": "^2.27.8",
-    "@effect/experimental": "^0.26.6",
-    "@effect/language-service": "^0.1.0",
-    "@effect/platform-node": "^0.60.5",
-    "@types/mocha": "^10.0.8",
-    "@types/node": "~22.5.5",
+    "@changesets/cli": "^2.27.9",
+    "@effect/experimental": "^0.32.0",
+    "@effect/language-service": "^0.2.0",
+    "@effect/platform-node": "^0.64.18",
+    "@types/mocha": "^10.0.9",
+    "@types/node": "~22.9.0",
     "@types/vscode": "1.84.0",
-    "@types/ws": "^8.5.12",
+    "@types/ws": "^8.5.13",
     "@vscode/test-electron": "^2.4.1",
-    "@vscode/vsce": "^3.1.0",
-    "effect": "3.8.3",
+    "@vscode/vsce": "^3.2.1",
+    "effect": "3.10.10",
     "glob": "^11.0.0",
-    "mocha": "^10.7.3",
+    "mocha": "^10.8.2",
     "prettier": "^3.3.3",
-    "tslib": "^2.7.0",
-    "tsup": "^8.3.0",
-    "typescript": "^5.6.2",
+    "tslib": "^2.8.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
     "ws": "^8.18.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "pnpm": {
+    "updateConfig": {
+      "ignoreDependencies": [
+        "@types/vscode"
+      ]
+    }
+  }
 }

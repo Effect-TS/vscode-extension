@@ -52,7 +52,7 @@ export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
         treeItem: node => Effect.succeed(treeItem(node)),
       })
     }),
-).pipe(Layer.provide(Clients.Live))
+).pipe(Layer.provide(Clients.Default))
 
 const treeItem = (node: TreeNode): vscode.TreeItem => {
   switch (node._tag) {
