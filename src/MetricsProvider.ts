@@ -89,22 +89,20 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
       const handleClient = (client: Client) =>
         Effect.gen(function* () {
           yield* client.metrics.take.pipe(
-            Effect.flatMap(snapshot =>
-              Effect.suspend(() => {
-                const metrics = snapshot.metrics as Array<Domain.Metric>
-                const names = new Set<string>()
-                metrics.sort(MetricOrder)
-                nodes = Array.filterMap(metrics, metric => {
-                  const name = metric.name
-                  if (names.has(name)) {
-                    return Option.none()
-                  }
-                  names.add(name)
-                  return Option.some(new MetricNode(metric))
-                })
-                return refresh(Option.none())
-              }),
-            ),
+            Effect.flatMap(snapshot => {
+              const metrics = snapshot.metrics as Array<Domain.Metric>
+              const names = new Set<string>()
+              metrics.sort(MetricOrder)
+              nodes = Array.filterMap(metrics, metric => {
+                const name = metric.name
+                if (names.has(name)) {
+                  return Option.none()
+                }
+                names.add(name)
+                return Option.some(new MetricNode(metric))
+              })
+              return refresh(Option.none())
+            }),
             Effect.forever,
             Effect.forkScoped,
           )
@@ -130,7 +128,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
         treeItem: node => Effect.succeed(treeItem(node)),
       })
     }),
-).pipe(Layer.provide(Clients.Live))
+).pipe(Layer.provide(Clients.Default))
 
 // === helpers ===
 

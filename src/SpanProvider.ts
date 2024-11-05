@@ -130,6 +130,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
             }
           }),
           Effect.forever,
+          Effect.ignore,
         )
 
       yield* clients.clients.changes.pipe(
@@ -213,7 +214,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         treeItem: node => Effect.succeed(treeItem(node)),
       })
     }),
-).pipe(Layer.provide(Clients.Live))
+).pipe(Layer.provide(Clients.Default))
 
 // === helpers ===
 
