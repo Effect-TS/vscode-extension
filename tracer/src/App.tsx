@@ -10,8 +10,6 @@ export default function App() {
   const [selectedSpan, setSelectedSpan] = useRx(selectedSpanRx)
   const activeSpan = roots[selectedSpan]
 
-  console.log({ activeSpan })
-
   return (
     <div className="p-2">
       <div className="dropdown-container">
