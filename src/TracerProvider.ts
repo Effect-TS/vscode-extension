@@ -75,14 +75,17 @@ export const TracerExtendedLive = Layer.effectDiscard(
       yield* Deferred.await(booted)
 
       const handleClient = (client: Client) =>
-        client.spans.take.pipe(
-          Effect.tap(data => {
-            const message = encode(data)
-            view.webview.postMessage(message)
-          }),
-          Effect.forever,
-          Effect.ignore,
-        )
+        Effect.gen(function* () {
+          const spans = yield* client.spans
+          yield* spans.take.pipe(
+            Effect.tap(data => {
+              const message = encode(data)
+              view.webview.postMessage(message)
+            }),
+            Effect.forever,
+            Effect.ignore,
+          )
+        }).pipe(Effect.scoped)
 
       yield* clients.clients.changes.pipe(
         Stream.flatMap(

@@ -1,10 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as Mailbox from "effect/Mailbox"
-import * as Console from "effect/Console"
 import { WebviewApi } from "vscode-webview"
 import { Span, SpanEvent } from "@effect/experimental/DevTools/Domain"
-import { Rx } from "@effect-rx/rx-react"
 
 export class Booted extends Schema.TaggedClass<Booted>()("Booted", {}) {}
 export const HostMessage = Schema.Union(Booted, Span, SpanEvent)
@@ -40,20 +38,10 @@ export class VscodeWebview extends Effect.Service<VscodeWebview>()(
           }),
       )
 
-      yield* mailbox.take.pipe(
-        Effect.tap(Console.log),
-        Effect.forever,
-        Effect.forkScoped,
-      )
-
       return {
         api,
-        messages: Mailbox.toStream(mailbox),
+        messages: mailbox as Mailbox.ReadonlyMailbox<typeof HostMessage.Type>,
       } as const
     }),
   },
 ) {}
-
-// rx
-
-export const runtime = Rx.runtime(VscodeWebview.Default)

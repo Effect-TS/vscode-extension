@@ -1,5 +1,6 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
+import * as path from "node:path"
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,6 +13,11 @@ export default defineConfig({
         chunkFileNames: "assets/[name].js",
         assetFileNames: "assets/[name].[ext]",
       },
+    },
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 })

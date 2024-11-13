@@ -22,11 +22,18 @@ import {
   executeCommand,
   registerCommand,
 } from "./VsCode"
+import * as PubSub from "effect/PubSub"
+import { Dequeue } from "effect/Queue"
+import { Scope } from "effect/Scope"
 
 export interface Client extends Equal.Equal {
   readonly id: number
-  readonly spans: Mailbox.ReadonlyMailbox<Domain.Span | Domain.SpanEvent>
-  readonly metrics: Mailbox.ReadonlyMailbox<Domain.MetricsSnapshot>
+  readonly spans: Effect.Effect<
+    Dequeue<Domain.Span | Domain.SpanEvent>,
+    never,
+    Scope
+  >
+  readonly metrics: Effect.Effect<Dequeue<Domain.MetricsSnapshot>, never, Scope>
   readonly requestMetrics: Effect.Effect<void>
 }
 
@@ -89,24 +96,22 @@ const runServer = (port: number) =>
     const makeClient = (serverClient: Server.Client) =>
       Effect.gen(function* () {
         const spans = yield* Effect.acquireRelease(
-          Mailbox.make<Domain.Span | Domain.SpanEvent>({
+          PubSub.sliding<Domain.Span | Domain.SpanEvent>({
             capacity: 100,
-            strategy: "sliding",
           }),
-          mailbox => mailbox.end,
+          PubSub.shutdown,
         )
         const metrics = yield* Effect.acquireRelease(
-          Mailbox.make<Domain.MetricsSnapshot>({
+          PubSub.sliding<Domain.MetricsSnapshot>({
             capacity: 2,
-            strategy: "sliding",
           }),
-          mailbox => mailbox.end,
+          PubSub.shutdown,
         )
         const id = yield* Ref.getAndUpdate(clientId, _ => _ + 1)
         const client: Client = {
           id,
-          spans,
-          metrics,
+          spans: PubSub.subscribe(spans),
+          metrics: PubSub.subscribe(metrics),
           requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
           [Equal.symbol](that: Client) {
             return id === that.id

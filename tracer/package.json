@@ -14,11 +14,18 @@
     "@effect/platform": "^0.69.21",
     "@effect/platform-browser": "^0.48.21",
     "@microsoft/fast-react-wrapper": "^0.3.25",
+    "@radix-ui/react-accordion": "^1.2.1",
+    "@tanstack/react-table": "^8.20.5",
     "@vscode-elements/elements": "^1.8.0",
     "@vscode/webview-ui-toolkit": "^1.4.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
     "effect": "^3.10.14",
+    "lucide-react": "^0.456.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
@@ -32,6 +39,7 @@
     "eslint-plugin-react-refresh": "^0.4.14",
     "globals": "^15.11.0",
     "postcss": "^8.4.49",
+    "shadcn": "^2.1.6",
     "tailwindcss": "^3.4.14",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.11.0",
