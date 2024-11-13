@@ -7,12 +7,14 @@ import { MetricsProviderLive } from "./MetricsProvider"
 import { SpanProviderLive } from "./SpanProvider"
 import { VsCodeContext, launch, logger } from "./VsCode"
 import { TreeCommandsLive } from "./TreeCommands"
+import { TracerExtendedLive } from "./TracerProvider"
 
 const MainLive = Layer.mergeAll(
   ClientsProviderLive,
   ContextProviderLive,
   SpanProviderLive,
   MetricsProviderLive,
+  TracerExtendedLive,
   TreeCommandsLive,
 ).pipe(Layer.provide(logger("Effect Dev Tools")))
 

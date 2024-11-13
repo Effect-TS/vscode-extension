@@ -73,6 +73,13 @@
           "title": "Effect Dev Tools",
           "icon": "resources/icons/effect-light.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "effect-tracer-panel",
+          "title": "Effect Tracer",
+          "icon": "resources/icons/effect-light.svg"
+        }
       ]
     },
     "views": {
@@ -87,7 +94,8 @@
         },
         {
           "id": "effect-metrics",
-          "name": "Metrics"
+          "name": "Metrics",
+          "icon": ""
         }
       ],
       "debug": [
@@ -95,6 +103,13 @@
           "id": "effect-context",
           "name": "Effect Context",
           "when": "inDebugMode"
+        }
+      ],
+      "effect-tracer-panel": [
+        {
+          "type": "webview",
+          "id": "effect-tracer-extended",
+          "name": "Effect Tracer"
         }
       ]
     },
@@ -146,16 +161,16 @@
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.0",
     "@changesets/cli": "^2.27.9",
-    "@effect/experimental": "^0.32.0",
+    "@effect/experimental": "^0.32.5",
     "@effect/language-service": "^0.2.0",
-    "@effect/platform-node": "^0.64.18",
+    "@effect/platform-node": "^0.64.23",
     "@types/mocha": "^10.0.9",
     "@types/node": "~22.9.0",
     "@types/vscode": "1.84.0",
     "@types/ws": "^8.5.13",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.2.1",
-    "effect": "3.10.10",
+    "effect": "3.10.14",
     "glob": "^11.0.0",
     "mocha": "^10.8.2",
     "prettier": "^3.3.3",
