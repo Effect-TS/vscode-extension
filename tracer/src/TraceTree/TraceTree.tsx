@@ -154,7 +154,7 @@ function VerticalBranchConnectors({
       // the tree. If the current row does not contain a leaf node and this
       // depth does have ancestors with children, render a full-length vertical
       // connector, otherwise render a half-length vertical connector.
-      let y =
+      const y =
         isLeaf && !hasAncestorWithChildren
           ? 16.5
           : hasAncestorWithChildren

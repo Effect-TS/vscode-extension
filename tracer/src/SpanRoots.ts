@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import { VscodeWebview } from "./VsCode"
 import * as DevToolsDomain from "@effect/experimental/DevTools/Domain"
 import * as SubscriptionRef from "effect/SubscriptionRef"
@@ -7,6 +8,9 @@ import { pipe } from "effect/Function"
 import * as Array from "effect/Array"
 import * as Option from "effect/Option"
 import { Rx } from "@effect-rx/rx-react"
+
+const encode = Schema.encodeUnknown(Schema.Array(Span))
+const decode = Schema.encodeUnknown(Schema.Array(Span))
 
 export class SpanRoots extends Effect.Service<SpanRoots>()("SpanRoots", {
   accessors: true,
@@ -54,6 +58,14 @@ export class SpanRoots extends Effect.Service<SpanRoots>()("SpanRoots", {
       Effect.forever,
       Effect.onExit(Effect.log),
       Effect.forkScoped,
+    )
+
+    yield* Effect.addFinalizer(() =>
+      SubscriptionRef.get(rootSpans).pipe(
+        Effect.flatMap(encode),
+        Effect.tap((roots) => vscode.api.setState(roots)),
+        Effect.orDie
+      )
     )
 
     return { rootSpans } as const
