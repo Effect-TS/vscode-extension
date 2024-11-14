@@ -1,4 +1,8 @@
-import { ParentSpan, SpanEvent } from "@effect/experimental/DevTools/Domain"
+import {
+  ParentSpan,
+  SpanEvent,
+  ParentSpanFrom,
+} from "@effect/experimental/DevTools/Domain"
 import * as Array from "effect/Array"
 import * as Data from "effect/Data"
 import * as Duration from "effect/Duration"
@@ -7,7 +11,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 
 export class Event extends Schema.Class<Event>("extension/Event")({
-  event: SpanEvent
+  event: SpanEvent,
 }) {
   static fromEvent(event: SpanEvent) {
     return new Event({ event })
@@ -27,19 +31,23 @@ export class Event extends Schema.Class<Event>("extension/Event")({
 }
 
 export interface Span {
-  // readonly span: ParentSpan
+  readonly span: ParentSpan
   readonly children: ReadonlyArray<Span>
   readonly events: ReadonlyArray<Event>
 }
 
-const Span_: Schema.Struct<{
-  // span: ParentSpan
-  children: Schema.Array$<Schema.Schema<Span>>
-  events: Schema.Array$<typeof Event>
-}> = Schema.Struct({
-  // span: ParentSpan,
-  children: Schema.Array(Schema.suspend(() => Span_) as Schema.Schema<Span>),
-  events: Schema.Array(Event)
+export interface SpanEncoded {
+  readonly span: ParentSpanFrom
+  readonly children: ReadonlyArray<SpanEncoded>
+  readonly events: ReadonlyArray<Schema.Schema.Encoded<typeof Event>>
+}
+
+const Span_ = Schema.Struct({
+  span: ParentSpan,
+  children: Schema.Array(
+    Schema.suspend((): Schema.Schema<Span, SpanEncoded> => Span_),
+  ),
+  events: Schema.Array(Event),
 })
 
 export const Span: Schema.Schema<
