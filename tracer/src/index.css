@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: var(--vscode-editor-background);
+    --foreground: var(--vscode-foreground);
+    --card: var(--vscode-editor-background);
+    --card-foreground: var(--vscode-foreground);
+    --popover: var(--vscode-editor-background);
+    --popover-foreground: var(--vscode-foreground);
+    --primary: var(--vscode-button-background);
+    --primary-foreground: var(--vscode-button-foreground);
+    --secondary: var(--vscode-button-secondaryBackground);
+    --secondary-foreground: var(--vscode-button-secondaryForeground);
+    --muted: var(--vscode-foreground);
+    --muted-foreground: var(--vscode-editor-background);
+    --accent: var(--vscode-foreground);
+    --accent-foreground: var(--vscode-editor-background);
+    --destructive: var(--vscode-errorForeground);
+    --destructive-foreground: var(--vscode-foreground);
+    --border: var(--vscode-widget-border);
+    --input: var(--vscode-input-foreground);
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+
+  .dropdown-container {
+    box-sizing: border-box;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .dropdown-container label {
+    display: block;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: var(--vscode-font-size);
+    line-height: normal;
+    margin-bottom: 2px;
+  }
+}

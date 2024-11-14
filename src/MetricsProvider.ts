@@ -88,7 +88,8 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
 
       const handleClient = (client: Client) =>
         Effect.gen(function* () {
-          yield* client.metrics.take.pipe(
+          const metrics = yield* client.metrics
+          yield* metrics.take.pipe(
             Effect.flatMap(snapshot => {
               const metrics = snapshot.metrics as Array<Domain.Metric>
               const names = new Set<string>()
@@ -104,6 +105,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
               return refresh(Option.none())
             }),
             Effect.forever,
+            Effect.scoped,
             Effect.forkScoped,
           )
 
