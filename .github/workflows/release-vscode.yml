@@ -1,4 +1,4 @@
-name: Release VSCode
+name: Release VSCode Extension
 
 on:
   release:
@@ -7,14 +7,30 @@ on:
 
 jobs:
   release:
-    name: Release
+    name: Release to Multiple Marketplaces
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - name: Publish
-        run: pnpm ci:publish
+      
+      - name: Install publishing tools
+        run: |
+          npm install -g @vscode/vsce ovsx
+      
+      - name: Build extension
+        run: pnpm build
+      
+      - name: Package extension
+        run: vsce package
+      
+      - name: Publish to VSCode Marketplace
+        run: vsce publish --packagePath *.vsix
         env:
           VSCE_PAT: ${{ secrets.AZURE_TOKEN }}
+      
+      - name: Publish to Open VSX Registry
+        run: ovsx publish *.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
