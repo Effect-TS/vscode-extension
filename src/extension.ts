@@ -3,7 +3,8 @@ import * as Layer from "effect/Layer"
 import * as vscode from "vscode"
 import { ClientsProviderLive } from "./ClientsProvider"
 import { ContextProviderLive } from "./ContextProvider"
-import { CurrentSpanStackProviderLive } from "./CurrentSpanStackProvider"
+import { DebugSpanStackProviderLive } from "./DebugSpanStackProvider"
+import { DebugFibersProviderLive } from "./DebugFibersProvider"
 import { MetricsProviderLive } from "./MetricsProvider"
 import { SpanProviderLive } from "./SpanProvider"
 import { VsCodeContext, launch, logger } from "./VsCode"
@@ -12,10 +13,11 @@ import { TreeCommandsLive } from "./TreeCommands"
 const MainLive = Layer.mergeAll(
   ClientsProviderLive,
   ContextProviderLive,
-  CurrentSpanStackProviderLive,
+  DebugSpanStackProviderLive,
   SpanProviderLive,
   MetricsProviderLive,
   TreeCommandsLive,
+  DebugFibersProviderLive,
 ).pipe(Layer.provide(logger("Effect Dev Tools")))
 
 export function activate(context: vscode.ExtensionContext) {

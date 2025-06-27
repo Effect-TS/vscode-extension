@@ -18,7 +18,7 @@ class TreeNode {
     constructor(readonly entry: Debug.SpanStackEntry) {}
 }
 
-export const CurrentSpanStackProviderLive = treeDataProvider<TreeNode>("effect-current-span-stack")(
+export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-debug-span-stack")(
   refresh =>
     Effect.gen(function* () {
       const debug = yield* Debug.DebugEnv
@@ -49,7 +49,7 @@ export const CurrentSpanStackProviderLive = treeDataProvider<TreeNode>("effect-c
 
           switch (event.event) {
             case "stopped": {
-              return Effect.delay(capture, 50)
+              return Effect.delay(capture, 500)
             }
             case "continued": {
               nodes = []
@@ -84,6 +84,9 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
       )
       if(node.entry.path) {        
         item.description = vscode.workspace.asRelativePath(node.entry.path) + ":" + node.entry.line + ":" + node.entry.column
+      }
+      if(node.entry.stackIndex >= 1){
+        item.iconPath = new vscode.ThemeIcon("indent")
       }
       item.tooltip = node.entry.spanId
       return item

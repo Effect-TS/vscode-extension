@@ -24,6 +24,7 @@ export interface Session {
   readonly vscode: vscode.DebugSession
   readonly context: Effect.Effect<Array<ContextPair>>
   readonly currentSpanStack: Effect.Effect<Array<SpanStackEntry>>
+  readonly currentFibers: Effect.Effect<Array<FiberEntry>>
 }
 
 export type Message =
@@ -62,6 +63,9 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
               Effect.provideService(VsCodeDebugSession, vscode),
             ),
             currentSpanStack: getCurrentSpanStack.pipe(
+              Effect.provideService(VsCodeDebugSession, vscode),
+            ),
+            currentFibers: getCurrentFibers.pipe(
               Effect.provideService(VsCodeDebugSession, vscode),
             ),
           })),
@@ -140,6 +144,7 @@ export class SpanStackEntry extends Data.Class<{
   readonly name: string
   readonly traceId: string
   readonly spanId: string
+  readonly stackIndex: number
   readonly path?: string
   readonly line: number
   readonly column: number
@@ -170,6 +175,14 @@ const variableString: VariableParser<string> = (ref, path) => {
   }
   return variableParserFailure(path, `expected string got ` + (JSON.stringify(ref)))
 }
+const variableBoolean: VariableParser<boolean> = (ref, path) => {
+  if(ref && ref.type === "boolean"){
+    if(ref.value === "true" || ref.value === "false"){
+      return Effect.succeed(ref.value === "true")
+    }
+  }
+  return variableParserFailure(path, `expected boolean got ` + (JSON.stringify(ref)))
+}
 
 const variableArray = <A>(item: VariableParser<A>): VariableParser<Array<A>> => (ref, path) => Effect.gen(function*(){
   if(!ref) return yield* variableParserFailure(path, "Missing array reference")
@@ -193,6 +206,18 @@ const variableStruct = <S extends Record<string, VariableParser<any>>>(struct: S
   const final = Record.map(struct, (parser, key) => parser(variables.find(_ => _.name === key)!, path.concat([key])))
   return yield* Effect.all(final, { concurrency: "unbounded" }) as Effect.Effect<any, string, VsCodeDebugSession>
 })
+
+const spanParser = variableStruct({
+  _tag: variableString,
+  spanId: variableString,
+  traceId: variableString,
+  name: variableString,
+  stack: variableArray(variableString),
+})
+
+const spanStackParser = variableArray(spanParser)
+
+function getFiberCurrentSpan(currentFiberExpression: string){
 
 // NOTE: Keep this expression as backwards compatible as possible
 // so avoid const, let, arrow functions, etc.
@@ -234,21 +259,11 @@ const currentSpanStackExpression = `(function(fiber){
     current = current.parent && current.parent._tag === "Some" ? current.parent.value : null;
   }
   return spans;
-})(globalThis["effect/FiberCurrent"])`
-
-const spanParser = variableStruct({
-  _tag: variableString,
-  spanId: variableString,
-  traceId: variableString,
-  name: variableString,
-  stack: variableArray(variableString),
-})
-
-const spanStackParser = variableArray(spanParser)
+})(${currentFiberExpression})`
 
 
 const locationRegex = /\((.*):([0-9]+):([0-9]+)\)$/gm
-const getCurrentSpanStack = debugRequest<any>("evaluate", {
+return debugRequest<any>("evaluate", {
   expression: currentSpanStackExpression,
 }).pipe(
   Effect.flatMap(_ => spanStackParser(_, [])),
@@ -260,24 +275,95 @@ const getCurrentSpanStack = debugRequest<any>("evaluate", {
     const stackEntries = stack
     while(stackEntries.length > 0){
       const entry = stackEntries.shift()!
-          let match = false
-      for(const stackLine of entry.stack) {
+      let match = false
+      for(let stackIndex = 0; stackIndex < entry.stack.length; stackIndex++){
+        const stackLine = entry.stack[stackIndex]!
         const locationMatchAll = stackLine.matchAll(locationRegex)
-          for (const [, path, line, column] of locationMatchAll) {
-            match = true
-            spans.push(new SpanStackEntry({
-              ...entry,
-              path,
-              line: parseInt(line, 10) - 1, // vscode uses 0-based line numbers
-              column: parseInt(column, 10) - 1,
-            }))
-          }
+        for (const [, path, line, column] of locationMatchAll) {
+          match = true
+          spans.push(new SpanStackEntry({
+            ...entry,
+            stackIndex,
+            path,
+            line: parseInt(line, 10) - 1, // vscode uses 0-based line numbers
+            column: parseInt(column, 10) - 1,
+          }))
         }
+      }
       if(!match){
-        spans.push(new SpanStackEntry({...entry, line: 0, column: 0}))
+        spans.push(new SpanStackEntry({...entry, stackIndex: -1, line: 0, column: 0}))
       }
     }
 
     return spans
+  })
+)
+}
+
+export const getCurrentSpanStack = getFiberCurrentSpan(`globalThis["effect/FiberCurrent"]`)
+
+// --
+
+export class FiberEntry extends Data.Class<{
+  readonly id: string
+  readonly stack: Array<SpanStackEntry>
+  readonly isCurrent: boolean
+}> {
+}
+
+const currentFibersExpression = `(function(){
+  // do not double inject
+  if(!("effect/debugger/currentFibers" in globalThis)){
+    // create a global array to store the current fibers
+    globalThis["effect/debugger/currentFibers"] = [];
+
+    // replace the effect/FiberCurrent with a getter/setter so we can detect fibers
+    // starting for the first time
+    var _previousFiber = globalThis["effect/FiberCurrent"];
+    var _currentFiber = undefined;
+    Object.defineProperty(globalThis, "effect/FiberCurrent", {
+      get: function() {
+        return _currentFiber;
+      },
+      set: function(value) {
+        if(value && "addObserver" in value && globalThis["effect/debugger/currentFibers"].indexOf(value) === -1){
+          globalThis["effect/debugger/currentFibers"].push(value);
+          value.addObserver(function(){
+            var index = globalThis["effect/debugger/currentFibers"].indexOf(value);
+            if(index > -1){
+              globalThis["effect/debugger/currentFibers"].splice(index, 1);
+            }
+          });
+        }
+        _currentFiber = value;
+      }
+    });
+    // so we ensure we trigger the setter
+    globalThis["effect/FiberCurrent"] = _previousFiber;
+  }
+
+  var fibers = globalThis["effect/debugger/currentFibers"].map(function(fiber){
+    return {
+      id: fiber.id().id.toString(),
+      isCurrent: fiber === globalThis["effect/FiberCurrent"],
+    }
+  });
+  return fibers;
+})()`
+
+const currentFibersParser = variableArray(variableStruct({
+  id: variableString,
+  isCurrent: variableBoolean
+}))
+
+const getCurrentFibers = debugRequest<any>("evaluate", {
+  expression: currentFibersExpression,
+}).pipe(
+  Effect.flatMap(_ => currentFibersParser(_, [])),
+  Effect.catchAll((e) => Effect.succeed([])),
+  Effect.flatMap(fibers => Effect.all(fibers.map((fiber, idx) => Effect.map(getFiberCurrentSpan(`globalThis["effect/debugger/currentFibers"][${idx}]`), stack => new FiberEntry({...fiber, stack})), { concurrency: "unbounded" }) )),
+  Effect.map(_ => {
+    console.log("Current fibers:", _)
+    return _
   })
 )

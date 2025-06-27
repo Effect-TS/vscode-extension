@@ -3,7 +3,7 @@
   "displayName": "Effect Dev Tools",
   "description": "Tools to assist development with the Effect Typescript framework",
   "icon": "resources/icons/effect-dark.png",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "private": true,
   "packageManager": "pnpm@9.0.6",
   "engines": {
@@ -69,6 +69,11 @@
         "command": "effect.revealSpanLocation",
         "title": "Effect Dev Tools: Reveal Span Location",
         "icon": "$(go-to-file)"
+      }, 
+      {
+        "command": "effect.revealFiberCurrentSpan",
+        "title": "Effect Dev Tools: Reveal Fiber Current Span Location",
+        "icon": "$(go-to-file)"
       }
     ],
     "viewsContainers": {
@@ -102,8 +107,13 @@
           "when": "inDebugMode"
         },
         {
-          "id": "effect-current-span-stack",
-          "name": "Effect Current Span Stack",
+          "id": "effect-debug-span-stack",
+          "name": "Effect Span Stack",
+          "when": "inDebugMode"
+        },
+        {
+          "id": "effect-debug-fibers",
+          "name": "Effect Fibers",
           "when": "inDebugMode"
         }
       ]
@@ -144,9 +154,14 @@
         },
         {
           "command": "effect.revealSpanLocation",
-          "when": "view === effect-current-span-stack",
+          "when": "inDebugMode && view === effect-debug-span-stack",
           "group": "inline"
-                }
+        },
+        {
+          "command": "effect.revealFiberCurrentSpan",
+          "when": "inDebugMode && view === effect-debug-fibers",
+          "group": "inline"
+        }
       ]
     }
   },
