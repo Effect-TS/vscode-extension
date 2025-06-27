@@ -292,3 +292,11 @@ export const debugRequest = <A = unknown>(
   Effect.flatMap(VsCodeDebugSession, session =>
     thenable(() => session.customRequest(command, args)),
   )
+
+export const revealFile = (
+  path: string,
+  selection?: vscode.Range,
+) => Effect.flatMap(
+  thenable(() => vscode.workspace.openTextDocument(path)),
+  doc => thenable(() => vscode.window.showTextDocument(doc, { selection}))
+)

@@ -64,6 +64,11 @@
         "command": "effect.copyInfoValue",
         "title": "Copy value",
         "icon": "$(copy)"
+      }, 
+      {
+        "command": "effect.revealSpanLocation",
+        "title": "Effect Dev Tools: Reveal Span Location",
+        "icon": "$(go-to-file)"
       }
     ],
     "viewsContainers": {
@@ -94,6 +99,11 @@
         {
           "id": "effect-context",
           "name": "Effect Context",
+          "when": "inDebugMode"
+        },
+        {
+          "id": "effect-current-span-stack",
+          "name": "Effect Current Span Stack",
           "when": "inDebugMode"
         }
       ]
@@ -131,7 +141,12 @@
         {
           "command": "effect.copyInfoValue",
           "when": "viewItem == info"
-        }
+        },
+        {
+          "command": "effect.revealSpanLocation",
+          "when": "view === effect-current-span-stack",
+          "group": "inline"
+                }
       ]
     }
   },

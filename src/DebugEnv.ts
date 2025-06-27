@@ -5,6 +5,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import * as Array from "effect/Array"
+import * as Record from "effect/Record"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import {
@@ -22,6 +23,7 @@ export interface DebugEnvImpl {
 export interface Session {
   readonly vscode: vscode.DebugSession
   readonly context: Effect.Effect<Array<ContextPair>>
+  readonly currentSpanStack: Effect.Effect<Array<SpanStackEntry>>
 }
 
 export type Message =
@@ -57,6 +59,9 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
           Option.map(Option.fromNullable(session), vscode => ({
             vscode,
             context: getContext.pipe(
+              Effect.provideService(VsCodeDebugSession, vscode),
+            ),
+            currentSpanStack: getCurrentSpanStack.pipe(
               Effect.provideService(VsCodeDebugSession, vscode),
             ),
           })),
@@ -126,4 +131,153 @@ const getContext = debugRequest<any>("evaluate", {
         new ContextPair({ tag: tag.value.replace(/'/g, ""), service }),
     ),
   ),
+)
+
+
+// --
+
+export class SpanStackEntry extends Data.Class<{
+  readonly name: string
+  readonly traceId: string
+  readonly spanId: string
+  readonly path?: string
+  readonly line: number
+  readonly column: number
+}> {
+}
+
+interface VariableReference {
+  readonly name: string
+  readonly value: string
+  readonly type?: string
+  readonly variablesReference: number
+}
+
+interface VariableParser<A> {
+  (reference: VariableReference, path: string[]): Effect.Effect<A, string, VsCodeDebugSession>
+}
+
+const variableParserFailure = (path: string[], message: string) =>
+  Effect.fail(`At ${path.join(".")} ${message}`)
+
+
+const variableString: VariableParser<string> = (ref, path) => {
+  if(ref && ref.type === "string"){
+    if(ref.value.startsWith("'") && ref.value.endsWith("'")){
+      return Effect.succeed(ref.value.slice(1, -1))
+    }
+    return Effect.succeed(ref.value)
+  }
+  return variableParserFailure(path, `expected string got ` + (JSON.stringify(ref)))
+}
+
+const variableArray = <A>(item: VariableParser<A>): VariableParser<Array<A>> => (ref, path) => Effect.gen(function*(){
+  if(!ref) return yield* variableParserFailure(path, "Missing array reference")
+  const { variables } = yield* debugRequest<{ readonly variables: Array<VariableReference> }>("variables", {
+    variablesReference: ref.variablesReference,
+  })
+
+  const lengthRef = variables.find(_ => _.name === "length")
+  if(!lengthRef) return yield* variableParserFailure(path, "Missing length")
+  const length = parseInt(lengthRef.value)
+  if(length === 0) return []
+  return yield* Effect.all(Array.makeBy(length, idx => item(variables.find(_ => _.name === idx.toString())!, path.concat([idx.toString()]))), { concurrency: "unbounded" })
+})
+
+const variableStruct = <S extends Record<string, VariableParser<any>>>(struct: S): VariableParser<{ [K in keyof S]: Effect.Effect.Success<ReturnType<S[K]>> }> => (ref, path) => Effect.gen(function*(){
+  if(!ref) return yield* variableParserFailure(path, "Missing struct reference")
+  const { variables } = yield* debugRequest<{ readonly variables: Array<VariableReference> }>("variables", {
+    variablesReference: ref.variablesReference,
+  })
+
+  const final = Record.map(struct, (parser, key) => parser(variables.find(_ => _.name === key)!, path.concat([key])))
+  return yield* Effect.all(final, { concurrency: "unbounded" }) as Effect.Effect<any, string, VsCodeDebugSession>
+})
+
+// NOTE: Keep this expression as backwards compatible as possible
+// so avoid const, let, arrow functions, etc.
+const currentSpanStackExpression = `(function(fiber){
+  var spans = [];
+  if(!fiber || !fiber.currentSpan) return spans;
+  var globalStores = Object.keys(globalThis).filter(function(key){
+    return key.indexOf("effect/GlobalValue/globalStoreId") > -1
+  }).map(function(key){
+    return globalThis[key];
+  });
+  var current = fiber.currentSpan;
+  while(current) {
+    var stackString = globalStores.reduce(function(acc, store){
+      if(acc || !store) return acc;
+      var spanToTrace = store.get("effect/Tracer/spanToTrace");
+      var stackFn = spanToTrace ? spanToTrace.get(current) : acc;
+      return stackFn ? stackFn() : acc;
+    }, undefined) || "";
+    var stack = stackString.split("\\n")
+    
+    if(current._tag === "Span"){
+      spans.push({
+        _tag: "Span",
+        spanId: current.spanId,
+        traceId: current.traceId,
+        name: current.name,
+        stack: stack
+      })
+    } else if (current._tag === "External"){
+      spans.push({
+        _tag: "External",
+        spanId: current.spanId,
+        traceId: current.traceId,
+        name: "<external span " + current.spanId + ">",
+        stack: stack
+      })
+    }
+    current = current.parent && current.parent._tag === "Some" ? current.parent.value : null;
+  }
+  return spans;
+})(globalThis["effect/FiberCurrent"])`
+
+const spanParser = variableStruct({
+  _tag: variableString,
+  spanId: variableString,
+  traceId: variableString,
+  name: variableString,
+  stack: variableArray(variableString),
+})
+
+const spanStackParser = variableArray(spanParser)
+
+
+const locationRegex = /\((.*):([0-9]+):([0-9]+)\)$/gm
+const getCurrentSpanStack = debugRequest<any>("evaluate", {
+  expression: currentSpanStackExpression,
+}).pipe(
+  Effect.flatMap(_ => spanStackParser(_, [])),
+  Effect.catchAll((e) => Effect.succeed([])),
+  Effect.map(stack => {
+    // now, a single span can have a stack with multiple locations
+    // so we need to duplicate the span for each location
+    const spans: Array<SpanStackEntry> = []
+    const stackEntries = stack
+    while(stackEntries.length > 0){
+      const entry = stackEntries.shift()!
+          let match = false
+      for(const stackLine of entry.stack) {
+        const locationMatchAll = stackLine.matchAll(locationRegex)
+          for (const [, path, line, column] of locationMatchAll) {
+            match = true
+            spans.push(new SpanStackEntry({
+              ...entry,
+              path,
+              line: parseInt(line, 10) - 1, // vscode uses 0-based line numbers
+              column: parseInt(column, 10) - 1,
+            }))
+          }
+        }
+      if(!match){
+        spans.push(new SpanStackEntry({...entry, line: 0, column: 0}))
+      }
+    }
+
+    return spans
+  })
 )
