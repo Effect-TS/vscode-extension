@@ -18,7 +18,9 @@ const MainLive = Layer.mergeAll(
   MetricsProviderLive,
   TreeCommandsLive,
   DebugFibersProviderLive
-).pipe(Layer.provide(logger("Effect Dev Tools")))
+).pipe(
+  Layer.provide(logger("Effect Dev Tools"))
+)
 
 export function activate(context: vscode.ExtensionContext) {
   launch(MainLive).pipe(

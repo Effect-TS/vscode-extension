@@ -5,9 +5,10 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
-import * as Record from "effect/Record"
+import * as Schema from "effect/Schema"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
+import * as DebugChannel from "./DebugChannel"
 import { debugRequest, listenFork, VsCodeContext, VsCodeDebugSession } from "./VsCode"
 
 export interface DebugEnvImpl {
@@ -58,9 +59,11 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
               Effect.provideService(VsCodeDebugSession, vscode)
             ),
             currentSpanStack: getCurrentSpanStack.pipe(
+              Effect.provide(DebugChannel.DebugChannel.Default),
               Effect.provideService(VsCodeDebugSession, vscode)
             ),
             currentFibers: getCurrentFibers.pipe(
+              Effect.provide(DebugChannel.DebugChannel.Default),
               Effect.provideService(VsCodeDebugSession, vscode)
             )
           }))
@@ -143,81 +146,15 @@ export class SpanStackEntry extends Data.Class<{
 }> {
 }
 
-interface VariableReference {
-  readonly name: string
-  readonly value: string
-  readonly type?: string
-  readonly variablesReference: number
-}
-
-interface VariableParser<A> {
-  (reference: VariableReference, path: Array<string>): Effect.Effect<A, string, VsCodeDebugSession>
-}
-
-const variableParserFailure = (path: Array<string>, message: string) => Effect.fail(`At ${path.join(".")} ${message}`)
-
-const variableString: VariableParser<string> = (ref, path) => {
-  if (ref && ref.type === "string") {
-    if (ref.value.startsWith("'") && ref.value.endsWith("'")) {
-      return Effect.succeed(ref.value.slice(1, -1))
-    }
-    return Effect.succeed(ref.value)
-  }
-  return variableParserFailure(path, `expected string got ` + (JSON.stringify(ref)))
-}
-const variableBoolean: VariableParser<boolean> = (ref, path) => {
-  if (ref && ref.type === "boolean") {
-    if (ref.value === "true" || ref.value === "false") {
-      return Effect.succeed(ref.value === "true")
-    }
-  }
-  return variableParserFailure(path, `expected boolean got ` + (JSON.stringify(ref)))
-}
-
-const variableArray = <A>(item: VariableParser<A>): VariableParser<Array<A>> => (ref, path) =>
-  Effect.gen(function*() {
-    if (!ref) return yield* variableParserFailure(path, "Missing array reference")
-    const { variables } = yield* debugRequest<{ readonly variables: Array<VariableReference> }>("variables", {
-      variablesReference: ref.variablesReference
-    })
-
-    const lengthRef = variables.find((_) => _.name === "length")
-    if (!lengthRef) return yield* variableParserFailure(path, "Missing length")
-    const length = parseInt(lengthRef.value)
-    if (length === 0) return []
-    return yield* Effect.all(
-      Array.makeBy(length, (idx) =>
-        item(variables.find((_) => _.name === idx.toString())!, path.concat([idx.toString()]))),
-      { concurrency: "unbounded" }
-    )
-  })
-
-const variableStruct = <S extends Record<string, VariableParser<any>>>(
-  struct: S
-): VariableParser<{ [K in keyof S]: Effect.Effect.Success<ReturnType<S[K]>> }> =>
-(ref, path) =>
-  Effect.gen(function*() {
-    if (!ref) return yield* variableParserFailure(path, "Missing struct reference")
-    const { variables } = yield* debugRequest<{ readonly variables: Array<VariableReference> }>("variables", {
-      variablesReference: ref.variablesReference
-    })
-
-    const final = Record.map(
-      struct,
-      (parser, key) => parser(variables.find((_) => _.name === key)!, path.concat([key]))
-    )
-    return yield* Effect.all(final, { concurrency: "unbounded" }) as Effect.Effect<any, string, VsCodeDebugSession>
-  })
-
-const spanParser = variableStruct({
-  _tag: variableString,
-  spanId: variableString,
-  traceId: variableString,
-  name: variableString,
-  stack: variableArray(variableString)
+const SpanSchema = Schema.Struct({
+  _tag: Schema.Literal("Span"),
+  spanId: Schema.String,
+  traceId: Schema.String,
+  name: Schema.String,
+  stack: Schema.Array(Schema.String)
 })
 
-const spanStackParser = variableArray(spanParser)
+const SpanStackSchema = Schema.Array(SpanSchema)
 
 function getFiberCurrentSpan(currentFiberExpression: string) {
   // NOTE: Keep this expression as backwards compatible as possible
@@ -263,16 +200,18 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
 })(${currentFiberExpression})`
 
   const locationRegex = /\((.*):([0-9]+):([0-9]+)\)$/gm
-  return debugRequest<any>("evaluate", {
-    expression: currentSpanStackExpression
+
+  return Effect.gen(function*() {
+    const debugChannel = yield* DebugChannel.DebugChannel
+    const result = yield* debugChannel.evaluate(currentSpanStackExpression)
+    return yield* debugChannel.getValue(result, SpanStackSchema)
   }).pipe(
-    Effect.flatMap((_) => spanStackParser(_, [])),
     Effect.catchAll(() => Effect.succeed([])),
     Effect.map((stack) => {
       // now, a single span can have a stack with multiple locations
       // so we need to duplicate the span for each location
       const spans: Array<SpanStackEntry> = []
-      const stackEntries = stack
+      const stackEntries = [...stack]
       while (stackEntries.length > 0) {
         const entry = stackEntries.shift()!
         let match = false
@@ -353,15 +292,16 @@ const currentFibersExpression = `(function(){
   return fibers;
 })()`
 
-const currentFibersParser = variableArray(variableStruct({
-  id: variableString,
-  isCurrent: variableBoolean
+const CurrentFiberSchema = Schema.Array(Schema.Struct({
+  id: Schema.String,
+  isCurrent: Schema.Boolean
 }))
 
-const getCurrentFibers = debugRequest<any>("evaluate", {
-  expression: currentFibersExpression
+const getCurrentFibers = Effect.gen(function*() {
+  const debugChannel = yield* DebugChannel.DebugChannel
+  const result = yield* debugChannel.evaluate(currentFibersExpression)
+  return yield* debugChannel.getValue(result, CurrentFiberSchema)
 }).pipe(
-  Effect.flatMap((_) => currentFibersParser(_, [])),
   Effect.catchAll(() => Effect.succeed([])),
   Effect.flatMap((fibers) =>
     Effect.all(

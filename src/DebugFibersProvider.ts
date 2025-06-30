@@ -44,22 +44,24 @@ export const DebugFibersProviderLive = treeDataProvider<TreeNode>("effect-debug-
       })
 
       yield* Stream.fromPubSub(debug.messages).pipe(
-        Stream.mapEffect((event) => {
-          if (event.type !== "event") return Effect.void
+        Stream.mapEffect((event) =>
+          Effect.gen(function*() {
+            if (event.type !== "event") return
 
-          switch (event.event) {
-            case "stopped": {
-              return Effect.delay(capture, 500)
+            switch (event.event) {
+              case "stopped": {
+                return yield* Effect.delay(capture, 500)
+              }
+              case "continued": {
+                nodes = []
+                return yield* refresh(Option.none())
+              }
+              default: {
+                return
+              }
             }
-            case "continued": {
-              nodes = []
-              return refresh(Option.none())
-            }
-            default: {
-              return Effect.void
-            }
-          }
-        }),
+          })
+        ),
         Stream.runDrain,
         Effect.forkScoped
       )

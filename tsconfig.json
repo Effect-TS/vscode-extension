@@ -3,13 +3,26 @@
     "module": "NodeNext",
     "target": "ES2022",
     "noEmit": true,
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "sourceMap": true,
     "skipLibCheck": true,
     "rootDir": "src",
     "baseUrl": ".",
     "strict": true,
-    "plugins": [{ "name": "@effect/language-service" }]
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "namespaceImportPackages": [
+          "effect",
+          "@effect/platform",
+          "@effect/platform-node"
+        ]
+      }
+    ]
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }
