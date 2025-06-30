@@ -1,14 +1,15 @@
-import * as Domain from "@effect/experimental/DevTools/Domain"
+import type * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
-import { Client, Clients } from "./Clients"
-import { TreeDataProvider, registerCommand, treeDataProvider } from "./VsCode"
+import type { Client } from "./Clients"
+import { Clients } from "./Clients"
 import * as DurationUtils from "./utils/Duration"
-import * as Inspectable from "effect/Inspectable"
+import { registerCommand, TreeDataProvider, treeDataProvider } from "./VsCode"
 
 class SpanNode {
   readonly _tag = "SpanNode"
@@ -40,7 +41,7 @@ class SpanNode {
 
     if (this.span.status._tag === "Ended") {
       return Option.some(
-        Duration.nanos(this.span.status.endTime - this.span.status.startTime),
+        Duration.nanos(this.span.status.endTime - this.span.status.startTime)
       )
     }
     return Option.none()
@@ -63,7 +64,7 @@ export class InfoNode {
   readonly _tag = "InfoNode"
   constructor(
     readonly label: string,
-    readonly description: string,
+    readonly description: string
   ) {}
 }
 
@@ -79,7 +80,7 @@ class SpanEventNode {
   readonly _tag = "SpanEventNode"
   constructor(
     readonly span: Domain.ParentSpan,
-    readonly event: Domain.SpanEvent,
+    readonly event: Domain.SpanEvent
   ) {}
 
   get hasAttributes() {
@@ -91,7 +92,7 @@ class SpanEventNode {
       return Option.none()
     }
     return Option.some(
-      Duration.nanos(this.event.startTime - this.span.status.startTime),
+      Duration.nanos(this.event.startTime - this.span.status.startTime)
     )
   }
 }
@@ -104,8 +105,8 @@ class ChildrenNode {
 type TreeNode = SpanNode | InfoNode | ChildrenNode | EventsNode | SpanEventNode
 
 export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
-  refresh =>
-    Effect.gen(function* () {
+  (refresh) =>
+    Effect.gen(function*() {
       const clients = yield* Clients
       const rootNodes: Array<SpanNode> = []
       const nodes = new Map<string, SpanNode>()
@@ -119,7 +120,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
 
       const handleClient = (client: Client) =>
         client.spans.take.pipe(
-          Effect.flatMap(data => {
+          Effect.flatMap((data) => {
             switch (data._tag) {
               case "Span": {
                 return registerSpan(data)
@@ -130,25 +131,24 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
             }
           }),
           Effect.forever,
-          Effect.ignore,
+          Effect.ignore
         )
 
       yield* clients.clients.changes.pipe(
         Stream.flatMap(
           Effect.forEach(handleClient, { concurrency: "unbounded" }),
-          { switch: true },
+          { switch: true }
         ),
         Stream.runDrain,
-        Effect.forkScoped,
+        Effect.forkScoped
       )
 
       function addNode(
-        span: Domain.ParentSpan,
+        span: Domain.ParentSpan
       ): [SpanNode, SpanNode | undefined, boolean] {
         let node = nodes.get(span.spanId)
         let parent: SpanNode | undefined
-        const isUpgrade =
-          span._tag === "Span" && node?.span._tag === "ExternalSpan"
+        const isUpgrade = span._tag === "Span" && node?.span._tag === "ExternalSpan"
 
         if (node === undefined || isUpgrade) {
           if (node?.isRoot) {
@@ -183,7 +183,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
           if (parent !== undefined && refreshRoot) {
             return Effect.zipRight(
               refresh(Option.some(parent)),
-              refresh(Option.none()),
+              refresh(Option.none())
             )
           } else if (
             parent !== undefined &&
@@ -195,7 +195,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         })
 
       const registerSpanEvent = (
-        event: Domain.SpanEvent,
+        event: Domain.SpanEvent
       ): Effect.Effect<void> =>
         Effect.suspend(() => {
           const span = nodes.get(event.spanId)
@@ -209,24 +209,24 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () => Effect.succeedSome(rootNodes),
-          onSome: node => Effect.succeed(children(nodes, node)),
+          onSome: (node) => Effect.succeed(children(nodes, node))
         }),
-        treeItem: node => Effect.succeed(treeItem(node)),
+        treeItem: (node) => Effect.succeed(treeItem(node))
       })
-    }),
+    })
 ).pipe(Layer.provide(Clients.Default))
 
 // === helpers ===
 
 const children = (
   nodes: Map<string, TreeNode>,
-  node: TreeNode,
+  node: TreeNode
 ): Option.Option<Array<TreeNode>> => {
   switch (node._tag) {
     case "SpanNode": {
       const nodes: Array<TreeNode> = [
         new InfoNode("Trace ID", node.span.traceId),
-        new InfoNode("Span ID", node.span.spanId),
+        new InfoNode("Span ID", node.span.spanId)
       ]
 
       node.attributes.forEach((value, key) => {
@@ -247,7 +247,7 @@ const children = (
       return Option.none()
     }
     case "ChildrenNode": {
-      return Option.some(node.childrenSpanIds.map(id => nodes.get(id)!))
+      return Option.some(node.childrenSpanIds.map((id) => nodes.get(id)!))
     }
     case "EventsNode": {
       return Option.some(node.events)
@@ -259,9 +259,8 @@ const children = (
       }
       return Option.some(
         attributes.map(
-          ([key, value]) =>
-            new InfoNode(key, Inspectable.toStringUnknown(value)),
-        ),
+          ([key, value]) => new InfoNode(key, Inspectable.toStringUnknown(value))
+        )
       )
     }
   }
@@ -272,18 +271,17 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
     case "SpanNode": {
       const item = new vscode.TreeItem(
         node.label,
-        vscode.TreeItemCollapsibleState.Collapsed,
+        vscode.TreeItemCollapsibleState.Collapsed
       )
       const duration = node.duration
       item.id = node.span.spanId
-      item.description =
-        duration._tag === "Some" ? DurationUtils.format(duration.value) : ""
+      item.description = duration._tag === "Some" ? DurationUtils.format(duration.value) : ""
       return item
     }
     case "InfoNode": {
       const item = new vscode.TreeItem(
         node.label,
-        vscode.TreeItemCollapsibleState.None,
+        vscode.TreeItemCollapsibleState.None
       )
       item.description = node.description
       item.tooltip = node.description
@@ -293,13 +291,13 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
     case "ChildrenNode": {
       return new vscode.TreeItem(
         "Child spans",
-        vscode.TreeItemCollapsibleState.Expanded,
+        vscode.TreeItemCollapsibleState.Expanded
       )
     }
     case "EventsNode": {
       return new vscode.TreeItem(
         `Events (${node.events.length})`,
-        vscode.TreeItemCollapsibleState.Collapsed,
+        vscode.TreeItemCollapsibleState.Collapsed
       )
     }
     case "SpanEventNode": {
@@ -307,7 +305,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         node.event.name,
         node.hasAttributes
           ? vscode.TreeItemCollapsibleState.Collapsed
-          : vscode.TreeItemCollapsibleState.None,
+          : vscode.TreeItemCollapsibleState.None
       )
       const duration = node.duration
       if (duration._tag === "Some") {

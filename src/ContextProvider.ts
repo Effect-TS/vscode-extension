@@ -1,16 +1,12 @@
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Array from "effect/Array"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import * as Debug from "./DebugEnv"
-import {
-  TreeDataProvider,
-  VsCodeDebugSession,
-  treeDataProvider,
-} from "./VsCode"
+import { TreeDataProvider, treeDataProvider, VsCodeDebugSession } from "./VsCode"
 
 class TagNode {
   readonly _tag = "TagNode"
@@ -25,25 +21,25 @@ class VariableNode {
 type TreeNode = TagNode | VariableNode
 
 export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
-  refresh =>
-    Effect.gen(function* () {
+  (refresh) =>
+    Effect.gen(function*() {
       const debug = yield* Debug.DebugEnv
       let nodes: Array<TagNode> = []
 
-      const capture = Effect.gen(function* (_) {
+      const capture = Effect.gen(function*(_) {
         const sessionOption = yield* _(SubscriptionRef.get(debug.session))
         if (Option.isNone(sessionOption)) {
           nodes = []
         } else {
           const session = sessionOption.value
           const pairs = yield* _(session.context)
-          nodes = pairs.map(_ => new TagNode(_))
+          nodes = pairs.map((_) => new TagNode(_))
         }
         yield* _(refresh(Option.none()))
       })
 
       yield* Stream.fromPubSub(debug.messages).pipe(
-        Stream.mapEffect(event => {
+        Stream.mapEffect((event) => {
           if (event.type !== "event") return Effect.void
 
           switch (event.event) {
@@ -60,30 +56,30 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
           }
         }),
         Stream.runDrain,
-        Effect.forkScoped,
+        Effect.forkScoped
       )
 
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () => Effect.succeedSome(nodes),
-          onSome: node =>
+          onSome: (node) =>
             SubscriptionRef.get(debug.session).pipe(
               Effect.flatMap(
                 Option.match({
                   onNone: () => Effect.succeedNone,
-                  onSome: session =>
+                  onSome: (session) =>
                     Effect.provideService(
                       children(node),
                       VsCodeDebugSession,
-                      session.vscode,
-                    ),
-                }),
-              ),
-            ),
+                      session.vscode
+                    )
+                })
+              )
+            )
         }),
-        treeItem: node => Effect.succeed(treeItem(node)),
+        treeItem: (node) => Effect.succeed(treeItem(node))
       })
-    }),
+    })
 ).pipe(Layer.provide(Debug.DebugEnv.Live))
 
 // === helpers ===
@@ -92,14 +88,14 @@ const children = (node: TreeNode) => {
   switch (node._tag) {
     case "TagNode": {
       return node.pair.service.children.pipe(
-        Effect.map(Array.map(_ => new VariableNode(_))),
-        Effect.asSome,
+        Effect.map(Array.map((_) => new VariableNode(_))),
+        Effect.asSome
       )
     }
     case "VariableNode": {
       return node.variable.children.pipe(
-        Effect.map(Array.map(_ => new VariableNode(_))),
-        Effect.asSome,
+        Effect.map(Array.map((_) => new VariableNode(_))),
+        Effect.asSome
       )
     }
   }
@@ -110,7 +106,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
     case "TagNode": {
       const item = new vscode.TreeItem(
         node.pair.tag + ":",
-        vscode.TreeItemCollapsibleState.Collapsed,
+        vscode.TreeItemCollapsibleState.Collapsed
       )
       item.description = node.pair.service.value
       item.tooltip = node.pair.service.value
@@ -121,7 +117,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         node.variable.name + ":",
         node.variable.variablesReference === 0
           ? vscode.TreeItemCollapsibleState.None
-          : vscode.TreeItemCollapsibleState.Collapsed,
+          : vscode.TreeItemCollapsibleState.Collapsed
       )
       item.description = node.variable.value
       item.tooltip = node.variable.value
