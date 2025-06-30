@@ -361,9 +361,5 @@ const getCurrentFibers = debugRequest<any>("evaluate", {
 }).pipe(
   Effect.flatMap(_ => currentFibersParser(_, [])),
   Effect.catchAll((e) => Effect.succeed([])),
-  Effect.flatMap(fibers => Effect.all(fibers.map((fiber, idx) => Effect.map(getFiberCurrentSpan(`globalThis["effect/debugger/currentFibers"][${idx}]`), stack => new FiberEntry({...fiber, stack})), { concurrency: "unbounded" }) )),
-  Effect.map(_ => {
-    console.log("Current fibers:", _)
-    return _
-  })
+  Effect.flatMap(fibers => Effect.all(fibers.map((fiber, idx) => Effect.map(getFiberCurrentSpan(`globalThis["effect/debugger/currentFibers"][${idx}]`), stack => new FiberEntry({...fiber, stack})), { concurrency: "unbounded" }) ))
 )
