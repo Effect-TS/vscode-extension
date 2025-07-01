@@ -5,8 +5,9 @@ import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
+import type * as DebugChannel from "./DebugChannel"
 import * as Debug from "./DebugEnv"
-import { TreeDataProvider, treeDataProvider, VsCodeDebugSession } from "./VsCode"
+import { TreeDataProvider, treeDataProvider } from "./VsCode"
 
 class TagNode {
   readonly _tag = "TagNode"
@@ -15,7 +16,7 @@ class TagNode {
 
 class VariableNode {
   readonly _tag = "VariableNode"
-  constructor(readonly variable: Debug.Variable) {}
+  constructor(readonly variable: DebugChannel.VariableReference) {}
 }
 
 type TreeNode = TagNode | VariableNode
@@ -67,14 +68,10 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
               Effect.flatMap(
                 Option.match({
                   onNone: () => Effect.succeedNone,
-                  onSome: (session) =>
-                    Effect.provideService(
-                      children(node),
-                      VsCodeDebugSession,
-                      session.vscode
-                    )
+                  onSome: () => children(node)
                 })
-              )
+              ),
+              Effect.orElse(() => Effect.succeedNone)
             )
         }),
         treeItem: (node) => Effect.succeed(treeItem(node))
@@ -115,9 +112,9 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
     case "VariableNode": {
       const item = new vscode.TreeItem(
         node.variable.name + ":",
-        node.variable.variablesReference === 0
-          ? vscode.TreeItemCollapsibleState.None
-          : vscode.TreeItemCollapsibleState.Collapsed
+        node.variable.isContainer
+          ? vscode.TreeItemCollapsibleState.Collapsed
+          : vscode.TreeItemCollapsibleState.None
       )
       item.description = node.variable.value
       item.tooltip = node.variable.value

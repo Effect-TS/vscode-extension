@@ -9,7 +9,7 @@ import * as Schema from "effect/Schema"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import * as DebugChannel from "./DebugChannel"
-import { debugRequest, listenFork, VsCodeContext, VsCodeDebugSession } from "./VsCode"
+import { listenFork, VsCodeContext } from "./VsCode"
 
 export interface DebugEnvImpl {
   readonly session: SubscriptionRef.SubscriptionRef<Option.Option<Session>>
@@ -50,22 +50,29 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
       const sessionRef = yield* SubscriptionRef.make(Option.none<Session>())
       const messages = yield* PubSub.sliding<Message>(100)
 
-      yield* listenFork(vscode.debug.onDidChangeActiveDebugSession, (session) =>
-        SubscriptionRef.set(
-          sessionRef,
-          Option.map(Option.fromNullable(session), (vscode) => ({
-            vscode,
-            context: getContext.pipe(
-              Effect.provideService(VsCodeDebugSession, vscode)
-            ),
-            currentSpanStack: getCurrentSpanStack.pipe(
-              Effect.provideService(VsCodeDebugSession, vscode)
-            ),
-            currentFibers: getCurrentFibers.pipe(
-              Effect.provideService(VsCodeDebugSession, vscode)
-            )
-          }))
-        ))
+      yield* listenFork(
+        vscode.debug.onDidChangeActiveDebugSession,
+        Effect.fn(function*(session) {
+          if (!session) return yield* SubscriptionRef.set(sessionRef, Option.none())
+          const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(session)
+
+          return yield* SubscriptionRef.set(
+            sessionRef,
+            Option.some({
+              vscode: session,
+              context: getContext.pipe(
+                Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+              ),
+              currentSpanStack: getCurrentSpanStack.pipe(
+                Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+              ),
+              currentFibers: getCurrentFibers.pipe(
+                Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+              )
+            })
+          )
+        })
+      )
 
       const context = yield* VsCodeContext
       context.subscriptions.push(
@@ -87,26 +94,9 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
 
 // --
 
-export class Variable extends Data.Class<{
-  readonly name: string
-  readonly value: string
-  readonly type: string
-  readonly variablesReference: number
-}> {
-  static request(variablesReference: number) {
-    return debugRequest<{ readonly variables: Array<any> }>("variables", {
-      variablesReference
-    }).pipe(Effect.map((_) => _.variables.map((_) => new Variable(_))))
-  }
-
-  readonly children = Effect.runSync(
-    Effect.cached(Variable.request(this.variablesReference))
-  )
-}
-
 export class ContextPair extends Data.TaggedClass("ContextPair")<{
   readonly tag: string
-  readonly service: Variable
+  readonly service: DebugChannel.VariableReference
 }> {}
 
 const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.locals.values() ?? []]
@@ -114,19 +104,16 @@ const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.loc
     .filter(_ => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
     .flatMap(context => [...context.unsafeMap.entries()]);`
 
-const getContext = debugRequest<any>("evaluate", {
-  expression: contextExpression
+const ContextSchema = Schema.Array(Schema.Tuple(Schema.String, DebugChannel.VariableReference.Schema))
+
+const getContext = Effect.gen(function*() {
+  const result = yield* DebugChannel.DebugChannel.evaluate(contextExpression)
+  return yield* result.parse(ContextSchema)
 }).pipe(
-  Effect.flatMap((result) => Variable.request(result.variablesReference)),
-  // get tag/service pairs
-  Effect.flatMap((tags) =>
-    Effect.forEach(tags.slice(0, -3), (_) => _.children, {
-      concurrency: "inherit"
-    })
-  ),
+  Effect.orElseSucceed(() => []),
   Effect.map(
     Array.map(
-      ([tag, service]) => new ContextPair({ tag: tag.value.replace(/'/g, ""), service })
+      ([tag, service]) => new ContextPair({ tag, service })
     )
   )
 )
@@ -221,9 +208,8 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
 })(${currentFiberExpression})`
 
   return Effect.gen(function*() {
-    const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(yield* VsCodeDebugSession)
-    const result = yield* debugChannel.evaluate(currentSpanStackExpression)
-    return yield* result.value(SpanStackSchema)
+    const result = yield* DebugChannel.DebugChannel.evaluate(currentSpanStackExpression)
+    return yield* result.parse(SpanStackSchema)
   }).pipe(
     Effect.catchAll(() => Effect.succeed([])),
     Effect.map((stack) => {
@@ -330,11 +316,10 @@ const CurrentFiberSchema = Schema.Array(Schema.Struct({
 }))
 
 const getCurrentFibers = Effect.gen(function*() {
-  const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(yield* VsCodeDebugSession)
-  const result = yield* debugChannel.evaluate(currentFibersExpression)
-  return yield* result.value(CurrentFiberSchema)
+  const result = yield* DebugChannel.DebugChannel.evaluate(currentFibersExpression)
+  return yield* result.parse(CurrentFiberSchema)
 }).pipe(
-  Effect.catchAll(() => Effect.succeed([])),
+  Effect.orElseSucceed(() => []),
   Effect.flatMap((fibers) =>
     Effect.all(
       fibers.map((fiber, idx) =>

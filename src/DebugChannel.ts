@@ -1,10 +1,10 @@
 import * as Array from "effect/Array"
-import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import * as Schema from "effect/Schema"
-import type * as SchemaAST from "effect/SchemaAST"
+import * as SchemaAST from "effect/SchemaAST"
 import * as VsCode from "./VsCode"
 
 export class VariableExtractError extends Data.TaggedError("VariableExtractError")<{
@@ -12,13 +12,18 @@ export class VariableExtractError extends Data.TaggedError("VariableExtractError
 }> {}
 
 export class VariableReference extends Data.TaggedClass("VariableReference")<{
+  readonly name?: string
+  readonly value?: string
+  readonly isContainer: boolean
   readonly children: Effect.Effect<Array<VariableReference>, VariableExtractError, never>
-  readonly value: <A, I, R>(
+  readonly parse: <A, I, R>(
     schema: Schema.Schema<A, I, R>
   ) => Effect.Effect<A, VariableExtractError | ParseResult.ParseError, R>
-}> {}
+}> {
+  static Schema = Schema.declare((_) => _ instanceof VariableReference, { identifier: "VariableReference" })
+}
 
-export class DebugChannel extends Context.Tag("DebugChannel")<DebugChannel, {
+export class DebugChannel extends Effect.Tag("DebugChannel")<DebugChannel, {
   evaluate: (
     expression: string
   ) => Effect.Effect<VariableReference, VariableExtractError | ParseResult.ParseError, never>
@@ -52,6 +57,15 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
     ): Effect.Effect<any, VariableExtractError | ParseResult.ParseError, never> =>
       Effect.gen(function*() {
         switch (ast._tag) {
+          case "Declaration": {
+            const identifier = SchemaAST.getIdentifierAnnotation(ast)
+            if (Option.isSome(identifier) && identifier.value === "VariableReference") {
+              return makeVariableReference(dapVariableReference)
+            }
+            return yield* new VariableExtractError({
+              message: `Unsupported schema declaration type: ${ast._tag}`
+            })
+          }
           case "Union": {
             return yield* Effect.firstSuccessOf(
               ast.types.map((typeAST) => extractValue(dapVariableReference, typeAST))
@@ -143,7 +157,10 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
           Effect.map((_) => _.variables),
           Effect.map(Array.map(makeVariableReference))
         ),
-        value: (schema) => extractValue(dapVariableReference, schema.ast).pipe(Effect.flatMap(Schema.decode(schema)))
+        parse: (schema) => extractValue(dapVariableReference, schema.ast).pipe(Effect.flatMap(Schema.decode(schema))),
+        name: dapVariableReference.name,
+        value: dapVariableReference.value,
+        isContainer: dapVariableReference.variablesReference !== 0
       })
     }
 
