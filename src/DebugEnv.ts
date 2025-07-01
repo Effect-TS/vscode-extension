@@ -59,11 +59,9 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
               Effect.provideService(VsCodeDebugSession, vscode)
             ),
             currentSpanStack: getCurrentSpanStack.pipe(
-              Effect.provide(DebugChannel.DebugChannel.Default),
               Effect.provideService(VsCodeDebugSession, vscode)
             ),
             currentFibers: getCurrentFibers.pipe(
-              Effect.provide(DebugChannel.DebugChannel.Default),
               Effect.provideService(VsCodeDebugSession, vscode)
             )
           }))
@@ -146,15 +144,48 @@ export class SpanStackEntry extends Data.Class<{
 }> {
 }
 
+const StackLocation = Schema.NonEmptyString.pipe(Schema.compose(
+  Schema.TemplateLiteralParser(
+    Schema.NonEmptyString,
+    Schema.Literal(" ("),
+    Schema.NonEmptyString,
+    Schema.Literal(":"),
+    Schema.NumberFromString.pipe(Schema.compose(Schema.Int), Schema.positive()),
+    Schema.Literal(":"),
+    Schema.NumberFromString.pipe(Schema.compose(Schema.Int), Schema.positive()),
+    Schema.Literal(")")
+  ).pipe(
+    Schema.transform(
+      Schema.Struct({
+        name: Schema.NonEmptyString,
+        path: Schema.NonEmptyString,
+        line: Schema.Int,
+        column: Schema.Int
+      }),
+      {
+        strict: true,
+        decode: ([name, _, path, __, line, ___, column]) => ({ path, line: line - 1, column: column - 1, name }),
+        encode: ({ column, line, name, path }) => [name, " (", path, ":", line + 1, ":", column + 1, ")"] as const
+      }
+    )
+  )
+))
+
 const SpanSchema = Schema.Struct({
   _tag: Schema.Literal("Span"),
   spanId: Schema.String,
   traceId: Schema.String,
   name: Schema.String,
-  stack: Schema.Array(Schema.String)
+  stack: Schema.Array(StackLocation)
 })
 
-const SpanStackSchema = Schema.Array(SpanSchema)
+const ExternalSpanSchema = Schema.Struct({
+  _tag: Schema.Literal("External"),
+  spanId: Schema.String,
+  traceId: Schema.String
+})
+
+const SpanStackSchema = Schema.Array(Schema.Union(SpanSchema, ExternalSpanSchema))
 
 function getFiberCurrentSpan(currentFiberExpression: string) {
   // NOTE: Keep this expression as backwards compatible as possible
@@ -177,34 +208,22 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
     }, undefined) || "";
     var stack = stackString.split("\\n")
     
-    if(current._tag === "Span"){
-      spans.push({
-        _tag: "Span",
-        spanId: current.spanId,
-        traceId: current.traceId,
-        name: current.name,
-        stack: stack
-      })
-    } else if (current._tag === "External"){
-      spans.push({
-        _tag: "External",
-        spanId: current.spanId,
-        traceId: current.traceId,
-        name: "<external span " + current.spanId + ">",
-        stack: stack
-      })
-    }
+    spans.push({
+      _tag: current._tag,
+      spanId: current.spanId,
+      traceId: current.traceId,
+      name: current.name,
+      stack: stack
+    })
     current = current.parent && current.parent._tag === "Some" ? current.parent.value : null;
   }
   return spans;
 })(${currentFiberExpression})`
 
-  const locationRegex = /\((.*):([0-9]+):([0-9]+)\)$/gm
-
   return Effect.gen(function*() {
-    const debugChannel = yield* DebugChannel.DebugChannel
+    const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(yield* VsCodeDebugSession)
     const result = yield* debugChannel.evaluate(currentSpanStackExpression)
-    return yield* debugChannel.getValue(result, SpanStackSchema)
+    return yield* result.value(SpanStackSchema)
   }).pipe(
     Effect.catchAll(() => Effect.succeed([])),
     Effect.map((stack) => {
@@ -214,25 +233,38 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
       const stackEntries = [...stack]
       while (stackEntries.length > 0) {
         const entry = stackEntries.shift()!
-        let match = false
-        for (let stackIndex = 0; stackIndex < entry.stack.length; stackIndex++) {
-          const stackLine = entry.stack[stackIndex]!
-          const locationMatchAll = stackLine.matchAll(locationRegex)
-          for (const [, path, line, column] of locationMatchAll) {
-            match = true
+        switch (entry._tag) {
+          case "Span": {
+            let match = false
+            for (let stackIndex = 0; stackIndex < entry.stack.length; stackIndex++) {
+              const stackLine = entry.stack[stackIndex]!
+              match = true
+              spans.push(
+                new SpanStackEntry({
+                  ...stackLine,
+                  ...entry,
+                  stackIndex
+                })
+              )
+            }
+
+            if (!match) {
+              spans.push(new SpanStackEntry({ ...entry, stackIndex: -1, line: 0, column: 0 }))
+            }
+            break
+          }
+          case "External": {
             spans.push(
               new SpanStackEntry({
                 ...entry,
-                stackIndex,
-                path,
-                line: parseInt(line, 10) - 1, // vscode uses 0-based line numbers
-                column: parseInt(column, 10) - 1
+                name: "<external span " + entry.spanId + ">",
+                stackIndex: -1,
+                line: 0,
+                column: 0
               })
             )
+            break
           }
-        }
-        if (!match) {
-          spans.push(new SpanStackEntry({ ...entry, stackIndex: -1, line: 0, column: 0 }))
         }
       }
 
@@ -298,9 +330,9 @@ const CurrentFiberSchema = Schema.Array(Schema.Struct({
 }))
 
 const getCurrentFibers = Effect.gen(function*() {
-  const debugChannel = yield* DebugChannel.DebugChannel
+  const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(yield* VsCodeDebugSession)
   const result = yield* debugChannel.evaluate(currentFibersExpression)
-  return yield* debugChannel.getValue(result, CurrentFiberSchema)
+  return yield* result.value(CurrentFiberSchema)
 }).pipe(
   Effect.catchAll(() => Effect.succeed([])),
   Effect.flatMap((fibers) =>
