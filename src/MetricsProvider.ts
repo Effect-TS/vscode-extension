@@ -1,7 +1,6 @@
 import type * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Schedule from "effect/Schedule"
@@ -69,7 +68,11 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
         Stream.tap((_) => (Option.isSome(_) ? reset : Effect.void)),
         Stream.runForEach((_) =>
           Option.match(_, {
-            onNone: () => Effect.void,
+            onNone: () =>
+              ScopedRef.set(
+                currentClient,
+                Effect.void
+              ),
             onSome: (client) =>
               ScopedRef.set(
                 currentClient,
@@ -124,7 +127,7 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
         treeItem: (node) => Effect.succeed(treeItem(node))
       })
     })
-).pipe(Layer.provide(Clients.Default))
+)
 
 // === helpers ===
 

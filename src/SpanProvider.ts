@@ -2,7 +2,6 @@ import type * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Inspectable from "effect/Inspectable"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
@@ -214,7 +213,7 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
         treeItem: (node) => Effect.succeed(treeItem(node))
       })
     })
-).pipe(Layer.provide(Clients.Default))
+)
 
 // === helpers ===
 

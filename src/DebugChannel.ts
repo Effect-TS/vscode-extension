@@ -7,7 +7,7 @@ import * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
 import * as VsCode from "./VsCode"
 
-export class VariableExtractError extends Data.TaggedError("VariableExtractError")<{
+export class DebugChannelError extends Data.TaggedError("VariableExtractError")<{
   readonly message: string
 }> {}
 
@@ -15,18 +15,18 @@ export class VariableReference extends Data.TaggedClass("VariableReference")<{
   readonly name?: string
   readonly value?: string
   readonly isContainer: boolean
-  readonly children: Effect.Effect<Array<VariableReference>, VariableExtractError, never>
+  readonly children: Effect.Effect<Array<VariableReference>, DebugChannelError, never>
   readonly parse: <A, I, R>(
     schema: Schema.Schema<A, I, R>
-  ) => Effect.Effect<A, VariableExtractError | ParseResult.ParseError, R>
+  ) => Effect.Effect<A, DebugChannelError | ParseResult.ParseError, R>
 }> {
-  static Schema = Schema.declare((_) => _ instanceof VariableReference, { identifier: "VariableReference" })
+  static SchemaFromSelf = Schema.declare((_) => _ instanceof VariableReference, { identifier: "VariableReference" })
 }
 
-export class DebugChannel extends Effect.Tag("DebugChannel")<DebugChannel, {
+export class DebugChannel extends Effect.Tag("effect-vscode/DebugChannel")<DebugChannel, {
   evaluate: (
     expression: string
-  ) => Effect.Effect<VariableReference, VariableExtractError | ParseResult.ParseError, never>
+  ) => Effect.Effect<VariableReference, DebugChannelError, never>
 }>() {}
 
 interface DapVariableReference {
@@ -49,12 +49,13 @@ interface DapVariablesResponse {
 export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["Type"]) =>
   Effect.gen(function*() {
     const debugRequest = <A = never>(command: string, args?: any) =>
-      VsCode.thenable<A>(() => debugSession.customRequest(command, args))
+      VsCode.thenableCatch<A, DebugChannelError>(() => debugSession.customRequest(command, args), (error) =>
+        new DebugChannelError({ message: String(error) }))
 
     const extractValue = (
       dapVariableReference: DapVariableReference,
       ast: SchemaAST.AST
-    ): Effect.Effect<any, VariableExtractError | ParseResult.ParseError, never> =>
+    ): Effect.Effect<any, DebugChannelError | ParseResult.ParseError, never> =>
       Effect.gen(function*() {
         switch (ast._tag) {
           case "Declaration": {
@@ -62,13 +63,15 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             if (Option.isSome(identifier) && identifier.value === "VariableReference") {
               return makeVariableReference(dapVariableReference)
             }
-            return yield* new VariableExtractError({
+            return yield* new DebugChannelError({
               message: `Unsupported schema declaration type: ${ast._tag}`
             })
           }
           case "Union": {
             return yield* Effect.firstSuccessOf(
-              ast.types.map((typeAST) => extractValue(dapVariableReference, typeAST))
+              ast.types.map((typeAST) =>
+                extractValue(dapVariableReference, typeAST)
+              )
             )
           }
           case "Transformation":
@@ -80,10 +83,16 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             const { value } = dapVariableReference
             const isDoubleQuoted = value.startsWith("\"") && value.endsWith("\"")
             const isSingleQuoted = value.startsWith("'") && value.endsWith("'")
-            if (isDoubleQuoted || isSingleQuoted) {
-              return value.substring(1, value.length - 1)
+            const stringValue = isDoubleQuoted || isSingleQuoted ? value.substring(1, value.length - 1) : value
+
+            if (ast._tag === "Literal") {
+              if (ast.literal !== stringValue) {
+                return yield* new DebugChannelError({
+                  message: `Expected ${ast.literal} got ${stringValue}`
+                })
+              }
             }
-            return dapVariableReference.value
+            return stringValue
           }
           case "BooleanKeyword":
             return dapVariableReference.value === "true"
@@ -92,7 +101,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
           case "TupleType": {
             const { variables } = yield* debugRequest<DapVariablesResponse>("variables", {
               variablesReference: dapVariableReference.variablesReference
-            }).pipe(Effect.provideService(VsCode.VsCodeDebugSession, debugSession))
+            })
             const lengthValue = variables.filter(
               (variable) => String(Number(variable.name)) === variable.name
             ).length
@@ -102,7 +111,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             const elements = Array.makeBy(lengthValue, (index) => {
               const indexProperty = variables.find((variable) => variable.name === String(index))
               if (!indexProperty) {
-                return new VariableExtractError({
+                return new DebugChannelError({
                   message: `Expected index ${index} to be present in the reference`
                 })
               }
@@ -118,12 +127,12 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             })
             const result: Record<
               string,
-              Effect.Effect<any, VariableExtractError | ParseResult.ParseError, never>
+              Effect.Effect<any, DebugChannelError | ParseResult.ParseError, never>
             > = {}
 
             for (const propertySignature of ast.propertySignatures) {
               if (typeof propertySignature.name !== "string") {
-                return yield* new VariableExtractError({
+                return yield* new DebugChannelError({
                   message: "Expected property name to be a string"
                 })
               }
@@ -131,7 +140,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
                 (variable) => variable.name === propertySignature.name
               )
               if (!propertyVariableReference) {
-                return yield* new VariableExtractError({
+                return yield* new DebugChannelError({
                   message: `Expected property ${propertySignature.name} to be present in the reference`
                 })
               }
@@ -143,7 +152,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             return yield* Effect.all(result, { concurrency: "unbounded" })
           }
           default:
-            return yield* new VariableExtractError({
+            return yield* new DebugChannelError({
               message: `Unsupported schema type: ${ast._tag}`
             })
         }
@@ -157,17 +166,21 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
           Effect.map((_) => _.variables),
           Effect.map(Array.map(makeVariableReference))
         ),
-        parse: (schema) => extractValue(dapVariableReference, schema.ast).pipe(Effect.flatMap(Schema.decode(schema))),
+        parse: (schema) =>
+          Effect.gen(function*() {
+            const input = yield* extractValue(dapVariableReference, schema.ast)
+            return yield* Schema.decode(schema)(input)
+          }),
         name: dapVariableReference.name,
         value: dapVariableReference.value,
         isContainer: dapVariableReference.variablesReference !== 0
       })
     }
 
-    return {
+    return DebugChannel.of({
       evaluate: (expression: string) =>
         Effect.gen(function*() {
-          const response = yield* debugRequest<DapEvaluateResponse>("evaluate", { expression })
+          const response = yield* debugRequest<DapEvaluateResponse>("evaluate", { expression, context: "repl" })
           return makeVariableReference({
             name: "",
             value: response.result,
@@ -175,5 +188,5 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             variablesReference: response.variablesReference
           })
         })
-    }
+    })
   })

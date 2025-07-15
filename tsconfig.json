@@ -16,8 +16,7 @@
         "name": "@effect/language-service",
         "namespaceImportPackages": [
           "effect",
-          "@effect/platform",
-          "@effect/platform-node"
+          "@effect/*"
         ]
       }
     ]

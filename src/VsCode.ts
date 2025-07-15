@@ -22,6 +22,11 @@ export const thenable = <A>(f: () => Thenable<A>) =>
     f().then((_) => resume(Effect.succeed(_)))
   })
 
+export const thenableCatch = <A, E>(f: () => Thenable<A>, error: (error: unknown) => E) =>
+  Effect.async<A, E>((resume) => {
+    f().then((_) => resume(Effect.succeed(_)), (_) => resume(Effect.fail(error(_))))
+  })
+
 export const dismissable = <A>(
   f: () => Thenable<A | undefined>
 ): Effect.Effect<A, Cause.NoSuchElementException> => thenable(f).pipe(Effect.flatMap(Effect.fromNullable))

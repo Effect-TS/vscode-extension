@@ -1,6 +1,5 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
@@ -45,7 +44,7 @@ export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () =>
-            runningState.running
+            runningState.running || nodes.length > 0
               ? Effect.succeedSome(nodes.length ? nodes : [runningState])
               : Effect.succeedNone,
           onSome: (_node) => Effect.succeedNone
@@ -53,7 +52,7 @@ export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
         treeItem: (node) => Effect.succeed(treeItem(node))
       })
     })
-).pipe(Layer.provide(Clients.Default))
+)
 
 const treeItem = (node: TreeNode): vscode.TreeItem => {
   switch (node._tag) {

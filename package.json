@@ -3,7 +3,7 @@
   "displayName": "Effect Dev Tools",
   "description": "Tools to assist development with the Effect Typescript framework",
   "icon": "resources/icons/effect-dark.png",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "packageManager": "pnpm@9.0.6",
   "engines": {
@@ -49,6 +49,11 @@
         "command": "effect.stopServer",
         "title": "Effect Dev Tools: Stop Server",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "effect.attachDebugSessionClient",
+        "title": "Effect Dev Tools: Attach Debug Session Client",
+        "icon": "$(debug)"
       },
       {
         "command": "effect.resetMetrics",
@@ -137,6 +142,11 @@
           "group": "navigation"
         },
         {
+          "command": "effect.attachDebugSessionClient",
+          "when": "view === effect-clients && inDebugMode",
+          "group": "navigation"
+        },
+        {
           "command": "effect.resetMetrics",
           "when": "view === effect-metrics",
           "group": "navigation"
@@ -166,7 +176,8 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "pnpm build",
+    "vscode:prepublish": "pnpm build-instrumentation && pnpm build",
+    "build-instrumentation": "tsup --config tsup.instrumentation.config.ts",
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "eslint src",
@@ -178,33 +189,34 @@
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.1",
     "@changesets/cli": "^2.29.5",
-    "@effect/experimental": "^0.51.1",
-    "@effect/language-service": "^0.23.3",
-    "@effect/platform": "^0.87.1",
-    "@effect/platform-node": "^0.88.3",
     "@effect/eslint-plugin": "^0.3.2",
-    "eslint": "^9.30.0",
+    "@effect/experimental": "^0.52.0",
+    "@effect/language-service": "^0.26.0",
+    "@effect/platform": "^0.88.0",
+    "@effect/platform-node": "^0.90.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "~24.0.7",
+    "@types/node": "~24.0.13",
     "@types/vscode": "1.84.0",
     "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.0",
-    "effect": "3.16.10",
+    "effect": "3.16.13",
+    "eslint": "^9.31.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import-x": "^4.16.1",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-sort-destructure-keys": "^2.0.0",
     "glob": "^11.0.3",
     "mocha": "^11.7.1",
     "prettier": "^3.6.2",
     "tslib": "^2.8.1",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.37.0",
     "ws": "^8.18.3",
-    "eslint-import-resolver-typescript":"^4.4.4",
-    "eslint-plugin-import-x":"^4.16.1",
-    "eslint-plugin-simple-import-sort":"^12.1.1",
-    "eslint-plugin-sort-destructure-keys":"^2.0.0",
-    "@typescript-eslint/eslint-plugin":"^8.35.0",
-    "@typescript-eslint/parser":"^8.35.0",
-    "typescript-eslint": "^8.35.0"
+    "@swc/core": "^1.12.14"
   },
   "sideEffects": false,
   "pnpm": {

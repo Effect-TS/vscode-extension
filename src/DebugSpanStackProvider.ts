@@ -1,6 +1,5 @@
 import type * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
@@ -69,7 +68,7 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
         treeItem: (node) => Effect.succeed(treeItem(node))
       })
     })
-).pipe(Layer.provide(Debug.DebugEnv.Live))
+)
 
 // === helpers ===
 

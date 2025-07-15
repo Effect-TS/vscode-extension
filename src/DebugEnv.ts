@@ -1,3 +1,4 @@
+import * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Array from "effect/Array"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -9,6 +10,7 @@ import * as Schema from "effect/Schema"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import * as DebugChannel from "./DebugChannel"
+import { compiledInstrumentationString } from "./instrumentation/instrumentation.compiled"
 import { listenFork, VsCodeContext } from "./VsCode"
 
 export interface DebugEnvImpl {
@@ -18,6 +20,10 @@ export interface DebugEnvImpl {
 
 export interface Session {
   readonly vscode: vscode.DebugSession
+  readonly runningLatch: Effect.Latch
+  readonly debugProtocolClient: (
+    requests: Array<Domain.Response>
+  ) => Effect.Effect<ReadonlyArray<Domain.Request>>
   readonly context: Effect.Effect<Array<ContextPair>>
   readonly currentSpanStack: Effect.Effect<Array<SpanStackEntry>>
   readonly currentFibers: Effect.Effect<Array<FiberEntry>>
@@ -56,10 +62,25 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
           if (!session) return yield* SubscriptionRef.set(sessionRef, Option.none())
           const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(session)
 
+          // use a latch to keep track whenever the debug session dies
+          const runningLatch = yield* Effect.makeLatch(false)
+          yield* listenFork(
+            vscode.debug.onDidTerminateDebugSession,
+            (_) => {
+              return _.id === session.id ? runningLatch.open : Effect.void
+            }
+          )
+
+          // return session
           return yield* SubscriptionRef.set(
             sessionRef,
             Option.some({
               vscode: session,
+              runningLatch,
+              debugProtocolClient: (requests) =>
+                debugProtocolClient(requests).pipe(
+                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+                ),
               context: getContext.pipe(
                 Effect.provideService(DebugChannel.DebugChannel, debugChannel)
               ),
@@ -94,6 +115,31 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
 
 // --
 
+const ensureInstrumentationInjected = Effect.gen(function*() {
+  const result = yield* DebugChannel.DebugChannel.evaluate(
+    `globalThis && "effect/devtools/instrumentation" in globalThis`
+  )
+  const isInjected = yield* result.parse(Schema.Boolean)
+  if (!isInjected) yield* DebugChannel.DebugChannel.evaluate(compiledInstrumentationString)
+})
+
+const debugProtocolClient = (requests: Array<Domain.Response>) =>
+  Effect.gen(function*() {
+    yield* ensureInstrumentationInjected
+    const encodedRequests = yield* Schema.encode(Schema.Array(Domain.Response))(requests)
+    const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolClient(${
+      JSON.stringify(encodedRequests)
+    })`
+    console.log("debugProtocolClient ->", requestJs)
+    const debugResponses = yield* DebugChannel.DebugChannel.evaluate(requestJs)
+    const result = yield* debugResponses.parse(Schema.Array(Schema.parseJson(Domain.Request)))
+    console.log("debugProtocolClient <-", result)
+    return result
+  }).pipe(
+    Effect.tapErrorCause((cause) => Effect.sync(() => console.error(cause))),
+    Effect.orElseSucceed(() => [] as Array<Domain.Request>)
+  )
+
 export class ContextPair extends Data.TaggedClass("ContextPair")<{
   readonly tag: string
   readonly service: DebugChannel.VariableReference
@@ -104,7 +150,7 @@ const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.loc
     .filter(_ => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
     .flatMap(context => [...context.unsafeMap.entries()]);`
 
-const ContextSchema = Schema.Array(Schema.Tuple(Schema.String, DebugChannel.VariableReference.Schema))
+const ContextSchema = Schema.Array(Schema.Tuple(Schema.String, DebugChannel.VariableReference.SchemaFromSelf))
 
 const getContext = Effect.gen(function*() {
   const result = yield* DebugChannel.DebugChannel.evaluate(contextExpression)
@@ -208,6 +254,7 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
 })(${currentFiberExpression})`
 
   return Effect.gen(function*() {
+    yield* ensureInstrumentationInjected
     const result = yield* DebugChannel.DebugChannel.evaluate(currentSpanStackExpression)
     return yield* result.parse(SpanStackSchema)
   }).pipe(
@@ -271,37 +318,7 @@ export class FiberEntry extends Data.Class<{
 }
 
 const currentFibersExpression = `(function(){
-  // do not double inject
-  if(!("effect/debugger/currentFibers" in globalThis)){
-    // create a global array to store the current fibers
-    globalThis["effect/debugger/currentFibers"] = [];
-
-    // replace the effect/FiberCurrent with a getter/setter so we can detect fibers
-    // starting for the first time
-    var _previousFiber = globalThis["effect/FiberCurrent"];
-    var _currentFiber = undefined;
-    Object.defineProperty(globalThis, "effect/FiberCurrent", {
-      get: function() {
-        return _currentFiber;
-      },
-      set: function(value) {
-        if(value && "addObserver" in value && globalThis["effect/debugger/currentFibers"].indexOf(value) === -1){
-          globalThis["effect/debugger/currentFibers"].push(value);
-          value.addObserver(function(){
-            var index = globalThis["effect/debugger/currentFibers"].indexOf(value);
-            if(index > -1){
-              globalThis["effect/debugger/currentFibers"].splice(index, 1);
-            }
-          });
-        }
-        _currentFiber = value;
-      }
-    });
-    // so we ensure we trigger the setter
-    globalThis["effect/FiberCurrent"] = _previousFiber;
-  }
-
-  var fibers = globalThis["effect/debugger/currentFibers"].map(function(fiber){
+  var fibers = (globalThis["effect/devtools/instrumentation"].fibers || []).map(function(fiber){
     return {
       id: fiber.id().id.toString(),
       isCurrent: fiber === globalThis["effect/FiberCurrent"],
@@ -316,6 +333,7 @@ const CurrentFiberSchema = Schema.Array(Schema.Struct({
 }))
 
 const getCurrentFibers = Effect.gen(function*() {
+  yield* ensureInstrumentationInjected
   const result = yield* DebugChannel.DebugChannel.evaluate(currentFibersExpression)
   return yield* result.parse(CurrentFiberSchema)
 }).pipe(
@@ -323,8 +341,10 @@ const getCurrentFibers = Effect.gen(function*() {
   Effect.flatMap((fibers) =>
     Effect.all(
       fibers.map((fiber, idx) =>
-        Effect.map(getFiberCurrentSpan(`globalThis["effect/debugger/currentFibers"][${idx}]`), (stack) =>
-          new FiberEntry({ ...fiber, stack })), { concurrency: "unbounded" })
+        Effect.map(
+          getFiberCurrentSpan(`(globalThis["effect/devtools/instrumentation"].fibers || [])[${idx}]`),
+          (stack) => new FiberEntry({ ...fiber, stack })
+        ), { concurrency: "unbounded" })
     )
   )
 )
