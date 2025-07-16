@@ -3,7 +3,7 @@
   "displayName": "Effect Dev Tools",
   "description": "Tools to assist development with the Effect Typescript framework",
   "icon": "resources/icons/effect-dark.png",
-  "version": "0.1.8",
+  "version": "0.1.7",
   "private": true,
   "packageManager": "pnpm@9.0.6",
   "engines": {
@@ -36,6 +36,11 @@
           "type": "integer",
           "default": 500,
           "description": "The time in milliseconds between polling for metrics"
+        },
+        "effect.tracer.pollInterval": {
+          "type": "integer",
+          "default": 250,
+          "description": "The time in milliseconds between polling for span data while using the debug protocol transport"
         }
       }
     },
@@ -176,15 +181,14 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "pnpm build-instrumentation && pnpm build",
-    "build-instrumentation": "tsup --config tsup.instrumentation.config.ts",
-    "build": "tsup",
+    "vscode:prepublish": "pnpm build",
+    "build": "tsup --config tsup.instrumentation.config.ts && tsup",
     "dev": "tsup --watch",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix",
     "check": "tsc -b tsconfig.json",
     "test": "node ./out/test/runTest.js",
-    "ci:publish": "vsce publish"
+    "ci:publish": "vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.1",

@@ -144,10 +144,10 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
 
       function addNode(
         span: Domain.ParentSpan
-      ): [SpanNode, SpanNode | undefined, boolean] {
+      ): [node: SpanNode, parent: SpanNode | undefined, isUpgrade: boolean] {
         let node = nodes.get(span.spanId)
         let parent: SpanNode | undefined
-        const isUpgrade = span._tag === "Span" && node?.span._tag === "ExternalSpan"
+        let isUpgrade = span._tag === "Span" && node?.span._tag === "ExternalSpan"
 
         if (node === undefined || isUpgrade) {
           if (node?.isRoot) {
@@ -159,18 +159,18 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
 
           if (node.isRoot) {
             rootNodes.unshift(node)
+            isUpgrade = true
           }
-
-          if (span._tag === "Span" && span.parent._tag === "Some") {
-            parent = addNode(span.parent.value)[0]
-            parent.addChild(span.spanId)
-          }
-        } else if (span._tag === "Span" && span.parent._tag === "Some") {
-          parent = addNode(span.parent.value)[0]
         }
 
         if (span._tag === "Span") {
           node.span = span
+        }
+
+        if (node.span._tag === "Span" && node.span.parent._tag === "Some") {
+          const [parent, __, parentHasUpgrade] = addNode(node.span.parent.value)
+          parent.addChild(node.span.spanId)
+          isUpgrade = parentHasUpgrade || isUpgrade
         }
 
         return [node, parent, isUpgrade]

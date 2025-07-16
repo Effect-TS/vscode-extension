@@ -4,16 +4,20 @@ import * as NodeSocketServer from "@effect/platform-node/NodeSocketServer"
 import * as SocketServer from "@effect/platform/SocketServer"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
+import * as Fiber from "effect/Fiber"
 import * as FiberHandle from "effect/FiberHandle"
+import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
+import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
@@ -44,6 +48,11 @@ export class RunningState extends Data.TaggedClass("RunningState")<{
     return new RunningState({ ...this, port })
   }
 }
+
+const DebugInstrumentationResponseSchema = Schema.Struct({
+  instrumentationId: Schema.String,
+  responses: Schema.Array(Schema.parseJson(Domain.Request))
+})
 
 export class ClientsContext extends Context.Tag(
   "effect-vscode/Clients/ClientsContext"
@@ -189,6 +198,11 @@ export class Clients extends Effect.Service<Clients>()(
   {
     scoped: Effect.gen(function*() {
       const { activeClient, clients, port, running } = yield* ClientsContext
+      const pollMillis = yield* configWithDefault(
+        "effect.tracer",
+        "pollInterval",
+        250
+      )
       const scope = yield* Effect.scope
 
       const server = yield* FiberHandle.make()
@@ -237,43 +251,54 @@ export class Clients extends Effect.Service<Clients>()(
             capacity: 200,
             strategy: "sliding"
           })
+          const toSend = yield* Queue.unbounded<Domain.Response>()
 
           // inject the instrumentation into the debug session
           yield* DebugEnv.ensureInstrumentationInjected.pipe(
             Effect.provideService(DebugChannel.DebugChannel, debugChannel)
           )
 
+          // a fiber that takes requests to send to the client or pulls every interval
+          const sendReceiveFiber = yield* pipe(
+            Queue.takeBetween(toSend, 1, 100),
+            Effect.raceFirst(
+              Effect.flatMap(
+                pollMillis.get,
+                (millis) => Effect.sleep(millis).pipe(Effect.as(Chunk.empty<Domain.Response>()))
+              )
+            ),
+            Effect.flatMap((requests) =>
+              Effect.gen(function*() {
+                const encodedRequests = yield* Schema.encode(Schema.Array(Domain.Response))(Chunk.toArray(requests))
+                const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolDevtoolsClient(${
+                  JSON.stringify(encodedRequests)
+                })`
+                const debugResponses = yield* DebugChannel.DebugChannel.evaluate(requestJs)
+
+                const result = yield* debugResponses.parse(DebugInstrumentationResponseSchema)
+                return yield* queue.offerAll(result.responses)
+              })
+            ),
+            Effect.ignoreLogged,
+            Effect.forever,
+            Effect.provideService(DebugChannel.DebugChannel, debugChannel),
+            Effect.forkIn(scope)
+          )
+
           // kill the client upon session termination
           yield* listenFork(
             vscode.debug.onDidTerminateDebugSession,
-            (terminatedSession) => terminatedSession.id === session.id ? queue.shutdown : Effect.void
+            (terminatedSession) =>
+              terminatedSession.id === session.id
+                ? Effect.zipRight(Fiber.interrupt(sendReceiveFiber), queue.shutdown)
+                : Effect.void
           )
-
-          // performs request over the debug channel
-          const debugProtocolClient = (requests: Array<Domain.Response>) =>
-            Effect.gen(function*() {
-              const encodedRequests = yield* Schema.encode(Schema.Array(Domain.Response))(requests)
-              const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolDevtoolsClient(${
-                JSON.stringify(encodedRequests)
-              })`
-              const debugResponses = yield* DebugChannel.DebugChannel.evaluate(requestJs)
-              const responseSchema = Schema.Struct({
-                instrumentationId: Schema.String,
-                responses: Schema.Array(Schema.parseJson(Domain.Request))
-              })
-              const result = yield* debugResponses.parse(responseSchema)
-              return yield* queue.offerAll(result.responses)
-            }).pipe(
-              Effect.tapErrorCause((cause) => Effect.sync(() => console.error(cause))),
-              Effect.orElseSucceed(() => [] as Array<Domain.Request>),
-              Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-            )
 
           yield* Effect.sync(() => attachedDebugSessions.add(session))
 
           yield* makeClient({
             queue: queue as any,
-            request: (_) => debugProtocolClient([_])
+            request: (_) => toSend.offer(_)
           }, session.name)
         }).pipe(
           Effect.provideService(ClientsContext, clientsContext),
