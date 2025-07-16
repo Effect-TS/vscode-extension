@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.2.0
+
+### Minor Changes
+
+- [#30](https://github.com/Effect-TS/vscode-extension/pull/30) [`e60f0b9`](https://github.com/Effect-TS/vscode-extension/commit/e60f0b9d9b77059c9b374397a5d1dab4039a3146) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Add current span stack view to debugger section
+
 ## 0.1.7
 
 ### Patch Changes
