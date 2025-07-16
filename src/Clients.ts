@@ -253,7 +253,7 @@ export class Clients extends Effect.Service<Clients>()(
           const debugProtocolClient = (requests: Array<Domain.Response>) =>
             Effect.gen(function*() {
               const encodedRequests = yield* Schema.encode(Schema.Array(Domain.Response))(requests)
-              const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolClient(${
+              const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolDevtoolsClient(${
                 JSON.stringify(encodedRequests)
               })`
               const debugResponses = yield* DebugChannel.DebugChannel.evaluate(requestJs)

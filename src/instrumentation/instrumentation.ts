@@ -115,31 +115,6 @@ if (!(instrumentationKey in globalThis)) {
   // create a global array to store the current fibers
   const fibers: Array<Fiber.Runtime<any, any>> = []
 
-  function handleClientRequest(
-    request: Schema.Schema.Encoded<typeof Domain.Response>
-  ): Array<Schema.Schema.Encoded<typeof Domain.Request>> {
-    switch (request._tag) {
-      case "Pong":
-        return []
-      case "MetricsRequest": {
-        return [metricsSnapshot()]
-      }
-    }
-    return []
-  }
-
-  function debugProtocolClient(
-    requests: Array<Schema.Schema.Encoded<typeof Domain.Response>>
-  ): { responses: Array<string>; instrumentationId: string } {
-    const responses = requests.map(handleClientRequest).filter((_) => _ !== undefined).reduce(
-      (acc, curr) => acc.concat(curr),
-      []
-    )
-      .map((_) => JSON.stringify(_))
-
-    return { responses, instrumentationId }
-  }
-
   // invoked each time a fiber is running
   function addTrackedFiber(fiber: Fiber.Runtime<any, any>) {
     if (fibers.indexOf(fiber) === -1) {
@@ -153,10 +128,37 @@ if (!(instrumentationKey in globalThis)) {
     }
   }
 
+  // two kind of storage responses and notifications,
+  // notifications are with a sliding window
+  const responses: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
+
+  function handleClientRequest(
+    request: Schema.Schema.Encoded<typeof Domain.Response>
+  ) {
+    switch (request._tag) {
+      case "Pong":
+        return
+      case "MetricsRequest": {
+        return responses.push(metricsSnapshot())
+      }
+    }
+  }
+
+  function debugProtocolDevtoolsClient(
+    requests: Array<Schema.Schema.Encoded<typeof Domain.Response>>
+  ): { responses: Array<string>; instrumentationId: string } {
+    // handle the requests
+    requests.forEach(handleClientRequest)
+
+    // send the responses back
+    const responsesToSend = responses.splice(0)
+    return { responses: responsesToSend.map((_) => JSON.stringify(_)), instrumentationId }
+  }
+
   // set the instrumentation
   _globalThis[instrumentationKey] = {
     fibers,
-    debugProtocolClient
+    debugProtocolDevtoolsClient
   }
 
   // replace the effect/FiberCurrent with a getter/setter so we can detect fibers
