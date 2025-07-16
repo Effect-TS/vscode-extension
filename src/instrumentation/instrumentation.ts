@@ -15,6 +15,8 @@ const _globalThis = globalThis as any
 
 const instrumentationKey = "effect/devtools/instrumentation"
 
+const instrumentationId = Math.random().toString(36).substring(2, 15)
+
 function addSetInterceptor<O extends object, K extends keyof O>(
   obj: O,
   key: K,
@@ -128,9 +130,14 @@ if (!(instrumentationKey in globalThis)) {
 
   function debugProtocolClient(
     requests: Array<Schema.Schema.Encoded<typeof Domain.Response>>
-  ): Array<string> {
-    return requests.map(handleClientRequest).filter((_) => _ !== undefined).reduce((acc, curr) => acc.concat(curr), [])
+  ): { responses: Array<string>; instrumentationId: string } {
+    const responses = requests.map(handleClientRequest).filter((_) => _ !== undefined).reduce(
+      (acc, curr) => acc.concat(curr),
+      []
+    )
       .map((_) => JSON.stringify(_))
+
+    return { responses, instrumentationId }
   }
 
   // invoked each time a fiber is running

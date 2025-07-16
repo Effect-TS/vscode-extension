@@ -1,4 +1,4 @@
-import type * as Domain from "@effect/experimental/DevTools/Domain"
+import * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Server from "@effect/experimental/DevTools/Server"
 import * as NodeSocketServer from "@effect/platform-node/NodeSocketServer"
 import * as SocketServer from "@effect/platform/SocketServer"
@@ -15,14 +15,18 @@ import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
+import * as vscode from "vscode"
+import * as DebugChannel from "./DebugChannel"
 import * as DebugEnv from "./DebugEnv"
 import type { ConfigRef } from "./VsCode"
-import { configWithDefault, executeCommand, registerCommand } from "./VsCode"
+import { configWithDefault, executeCommand, listenFork, registerCommand } from "./VsCode"
 
 export interface Client extends Equal.Equal {
   readonly id: number
+  readonly name: string
   readonly spans: Mailbox.ReadonlyMailbox<Domain.Span | Domain.SpanEvent>
   readonly metrics: Mailbox.ReadonlyMailbox<Domain.MetricsSnapshot>
   readonly requestMetrics: Effect.Effect<void>
@@ -80,7 +84,7 @@ export class ClientsContext extends Context.Tag(
   )
 }
 
-const makeClient = (serverClient: Server.Client) =>
+const makeClient = (serverClient: Server.Client, name?: string) =>
   Effect.gen(function*() {
     const { activeClient, clientId, clients } = yield* ClientsContext
 
@@ -101,6 +105,7 @@ const makeClient = (serverClient: Server.Client) =>
     const id = yield* Ref.getAndUpdate(clientId, (_) => _ + 1)
     const client: Client = {
       id,
+      name: name ?? `Client #${id}`,
       spans,
       metrics,
       requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
@@ -183,7 +188,6 @@ export class Clients extends Effect.Service<Clients>()(
   "effect-vscode/Clients",
   {
     scoped: Effect.gen(function*() {
-      const debugEnv = yield* DebugEnv.DebugEnv
       const { activeClient, clients, port, running } = yield* ClientsContext
       const scope = yield* Effect.scope
 
@@ -208,30 +212,91 @@ export class Clients extends Effect.Service<Clients>()(
 
       yield* registerCommand("effect.stopServer", () => SubscriptionRef.update(running, (_) => _.setRunning(false)))
 
-      const attachDebugSessionClient = Effect.gen(function*() {
-        const maybeSession = yield* SubscriptionRef.get(debugEnv.session)
-        if (Option.isNone(maybeSession)) return
-        const session = maybeSession.value
+      // keeps a list of known debug sessions and those already attached to a client
+      const debugSessions = new Set<vscode.DebugSession>()
+      const attachedDebugSessions = new Set<vscode.DebugSession>()
+      yield* listenFork(vscode.debug.onDidStartDebugSession, (session) => Effect.sync(() => debugSessions.add(session)))
+      yield* listenFork(
+        vscode.debug.onDidTerminateDebugSession,
+        (session) =>
+          Effect.sync(() => {
+            debugSessions.delete(session)
+            attachedDebugSessions.delete(session)
+          })
+      )
 
-        const queue = yield* Mailbox.make<Domain.Request, never>()
-        yield* session.runningLatch.await.pipe(
-          Effect.zipRight(queue.shutdown),
+      const clientsContext = yield* ClientsContext
+      const attachDebugSessionClient = (session: vscode.DebugSession) =>
+        Effect.gen(function*() {
+          // do not double attach
+          if (attachedDebugSessions.has(session)) return
+
+          // create a debug channel for the session
+          const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(session)
+          const queue = yield* Mailbox.make<Domain.Request, never>({
+            capacity: 200,
+            strategy: "sliding"
+          })
+
+          // inject the instrumentation into the debug session
+          yield* DebugEnv.ensureInstrumentationInjected.pipe(
+            Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+          )
+
+          // kill the client upon session termination
+          yield* listenFork(
+            vscode.debug.onDidTerminateDebugSession,
+            (terminatedSession) => terminatedSession.id === session.id ? queue.shutdown : Effect.void
+          )
+
+          // performs request over the debug channel
+          const debugProtocolClient = (requests: Array<Domain.Response>) =>
+            Effect.gen(function*() {
+              const encodedRequests = yield* Schema.encode(Schema.Array(Domain.Response))(requests)
+              const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolClient(${
+                JSON.stringify(encodedRequests)
+              })`
+              const debugResponses = yield* DebugChannel.DebugChannel.evaluate(requestJs)
+              const responseSchema = Schema.Struct({
+                instrumentationId: Schema.String,
+                responses: Schema.Array(Schema.parseJson(Domain.Request))
+              })
+              const result = yield* debugResponses.parse(responseSchema)
+              return yield* queue.offerAll(result.responses)
+            }).pipe(
+              Effect.tapErrorCause((cause) => Effect.sync(() => console.error(cause))),
+              Effect.orElseSucceed(() => [] as Array<Domain.Request>),
+              Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+            )
+
+          yield* Effect.sync(() => attachedDebugSessions.add(session))
+
+          yield* makeClient({
+            queue: queue as any,
+            request: (_) => debugProtocolClient([_])
+          }, session.name)
+        }).pipe(
+          Effect.provideService(ClientsContext, clientsContext),
+          Effect.ignoreLogged,
           Effect.forkIn(scope)
         )
 
-        yield* makeClient({
-          queue: queue as any,
-          request: (_) =>
-            session.debugProtocolClient([_]).pipe(
-              Effect.flatMap((responses) => queue.offerAll(responses)),
-              Effect.forkIn(scope)
-            )
-        })
-      }).pipe(
-        Effect.provideService(ClientsContext, yield* ClientsContext)
+      yield* registerCommand(
+        "effect.attachDebugSessionClient",
+        () => {
+          // heuristic that places before clients with ".ts" in the name
+          const sessions = Array.fromIterable(debugSessions)
+          sessions.sort((a, b) => {
+            const aTs = a.name.includes(".ts")
+            const bTs = b.name.includes(".ts")
+            if (aTs && !bTs) return -1
+            if (!aTs && bTs) return 1
+            return 0
+          })
+          // attach them
+          return Effect.forEach(sessions, attachDebugSessionClient)
+        }
       )
-
-      yield* registerCommand("effect.attachDebugSessionClient", () => attachDebugSessionClient)
 
       return { clients, running, activeClient } as const
     }),

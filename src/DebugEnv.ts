@@ -1,4 +1,3 @@
-import * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Array from "effect/Array"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
@@ -20,10 +19,6 @@ export interface DebugEnvImpl {
 
 export interface Session {
   readonly vscode: vscode.DebugSession
-  readonly runningLatch: Effect.Latch
-  readonly debugProtocolClient: (
-    requests: Array<Domain.Response>
-  ) => Effect.Effect<ReadonlyArray<Domain.Request>>
   readonly context: Effect.Effect<Array<ContextPair>>
   readonly currentSpanStack: Effect.Effect<Array<SpanStackEntry>>
   readonly currentFibers: Effect.Effect<Array<FiberEntry>>
@@ -62,25 +57,11 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
           if (!session) return yield* SubscriptionRef.set(sessionRef, Option.none())
           const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(session)
 
-          // use a latch to keep track whenever the debug session dies
-          const runningLatch = yield* Effect.makeLatch(false)
-          yield* listenFork(
-            vscode.debug.onDidTerminateDebugSession,
-            (_) => {
-              return _.id === session.id ? runningLatch.open : Effect.void
-            }
-          )
-
           // return session
           return yield* SubscriptionRef.set(
             sessionRef,
             Option.some({
               vscode: session,
-              runningLatch,
-              debugProtocolClient: (requests) =>
-                debugProtocolClient(requests).pipe(
-                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-                ),
               context: getContext.pipe(
                 Effect.provideService(DebugChannel.DebugChannel, debugChannel)
               ),
@@ -115,30 +96,13 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
 
 // --
 
-const ensureInstrumentationInjected = Effect.gen(function*() {
+export const ensureInstrumentationInjected = Effect.gen(function*() {
   const result = yield* DebugChannel.DebugChannel.evaluate(
     `globalThis && "effect/devtools/instrumentation" in globalThis`
   )
   const isInjected = yield* result.parse(Schema.Boolean)
   if (!isInjected) yield* DebugChannel.DebugChannel.evaluate(compiledInstrumentationString)
 })
-
-const debugProtocolClient = (requests: Array<Domain.Response>) =>
-  Effect.gen(function*() {
-    yield* ensureInstrumentationInjected
-    const encodedRequests = yield* Schema.encode(Schema.Array(Domain.Response))(requests)
-    const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolClient(${
-      JSON.stringify(encodedRequests)
-    })`
-    console.log("debugProtocolClient ->", requestJs)
-    const debugResponses = yield* DebugChannel.DebugChannel.evaluate(requestJs)
-    const result = yield* debugResponses.parse(Schema.Array(Schema.parseJson(Domain.Request)))
-    console.log("debugProtocolClient <-", result)
-    return result
-  }).pipe(
-    Effect.tapErrorCause((cause) => Effect.sync(() => console.error(cause))),
-    Effect.orElseSucceed(() => [] as Array<Domain.Request>)
-  )
 
 export class ContextPair extends Data.TaggedClass("ContextPair")<{
   readonly tag: string
