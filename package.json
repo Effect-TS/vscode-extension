@@ -36,6 +36,11 @@
           "type": "integer",
           "default": 500,
           "description": "The time in milliseconds between polling for metrics"
+        },
+        "effect.tracer.pollInterval": {
+          "type": "integer",
+          "default": 250,
+          "description": "The time in milliseconds between polling for span data while using the debug protocol transport"
         }
       }
     },
@@ -51,6 +56,11 @@
         "icon": "$(debug-stop)"
       },
       {
+        "command": "effect.attachDebugSessionClient",
+        "title": "Effect Dev Tools: Attach Debug Session Client",
+        "icon": "$(debug)"
+      },
+      {
         "command": "effect.resetMetrics",
         "title": "Effect Dev Tools: Reset Metrics",
         "icon": "$(refresh)"
@@ -64,6 +74,16 @@
         "command": "effect.copyInfoValue",
         "title": "Copy value",
         "icon": "$(copy)"
+      },
+      {
+        "command": "effect.revealSpanLocation",
+        "title": "Effect Dev Tools: Reveal Span Location",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "effect.revealFiberCurrentSpan",
+        "title": "Effect Dev Tools: Reveal Fiber Current Span Location",
+        "icon": "$(go-to-file)"
       }
     ],
     "viewsContainers": {
@@ -95,6 +115,16 @@
           "id": "effect-context",
           "name": "Effect Context",
           "when": "inDebugMode"
+        },
+        {
+          "id": "effect-debug-span-stack",
+          "name": "Effect Span Stack",
+          "when": "inDebugMode"
+        },
+        {
+          "id": "effect-debug-fibers",
+          "name": "Effect Fibers",
+          "when": "inDebugMode"
         }
       ]
     },
@@ -117,6 +147,11 @@
           "group": "navigation"
         },
         {
+          "command": "effect.attachDebugSessionClient",
+          "when": "view === effect-clients && inDebugMode",
+          "group": "navigation"
+        },
+        {
           "command": "effect.resetMetrics",
           "when": "view === effect-metrics",
           "group": "navigation"
@@ -131,38 +166,61 @@
         {
           "command": "effect.copyInfoValue",
           "when": "viewItem == info"
+        },
+        {
+          "command": "effect.revealSpanLocation",
+          "when": "inDebugMode && view === effect-debug-span-stack",
+          "group": "inline"
+        },
+        {
+          "command": "effect.revealFiberCurrentSpan",
+          "when": "inDebugMode && view === effect-debug-fibers",
+          "group": "inline"
         }
       ]
     }
   },
   "scripts": {
     "vscode:prepublish": "pnpm build",
-    "build": "tsup",
+    "build": "tsup --config tsup.instrumentation.config.ts && tsup",
     "dev": "tsup --watch",
-    "pretest": "pnpm run compile && pnpm run lint",
+    "lint": "eslint src",
+    "lint-fix": "eslint src --fix",
+    "check": "tsc -b tsconfig.json",
     "test": "node ./out/test/runTest.js",
-    "ci:publish": "vsce publish"
+    "ci:publish": "vsce publish --no-dependencies"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "^0.5.0",
-    "@changesets/cli": "^2.27.9",
-    "@effect/experimental": "^0.32.0",
-    "@effect/language-service": "^0.2.0",
-    "@effect/platform-node": "^0.64.18",
-    "@types/mocha": "^10.0.9",
-    "@types/node": "~22.9.0",
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.29.5",
+    "@effect/eslint-plugin": "^0.3.2",
+    "@effect/experimental": "^0.52.0",
+    "@effect/language-service": "^0.26.0",
+    "@effect/platform": "^0.88.0",
+    "@effect/platform-node": "^0.90.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "~24.0.13",
     "@types/vscode": "1.84.0",
-    "@types/ws": "^8.5.13",
-    "@vscode/test-electron": "^2.4.1",
-    "@vscode/vsce": "^3.2.1",
-    "effect": "3.10.10",
-    "glob": "^11.0.0",
-    "mocha": "^10.8.2",
-    "prettier": "^3.3.3",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
+    "effect": "3.16.13",
+    "eslint": "^9.31.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import-x": "^4.16.1",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-sort-destructure-keys": "^2.0.0",
+    "glob": "^11.0.3",
+    "mocha": "^11.7.1",
+    "prettier": "^3.6.2",
     "tslib": "^2.8.1",
-    "tsup": "^8.3.5",
-    "typescript": "^5.6.3",
-    "ws": "^8.18.0"
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.37.0",
+    "ws": "^8.18.3",
+    "@swc/core": "^1.12.14"
   },
   "sideEffects": false,
   "pnpm": {

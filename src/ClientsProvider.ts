@@ -1,72 +1,78 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
+import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
-import { Client, Clients, RunningState } from "./Clients"
+import type { Client, RunningState } from "./Clients"
+import { Clients } from "./Clients"
 import { TreeDataProvider, treeDataProvider } from "./VsCode"
 
 class ClientNode {
   readonly _tag = "ClientNode"
-  constructor(readonly client: Client) {}
+  constructor(readonly client: Client, readonly active: boolean) {}
 }
 
 type TreeNode = ClientNode | RunningState
 
 export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
-  refresh =>
-    Effect.gen(function* () {
+  (refresh) =>
+    Effect.gen(function*() {
       const clients = yield* Clients
       let nodes: Array<ClientNode> = []
       let runningState = yield* SubscriptionRef.get(clients.running)
 
-      yield* clients.clients.changes.pipe(
-        Stream.runForEach(clients =>
-          Effect.suspend(() => {
-            nodes = [...clients].map(client => new ClientNode(client))
-            return refresh(Option.none())
-          }),
+      yield* Stream.merge(clients.clients.changes, clients.activeClient.changes).pipe(
+        Stream.runForEach(() =>
+          Effect.gen(function*() {
+            const currentClients = yield* SubscriptionRef.get(clients.clients)
+            const currentActiveClient = yield* SubscriptionRef.get(clients.activeClient)
+            nodes = [...currentClients].map((client) =>
+              new ClientNode(client, Equal.equals(currentActiveClient, Option.some(client)))
+            )
+            return yield* refresh(Option.none())
+          })
         ),
-        Effect.forkScoped,
+        Effect.forkScoped
       )
       yield* clients.running.changes.pipe(
-        Stream.runForEach(state =>
+        Stream.runForEach((state) =>
           Effect.suspend(() => {
             runningState = state
             return refresh(Option.none())
-          }),
+          })
         ),
-        Effect.forkScoped,
+        Effect.forkScoped
       )
 
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () =>
-            runningState.running
+            runningState.running || nodes.length > 0
               ? Effect.succeedSome(nodes.length ? nodes : [runningState])
               : Effect.succeedNone,
-          onSome: _node => Effect.succeedNone,
+          onSome: (_node) => Effect.succeedNone
         }),
-        treeItem: node => Effect.succeed(treeItem(node)),
+        treeItem: (node) => Effect.succeed(treeItem(node))
       })
-    }),
-).pipe(Layer.provide(Clients.Default))
+    })
+)
 
 const treeItem = (node: TreeNode): vscode.TreeItem => {
   switch (node._tag) {
     case "ClientNode": {
       const item = new vscode.TreeItem(
-        `Client #${node.client.id}`,
-        vscode.TreeItemCollapsibleState.None,
+        node.client.name,
+        vscode.TreeItemCollapsibleState.None
       )
       item.id = `client-${node.client.id}`
       item.command = {
         command: "effect.selectClient",
         title: "Select Client",
-        arguments: [node.client.id],
+        arguments: [node.client.id]
       }
+      item.iconPath = node.active ? new vscode.ThemeIcon("circle-filled") : new vscode.ThemeIcon("circle")
       return item
     }
     case "RunningState": {
@@ -74,9 +80,9 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         node.running
           ? `Server listening on port ${node.port}`
           : node.cause._tag === "Empty"
-            ? "Server disabled"
-            : Cause.pretty(node.cause),
-        vscode.TreeItemCollapsibleState.None,
+          ? "Server disabled"
+          : Cause.pretty(node.cause),
+        vscode.TreeItemCollapsibleState.None
       )
       return item
     }

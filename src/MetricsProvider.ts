@@ -1,25 +1,20 @@
-import * as Domain from "@effect/experimental/DevTools/Domain"
+import type * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Schedule from "effect/Schedule"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
-import { Client, Clients } from "./Clients"
-import {
-  TreeDataProvider,
-  configWithDefault,
-  registerCommand,
-  treeDataProvider,
-} from "./VsCode"
+import type { Client } from "./Clients"
+import { Clients } from "./Clients"
+import { configWithDefault, registerCommand, TreeDataProvider, treeDataProvider } from "./VsCode"
 
 const MetricOrder = Order.make<Domain.Metric>(
   Order.struct({
-    name: Order.string,
-  }),
+    name: Order.string
+  })
 )
 
 class MetricNode {
@@ -28,13 +23,13 @@ class MetricNode {
 
   get tagsWithoutUnit() {
     return this.metric.tags.filter(
-      _ => _.key !== "unit" && _.key !== "time_unit",
+      (_) => _.key !== "unit" && _.key !== "time_unit"
     )
   }
 
   get unitSuffix() {
     const tag = this.metric.tags.find(
-      _ => _.key === "unit" || _.key === "time_unit",
+      (_) => _.key === "unit" || _.key === "time_unit"
     )
     return tag ? ` ${tag.value}` : ""
   }
@@ -44,25 +39,25 @@ class InfoNode {
   readonly _tag = "InfoNode"
   constructor(
     readonly key: string,
-    readonly value: string,
+    readonly value: string
   ) {}
 }
 
 type TreeNode = MetricNode | InfoNode
 
 export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
-  refresh =>
-    Effect.gen(function* () {
+  (refresh) =>
+    Effect.gen(function*() {
       const clients = yield* Clients
       let nodes: Array<MetricNode> = []
       const pollMillis = yield* configWithDefault(
         "effect.metrics",
         "pollInterval",
-        500,
+        500
       )
       const currentClient = yield* ScopedRef.make<void>(() => void 0)
 
-      const reset = Effect.gen(function* () {
+      const reset = Effect.gen(function*() {
         yield* ScopedRef.set(currentClient, Effect.void)
         nodes = []
         return yield* refresh(Option.none())
@@ -70,30 +65,34 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
 
       yield* clients.activeClient.changes.pipe(
         Stream.changes,
-        Stream.tap(_ => (Option.isSome(_) ? reset : Effect.void)),
-        Stream.runForEach(_ =>
+        Stream.tap((_) => (Option.isSome(_) ? reset : Effect.void)),
+        Stream.runForEach((_) =>
           Option.match(_, {
-            onNone: () => Effect.void,
-            onSome: client =>
+            onNone: () =>
               ScopedRef.set(
                 currentClient,
-                Effect.interruptible(handleClient(client)),
+                Effect.void
               ),
-          }),
+            onSome: (client) =>
+              ScopedRef.set(
+                currentClient,
+                Effect.interruptible(handleClient(client))
+              )
+          })
         ),
-        Effect.forkScoped,
+        Effect.forkScoped
       )
 
       yield* registerCommand("effect.resetMetrics", () => reset)
 
       const handleClient = (client: Client) =>
-        Effect.gen(function* () {
+        Effect.gen(function*() {
           yield* client.metrics.take.pipe(
-            Effect.flatMap(snapshot => {
+            Effect.flatMap((snapshot) => {
               const metrics = snapshot.metrics as Array<Domain.Metric>
               const names = new Set<string>()
               metrics.sort(MetricOrder)
-              nodes = Array.filterMap(metrics, metric => {
+              nodes = Array.filterMap(metrics, (metric) => {
                 const name = metric.name
                 if (names.has(name)) {
                   return Option.none()
@@ -104,43 +103,42 @@ export const MetricsProviderLive = treeDataProvider<TreeNode>("effect-metrics")(
               return refresh(Option.none())
             }),
             Effect.forever,
-            Effect.forkScoped,
+            Effect.forkScoped
           )
 
           yield* pollMillis.changes.pipe(
             Stream.flatMap(
-              millis =>
+              (millis) =>
                 client.requestMetrics.pipe(
-                  Effect.repeat(Schedule.spaced(millis)),
+                  Effect.repeat(Schedule.spaced(millis))
                 ),
-              { switch: true },
+              { switch: true }
             ),
             Stream.runDrain,
-            Effect.forkScoped,
+            Effect.forkScoped
           )
         })
 
       return TreeDataProvider<TreeNode>({
         children: Option.match({
           onNone: () => Effect.succeedSome(nodes),
-          onSome: node => Effect.succeed(children(node)),
+          onSome: (node) => Effect.succeed(children(node))
         }),
-        treeItem: node => Effect.succeed(treeItem(node)),
+        treeItem: (node) => Effect.succeed(treeItem(node))
       })
-    }),
-).pipe(Layer.provide(Clients.Default))
+    })
+)
 
 // === helpers ===
 
-const formatNumber = (value: number): string =>
-  (Math.round(value * 100) / 100).toLocaleString()
+const formatNumber = (value: number): string => (Math.round(value * 100) / 100).toLocaleString()
 
 const children = (node: TreeNode): Option.Option<Array<TreeNode>> => {
   switch (node._tag) {
     case "MetricNode": {
       const metric = node.metric
       const nodes: Array<InfoNode> = node.tagsWithoutUnit.map(
-        tag => new InfoNode(tag.key, tag.value),
+        (tag) => new InfoNode(tag.key, tag.value)
       )
       switch (metric._tag) {
         case "Frequency": {
@@ -167,7 +165,7 @@ const children = (node: TreeNode): Option.Option<Array<TreeNode>> => {
             const [quantile, valueOption] = metric.state.quantiles[i]
             const value = valueOption._tag === "Some" ? valueOption.value : 0
             nodes.push(
-              new InfoNode(`p${quantile * 100}`, formatNumber(value) + unit),
+              new InfoNode(`p${quantile * 100}`, formatNumber(value) + unit)
             )
           }
           nodes.push(new InfoNode("Count", String(metric.state.count)))
@@ -193,7 +191,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         metric.name,
         tags.length > 0
           ? vscode.TreeItemCollapsibleState.Collapsed
-          : vscode.TreeItemCollapsibleState.None,
+          : vscode.TreeItemCollapsibleState.None
       )
       item.id = metric.name
 
@@ -226,9 +224,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
         const mid = Math.ceil(metric.state.quantiles.length / 2)
         const [quantile, valueOption] = metric.state.quantiles[mid]
         const value = valueOption._tag === "Some" ? valueOption.value : 0
-        item.description = `${formatNumber(value)}${node.unitSuffix} (p${
-          quantile * 100
-        })`
+        item.description = `${formatNumber(value)}${node.unitSuffix} (p${quantile * 100})`
       }
 
       return item
@@ -236,7 +232,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
     case "InfoNode": {
       const item = new vscode.TreeItem(
         node.key,
-        vscode.TreeItemCollapsibleState.None,
+        vscode.TreeItemCollapsibleState.None
       )
       item.description = node.value
       item.tooltip = node.value
