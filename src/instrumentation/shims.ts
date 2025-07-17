@@ -1,4 +1,3 @@
-import type * as MetricPair from "effect/MetricPair"
 import type * as MetricState from "effect/MetricState"
 import type * as Option from "effect/Option"
 
@@ -101,14 +100,6 @@ export function globalStores(): Array<Map<any, any>> {
   }).map(function(key) {
     return (globalThis as any)[key]
   })
-}
-
-export const unsafeMetricSnapshot = (): ReadonlyArray<MetricPair.MetricPair.Untyped> => {
-  for (const store of globalStores()) {
-    const metricRegistry = store.get(globalMetricRegistrySymbol)
-    if (metricRegistry) return metricRegistry.snapshot()
-  }
-  return []
 }
 
 export function getOrUndefined<T>(option: Option.Option<T>): T | undefined {

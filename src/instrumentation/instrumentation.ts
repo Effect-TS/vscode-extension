@@ -4,12 +4,13 @@ import type * as Schema from "effect/Schema"
 import type * as Tracer from "effect/Tracer"
 import {
   getOrUndefined,
+  globalMetricRegistrySymbol,
+  globalStores,
   isCounterState,
   isFrequencyState,
   isGaugeState,
   isHistogramState,
-  isSummaryState,
-  unsafeMetricSnapshot
+  isSummaryState
 } from "./shims"
 
 const _globalThis = globalThis as any
@@ -47,61 +48,65 @@ function addSetInterceptor<O extends object, K extends keyof O>(
 }
 
 function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot> {
-  const snapshot = unsafeMetricSnapshot()
   const metrics: Array<Schema.Schema.Encoded<typeof Domain.Metric>> = []
 
-  for (let i = 0, len = snapshot.length; i < len; i++) {
-    const metricPair = snapshot[i]
-    if (isCounterState(metricPair.metricState)) {
-      metrics.push({
-        _tag: "Counter",
-        name: metricPair.metricKey.name,
-        description: getOrUndefined(metricPair.metricKey.description),
-        tags: metricPair.metricKey.tags,
-        state: {
-          count: typeof metricPair.metricState.count === "bigint"
-            ? metricPair.metricState.count.toString()
-            : metricPair.metricState.count
-        }
-      })
-    } else if (isGaugeState(metricPair.metricState)) {
-      metrics.push({
-        _tag: "Gauge",
-        name: metricPair.metricKey.name,
-        description: getOrUndefined(metricPair.metricKey.description),
-        tags: metricPair.metricKey.tags,
-        state: {
-          value: typeof metricPair.metricState.value === "bigint"
-            ? metricPair.metricState.value.toString()
-            : metricPair.metricState.value
-        }
-      })
-    } else if (isHistogramState(metricPair.metricState)) {
-      metrics.push({
-        _tag: "Histogram",
-        name: metricPair.metricKey.name,
-        description: getOrUndefined(metricPair.metricKey.description),
-        tags: metricPair.metricKey.tags,
-        state: metricPair.metricState
-      })
-    } else if (isSummaryState(metricPair.metricState)) {
-      metrics.push({
-        _tag: "Summary",
-        name: metricPair.metricKey.name,
-        description: getOrUndefined(metricPair.metricKey.description),
-        tags: metricPair.metricKey.tags,
-        state: metricPair.metricState
-      })
-    } else if (isFrequencyState(metricPair.metricState)) {
-      metrics.push({
-        _tag: "Frequency",
-        name: metricPair.metricKey.name,
-        description: getOrUndefined(metricPair.metricKey.description),
-        tags: metricPair.metricKey.tags,
-        state: {
-          occurrences: Object.fromEntries(metricPair.metricState.occurrences.entries())
-        }
-      })
+  for (const store of globalStores()) {
+    const metricRegistry = store.get(globalMetricRegistrySymbol)
+    if (!metricRegistry) continue
+    const snapshot = metricRegistry.snapshot()
+    for (let i = 0, len = snapshot.length; i < len; i++) {
+      const metricPair = snapshot[i]
+      if (isCounterState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Counter",
+          name: metricPair.metricKey.name,
+          description: getOrUndefined(metricPair.metricKey.description),
+          tags: metricPair.metricKey.tags,
+          state: {
+            count: typeof metricPair.metricState.count === "bigint"
+              ? metricPair.metricState.count.toString()
+              : metricPair.metricState.count
+          }
+        })
+      } else if (isGaugeState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Gauge",
+          name: metricPair.metricKey.name,
+          description: getOrUndefined(metricPair.metricKey.description),
+          tags: metricPair.metricKey.tags,
+          state: {
+            value: typeof metricPair.metricState.value === "bigint"
+              ? metricPair.metricState.value.toString()
+              : metricPair.metricState.value
+          }
+        })
+      } else if (isHistogramState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Histogram",
+          name: metricPair.metricKey.name,
+          description: getOrUndefined(metricPair.metricKey.description),
+          tags: metricPair.metricKey.tags,
+          state: metricPair.metricState
+        })
+      } else if (isSummaryState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Summary",
+          name: metricPair.metricKey.name,
+          description: getOrUndefined(metricPair.metricKey.description),
+          tags: metricPair.metricKey.tags,
+          state: metricPair.metricState
+        })
+      } else if (isFrequencyState(metricPair.metricState)) {
+        metrics.push({
+          _tag: "Frequency",
+          name: metricPair.metricKey.name,
+          description: getOrUndefined(metricPair.metricKey.description),
+          tags: metricPair.metricKey.tags,
+          state: {
+            occurrences: Object.fromEntries(metricPair.metricState.occurrences.entries())
+          }
+        })
+      }
     }
   }
 
@@ -227,26 +232,14 @@ if (!(instrumentationKey in globalThis)) {
   const notifications: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
   const pushNotification = (notification: Schema.Schema.Encoded<typeof Domain.Request>) => {
     notifications.push(notification)
-    if (notifications.length > 100) {
+    if (notifications.length > 1000) {
       notifications.shift()
-    }
-  }
-
-  function handleClientRequest(
-    request: Schema.Schema.Encoded<typeof Domain.Response>
-  ) {
-    switch (request._tag) {
-      case "Pong":
-        return
-      case "MetricsRequest": {
-        return responses.push(metricsSnapshot())
-      }
     }
   }
 
   function debugProtocolDevtoolsClient(
     requests: Array<Schema.Schema.Encoded<typeof Domain.Response>>
-  ): { responses: Array<string>; instrumentationId: string } {
+  ): string {
     // handle first connection, add tracer interceptor to all fibers known at the moment
     if (!hasDevtoolsConnected) {
       hasDevtoolsConnected = true
@@ -254,12 +247,24 @@ if (!(instrumentationKey in globalThis)) {
     }
 
     // handle the requests
-    requests.forEach(handleClientRequest)
+    const processedRequestTypes: Array<string> = []
+    for (const request of requests) {
+      switch (request._tag) {
+        case "Pong":
+          continue
+        case "MetricsRequest": {
+          if (processedRequestTypes.indexOf(request._tag) !== -1) continue
+          processedRequestTypes.push(request._tag)
+          responses.push(metricsSnapshot())
+          continue
+        }
+      }
+    }
 
     // send the responses back
     const responsesToSend = responses.splice(0)
     const notificationsToSend = notifications.splice(0)
-    return { responses: responsesToSend.concat(notificationsToSend).map((_) => JSON.stringify(_)), instrumentationId }
+    return JSON.stringify({ responses: responsesToSend.concat(notificationsToSend), instrumentationId })
   }
 
   // set the instrumentation
