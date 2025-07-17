@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.2.1
+
+### Patch Changes
+
+- [#32](https://github.com/Effect-TS/vscode-extension/pull/32) [`e09ff34`](https://github.com/Effect-TS/vscode-extension/commit/e09ff3455ba4b5fc9e160b844daae44039aeeaca) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Use a single string for debug protocol communication
+
 ## 0.2.0
 
 ### Minor Changes
