@@ -151,6 +151,9 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             }
             return yield* Effect.all(result, { concurrency: "unbounded" })
           }
+          case "Suspend": {
+            return yield* extractValue(dapVariableReference, ast.f())
+          }
           default:
             return yield* new DebugChannelError({
               message: `Unsupported schema type: ${ast._tag}`
@@ -180,7 +183,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
     return DebugChannel.of({
       evaluate: (expression: string) =>
         Effect.gen(function*() {
-          const response = yield* debugRequest<DapEvaluateResponse>("evaluate", { expression, context: "repl" })
+          const response = yield* debugRequest<DapEvaluateResponse>("evaluate", { expression })
           return makeVariableReference({
             name: "",
             value: response.result,

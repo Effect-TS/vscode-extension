@@ -49,10 +49,10 @@ export class RunningState extends Data.TaggedClass("RunningState")<{
   }
 }
 
-const DebugInstrumentationResponseSchema = Schema.Struct({
+const DebugInstrumentationResponseSchema = Schema.parseJson(Schema.Struct({
   instrumentationId: Schema.String,
-  responses: Schema.Array(Schema.parseJson(Domain.Request))
-})
+  responses: Schema.Array(Domain.Request)
+}))
 
 export class ClientsContext extends Context.Tag(
   "effect-vscode/Clients/ClientsContext"
@@ -303,6 +303,7 @@ export class Clients extends Effect.Service<Clients>()(
         }).pipe(
           Effect.provideService(ClientsContext, clientsContext),
           Effect.ignoreLogged,
+          Effect.scoped,
           Effect.forkIn(scope)
         )
 
