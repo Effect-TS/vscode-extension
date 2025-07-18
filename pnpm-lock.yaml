@@ -18,17 +18,17 @@ importers:
         specifier: ^0.3.2
         version: 0.3.2
       '@effect/experimental':
-        specifier: ^0.52.0
-        version: 0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
+        specifier: ^0.52.2
+        version: 0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
       '@effect/language-service':
-        specifier: ^0.26.0
-        version: 0.26.0
+        specifier: ^0.27.2
+        version: 0.27.2
       '@effect/platform':
-        specifier: ^0.88.0
-        version: 0.88.0(effect@3.16.13)
+        specifier: ^0.88.1
+        version: 0.88.1(effect@3.16.16)
       '@effect/platform-node':
-        specifier: ^0.90.0
-        version: 0.90.0(@effect/cluster@0.42.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)
+        specifier: ^0.91.0
+        version: 0.91.0(@effect/cluster@0.43.0(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)
       '@swc/core':
         specifier: ^1.12.14
         version: 1.12.14
@@ -36,10 +36,10 @@ importers:
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: ~24.0.13
-        version: 24.0.13
+        specifier: ~24.0.14
+        version: 24.0.14
       '@types/vscode':
-        specifier: 1.84.0
+        specifier: ^1.84.0
         version: 1.84.0
       '@types/ws':
         specifier: ^8.18.1
@@ -57,8 +57,8 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
       effect:
-        specifier: 3.16.13
-        version: 3.16.13
+        specifier: ^3.16.16
+        version: 3.16.16
       eslint:
         specifier: ^9.31.0
         version: 9.31.0
@@ -230,23 +230,23 @@ packages:
   '@dprint/typescript@0.91.8':
     resolution: {integrity: sha512-tuKn4leCPItox1O4uunHcQF0QllDCvPWklnNQIh2PiWWVtRAGltJJnM4Cwj5AciplosD1Hiz7vAY3ew3crLb3A==}
 
-  '@effect/cluster@0.42.0':
-    resolution: {integrity: sha512-p1yLS1A5P112l2JVX8eb1OpO+TBn43EDi9wZu51aO+0Mtfdlo1RrnXrCXQIGeNGLziw8gbrTAgf5nUkzIlF+Cg==}
+  '@effect/cluster@0.43.0':
+    resolution: {integrity: sha512-qP122717xh+qehsiPRDcTGFg0iaZDbbQQ1AwJ0P5eAhfzU+N0xGLeq6fL6sBq9hIMXGi5oBCi0Or3wn2P693OQ==}
     peerDependencies:
-      '@effect/platform': ^0.88.0
-      '@effect/rpc': ^0.65.0
-      '@effect/sql': ^0.41.0
-      '@effect/workflow': ^0.5.0
-      effect: ^3.16.13
+      '@effect/platform': ^0.88.1
+      '@effect/rpc': ^0.65.1
+      '@effect/sql': ^0.42.0
+      '@effect/workflow': ^0.5.1
+      effect: ^3.16.14
 
   '@effect/eslint-plugin@0.3.2':
     resolution: {integrity: sha512-c4Vs9t3r54A4Zpl+wo8+PGzZz3JWYsip41H+UrebRLjQ2Hk/ap63IeCgN/HWcYtxtyhRopjp7gW9nOQ2Snbl+g==}
 
-  '@effect/experimental@0.52.0':
-    resolution: {integrity: sha512-SqTmGQMNJTq8IZ0XKu3hDOD09YRiZLDbHfODu4r1yhhAfh93vn2x9waELQtiAbXcsjG/eMpbajcCc0KvFgFFIA==}
+  '@effect/experimental@0.52.2':
+    resolution: {integrity: sha512-CotYjNLYvSAsYYwTE1/NUr/XkiupoYi941lq3NWGrJrYWov3T6v3Gg2om/n29/WqoMYpnFn0ka2AixTWhcq9dg==}
     peerDependencies:
-      '@effect/platform': ^0.88.0
-      effect: ^3.16.13
+      '@effect/platform': ^0.88.1
+      effect: ^3.16.14
       ioredis: ^5
       lmdb: ^3
     peerDependenciesMeta:
@@ -255,52 +255,52 @@ packages:
       lmdb:
         optional: true
 
-  '@effect/language-service@0.26.0':
-    resolution: {integrity: sha512-flHqsDIotdAq3whQb0fjpiYIFd6OR078TDPbxgBY5sDO+7ZNgGZ7kKH51bEIKNz+dFhw0NJjowT0qypyhPpUDw==}
+  '@effect/language-service@0.27.2':
+    resolution: {integrity: sha512-AFgxoIZ6xpfwCZp7+1mj3f1HsK3Yqe9I0iUfpf8Iu2gl9F3dmdFiOvuoLRVSkfVsK2BTQr8kv2zPi53Lst2haw==}
     hasBin: true
 
-  '@effect/platform-node-shared@0.43.0':
-    resolution: {integrity: sha512-kYlGo5eNDsfOkirBC4B4a83OtESc9x4r+JWCHNtnRswBnKKj8GgC90vL1ksNbfTnESzRCQ8/bfjPeyxHAffDAg==}
+  '@effect/platform-node-shared@0.44.0':
+    resolution: {integrity: sha512-UvMExEu5TUdlzJRe2O87K8+ttie0VfA26J/82uAXCAMCmi139EQvzBEbX7yE1iYIruH9CmypKXKFLU61VxSlnw==}
     peerDependencies:
-      '@effect/cluster': ^0.42.0
-      '@effect/platform': ^0.88.0
-      '@effect/rpc': ^0.65.0
-      '@effect/sql': ^0.41.0
-      effect: ^3.16.13
+      '@effect/cluster': ^0.43.0
+      '@effect/platform': ^0.88.1
+      '@effect/rpc': ^0.65.1
+      '@effect/sql': ^0.42.0
+      effect: ^3.16.14
 
-  '@effect/platform-node@0.90.0':
-    resolution: {integrity: sha512-U6WBUghdXYELtg5h+p5nzRV2ih0oPOoxnVrfvmR4UHQaOtvYbwu/Lexho59HBYdIqnYzHCi5KH12z8b6E0kv+Q==}
+  '@effect/platform-node@0.91.0':
+    resolution: {integrity: sha512-oHDcCilVLX1YEK6u0ukaNuYb03wLaCUTlws5JaGXsBjjdMlf3+bEW9i30bKFmf+B+uXheflf8X3MyZ3p94sXZA==}
     peerDependencies:
-      '@effect/cluster': ^0.42.0
-      '@effect/platform': ^0.88.0
-      '@effect/rpc': ^0.65.0
-      '@effect/sql': ^0.41.0
-      effect: ^3.16.13
+      '@effect/cluster': ^0.43.0
+      '@effect/platform': ^0.88.1
+      '@effect/rpc': ^0.65.1
+      '@effect/sql': ^0.42.0
+      effect: ^3.16.14
 
-  '@effect/platform@0.88.0':
-    resolution: {integrity: sha512-ObTXedf/DshoKtM2ygEcoP7Kj9rop0KeDvLriQE2HD4Fgo1pxjgbOivkCbSq03MErpNE2/lMYTY6Si6bo4qMqQ==}
+  '@effect/platform@0.88.1':
+    resolution: {integrity: sha512-12cRbqva8AFwEqCpa3d9nMmhvEYWk/lh/vo8Um4iOCFyTbc+ASe0zsI2MLJAVf1K0/TmpB0w+byEZLx6qCaxyw==}
     peerDependencies:
-      effect: ^3.16.13
+      effect: ^3.16.14
 
-  '@effect/rpc@0.65.0':
-    resolution: {integrity: sha512-L2ClFG7EKu0PDrsi2t5vYmUUE7f+CDz05sQiZFy05sDINXWw7mZ4y6SwvcDe8A8a00w/BPmqyHdYWnIascMWDw==}
+  '@effect/rpc@0.65.2':
+    resolution: {integrity: sha512-YRd9D5+1k5kniaAFbboEYbMH/jew8LmWMOS0C3s1w5ORqVQ5jggLIW0j3jpz/hofFLCQcNxiuSU1sP/a1k3pUg==}
     peerDependencies:
-      '@effect/platform': ^0.88.0
-      effect: ^3.16.13
+      '@effect/platform': ^0.88.1
+      effect: ^3.16.14
 
-  '@effect/sql@0.41.0':
-    resolution: {integrity: sha512-P3RuRm/PHEYInkFE0VUijWCWGyCviq2rnLLcTpdIRCy9quwGTh53kOnh9Go1pL+owGkq3WrP1T1hiAr5LzeNfg==}
+  '@effect/sql@0.42.0':
+    resolution: {integrity: sha512-qZGumAGPcrQA+nRIxSUGewvdIE2vXjhemgGt98pbMqPL87RiI4IOaN0GfI8BhYJQ/AQF0iweMUVSa7yIsVw82Q==}
     peerDependencies:
-      '@effect/experimental': ^0.52.0
-      '@effect/platform': ^0.88.0
-      effect: ^3.16.13
+      '@effect/experimental': ^0.52.1
+      '@effect/platform': ^0.88.1
+      effect: ^3.16.14
 
-  '@effect/workflow@0.5.0':
-    resolution: {integrity: sha512-u50kYN7jt7bpQgywkEba/Oayuio6WInZI39hOhZUycWRVW1/c9MU4EXohhpzaGg0G0F+fRVVP66fx4fwcXnH/Q==}
+  '@effect/workflow@0.5.1':
+    resolution: {integrity: sha512-xPIMar+EXiOAl7QEhzLteE0CoYbsjtsWventyzzWrF3CvxoWNdZuBKtKx7rnyovNYLUr5FdXHz5mmj1tjamVOg==}
     peerDependencies:
-      '@effect/platform': ^0.88.0
-      '@effect/rpc': ^0.65.0
-      effect: ^3.16.13
+      '@effect/platform': ^0.88.1
+      '@effect/rpc': ^0.65.1
+      effect: ^3.16.14
 
   '@emnapi/core@1.4.4':
     resolution: {integrity: sha512-A9CnAbC6ARNMKcIcrQwq6HeHCjpcBZ5wSx4U01WXCqEKlrzB9F9315WDNHkrs2xbx7YjjSxbUYxuN6EQzpcY2g==}
@@ -691,149 +691,149 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@rollup/rollup-android-arm-eabi@4.45.0':
-    resolution: {integrity: sha512-2o/FgACbji4tW1dzXOqAV15Eu7DdgbKsF2QKcxfG4xbh5iwU7yr5RRP5/U+0asQliSYv5M4o7BevlGIoSL0LXg==}
+  '@rollup/rollup-android-arm-eabi@4.45.1':
+    resolution: {integrity: sha512-NEySIFvMY0ZQO+utJkgoMiCAjMrGvnbDLHvcmlA33UXJpYBCvlBEbMMtV837uCkS+plG2umfhn0T5mMAxGrlRA==}
     cpu: [arm]
     os: [android]
 
-  '@rollup/rollup-android-arm64@4.45.0':
-    resolution: {integrity: sha512-PSZ0SvMOjEAxwZeTx32eI/j5xSYtDCRxGu5k9zvzoY77xUNssZM+WV6HYBLROpY5CkXsbQjvz40fBb7WPwDqtQ==}
+  '@rollup/rollup-android-arm64@4.45.1':
+    resolution: {integrity: sha512-ujQ+sMXJkg4LRJaYreaVx7Z/VMgBBd89wGS4qMrdtfUFZ+TSY5Rs9asgjitLwzeIbhwdEhyj29zhst3L1lKsRQ==}
     cpu: [arm64]
     os: [android]
 
-  '@rollup/rollup-darwin-arm64@4.45.0':
-    resolution: {integrity: sha512-BA4yPIPssPB2aRAWzmqzQ3y2/KotkLyZukVB7j3psK/U3nVJdceo6qr9pLM2xN6iRP/wKfxEbOb1yrlZH6sYZg==}
+  '@rollup/rollup-darwin-arm64@4.45.1':
+    resolution: {integrity: sha512-FSncqHvqTm3lC6Y13xncsdOYfxGSLnP+73k815EfNmpewPs+EyM49haPS105Rh4aF5mJKywk9X0ogzLXZzN9lA==}
     cpu: [arm64]
     os: [darwin]
 
-  '@rollup/rollup-darwin-x64@4.45.0':
-    resolution: {integrity: sha512-Pr2o0lvTwsiG4HCr43Zy9xXrHspyMvsvEw4FwKYqhli4FuLE5FjcZzuQ4cfPe0iUFCvSQG6lACI0xj74FDZKRA==}
+  '@rollup/rollup-darwin-x64@4.45.1':
+    resolution: {integrity: sha512-2/vVn/husP5XI7Fsf/RlhDaQJ7x9zjvC81anIVbr4b/f0xtSmXQTFcGIQ/B1cXIYM6h2nAhJkdMHTnD7OtQ9Og==}
     cpu: [x64]
     os: [darwin]
 
-  '@rollup/rollup-freebsd-arm64@4.45.0':
-    resolution: {integrity: sha512-lYE8LkE5h4a/+6VnnLiL14zWMPnx6wNbDG23GcYFpRW1V9hYWHAw9lBZ6ZUIrOaoK7NliF1sdwYGiVmziUF4vA==}
+  '@rollup/rollup-freebsd-arm64@4.45.1':
+    resolution: {integrity: sha512-4g1kaDxQItZsrkVTdYQ0bxu4ZIQ32cotoQbmsAnW1jAE4XCMbcBPDirX5fyUzdhVCKgPcrwWuucI8yrVRBw2+g==}
     cpu: [arm64]
     os: [freebsd]
 
-  '@rollup/rollup-freebsd-x64@4.45.0':
-    resolution: {integrity: sha512-PVQWZK9sbzpvqC9Q0GlehNNSVHR+4m7+wET+7FgSnKG3ci5nAMgGmr9mGBXzAuE5SvguCKJ6mHL6vq1JaJ/gvw==}
+  '@rollup/rollup-freebsd-x64@4.45.1':
+    resolution: {integrity: sha512-L/6JsfiL74i3uK1Ti2ZFSNsp5NMiM4/kbbGEcOCps99aZx3g8SJMO1/9Y0n/qKlWZfn6sScf98lEOUe2mBvW9A==}
     cpu: [x64]
     os: [freebsd]
 
-  '@rollup/rollup-linux-arm-gnueabihf@4.45.0':
-    resolution: {integrity: sha512-hLrmRl53prCcD+YXTfNvXd776HTxNh8wPAMllusQ+amcQmtgo3V5i/nkhPN6FakW+QVLoUUr2AsbtIRPFU3xIA==}
+  '@rollup/rollup-linux-arm-gnueabihf@4.45.1':
+    resolution: {integrity: sha512-RkdOTu2jK7brlu+ZwjMIZfdV2sSYHK2qR08FUWcIoqJC2eywHbXr0L8T/pONFwkGukQqERDheaGTeedG+rra6Q==}
     cpu: [arm]
     os: [linux]
 
-  '@rollup/rollup-linux-arm-musleabihf@4.45.0':
-    resolution: {integrity: sha512-XBKGSYcrkdiRRjl+8XvrUR3AosXU0NvF7VuqMsm7s5nRy+nt58ZMB19Jdp1RdqewLcaYnpk8zeVs/4MlLZEJxw==}
+  '@rollup/rollup-linux-arm-musleabihf@4.45.1':
+    resolution: {integrity: sha512-3kJ8pgfBt6CIIr1o+HQA7OZ9mp/zDk3ctekGl9qn/pRBgrRgfwiffaUmqioUGN9hv0OHv2gxmvdKOkARCtRb8Q==}
     cpu: [arm]
     os: [linux]
 
-  '@rollup/rollup-linux-arm64-gnu@4.45.0':
-    resolution: {integrity: sha512-fRvZZPUiBz7NztBE/2QnCS5AtqLVhXmUOPj9IHlfGEXkapgImf4W9+FSkL8cWqoAjozyUzqFmSc4zh2ooaeF6g==}
+  '@rollup/rollup-linux-arm64-gnu@4.45.1':
+    resolution: {integrity: sha512-k3dOKCfIVixWjG7OXTCOmDfJj3vbdhN0QYEqB+OuGArOChek22hn7Uy5A/gTDNAcCy5v2YcXRJ/Qcnm4/ma1xw==}
     cpu: [arm64]
     os: [linux]
 
-  '@rollup/rollup-linux-arm64-musl@4.45.0':
-    resolution: {integrity: sha512-Btv2WRZOcUGi8XU80XwIvzTg4U6+l6D0V6sZTrZx214nrwxw5nAi8hysaXj/mctyClWgesyuxbeLylCBNauimg==}
+  '@rollup/rollup-linux-arm64-musl@4.45.1':
+    resolution: {integrity: sha512-PmI1vxQetnM58ZmDFl9/Uk2lpBBby6B6rF4muJc65uZbxCs0EA7hhKCk2PKlmZKuyVSHAyIw3+/SiuMLxKxWog==}
     cpu: [arm64]
     os: [linux]
 
-  '@rollup/rollup-linux-loongarch64-gnu@4.45.0':
-    resolution: {integrity: sha512-Li0emNnwtUZdLwHjQPBxn4VWztcrw/h7mgLyHiEI5Z0MhpeFGlzaiBHpSNVOMB/xucjXTTcO+dhv469Djr16KA==}
+  '@rollup/rollup-linux-loongarch64-gnu@4.45.1':
+    resolution: {integrity: sha512-9UmI0VzGmNJ28ibHW2GpE2nF0PBQqsyiS4kcJ5vK+wuwGnV5RlqdczVocDSUfGX/Na7/XINRVoUgJyFIgipoRg==}
     cpu: [loong64]
     os: [linux]
 
-  '@rollup/rollup-linux-powerpc64le-gnu@4.45.0':
-    resolution: {integrity: sha512-sB8+pfkYx2kvpDCfd63d5ScYT0Fz1LO6jIb2zLZvmK9ob2D8DeVqrmBDE0iDK8KlBVmsTNzrjr3G1xV4eUZhSw==}
+  '@rollup/rollup-linux-powerpc64le-gnu@4.45.1':
+    resolution: {integrity: sha512-7nR2KY8oEOUTD3pBAxIBBbZr0U7U+R9HDTPNy+5nVVHDXI4ikYniH1oxQz9VoB5PbBU1CZuDGHkLJkd3zLMWsg==}
     cpu: [ppc64]
     os: [linux]
 
-  '@rollup/rollup-linux-riscv64-gnu@4.45.0':
-    resolution: {integrity: sha512-5GQ6PFhh7E6jQm70p1aW05G2cap5zMOvO0se5JMecHeAdj5ZhWEHbJ4hiKpfi1nnnEdTauDXxPgXae/mqjow9w==}
+  '@rollup/rollup-linux-riscv64-gnu@4.45.1':
+    resolution: {integrity: sha512-nlcl3jgUultKROfZijKjRQLUu9Ma0PeNv/VFHkZiKbXTBQXhpytS8CIj5/NfBeECZtY2FJQubm6ltIxm/ftxpw==}
     cpu: [riscv64]
     os: [linux]
 
-  '@rollup/rollup-linux-riscv64-musl@4.45.0':
-    resolution: {integrity: sha512-N/euLsBd1rekWcuduakTo/dJw6U6sBP3eUq+RXM9RNfPuWTvG2w/WObDkIvJ2KChy6oxZmOSC08Ak2OJA0UiAA==}
+  '@rollup/rollup-linux-riscv64-musl@4.45.1':
+    resolution: {integrity: sha512-HJV65KLS51rW0VY6rvZkiieiBnurSzpzore1bMKAhunQiECPuxsROvyeaot/tcK3A3aGnI+qTHqisrpSgQrpgA==}
     cpu: [riscv64]
     os: [linux]
 
-  '@rollup/rollup-linux-s390x-gnu@4.45.0':
-    resolution: {integrity: sha512-2l9sA7d7QdikL0xQwNMO3xURBUNEWyHVHfAsHsUdq+E/pgLTUcCE+gih5PCdmyHmfTDeXUWVhqL0WZzg0nua3g==}
+  '@rollup/rollup-linux-s390x-gnu@4.45.1':
+    resolution: {integrity: sha512-NITBOCv3Qqc6hhwFt7jLV78VEO/il4YcBzoMGGNxznLgRQf43VQDae0aAzKiBeEPIxnDrACiMgbqjuihx08OOw==}
     cpu: [s390x]
     os: [linux]
 
-  '@rollup/rollup-linux-x64-gnu@4.45.0':
-    resolution: {integrity: sha512-XZdD3fEEQcwG2KrJDdEQu7NrHonPxxaV0/w2HpvINBdcqebz1aL+0vM2WFJq4DeiAVT6F5SUQas65HY5JDqoPw==}
+  '@rollup/rollup-linux-x64-gnu@4.45.1':
+    resolution: {integrity: sha512-+E/lYl6qu1zqgPEnTrs4WysQtvc/Sh4fC2nByfFExqgYrqkKWp1tWIbe+ELhixnenSpBbLXNi6vbEEJ8M7fiHw==}
     cpu: [x64]
     os: [linux]
 
-  '@rollup/rollup-linux-x64-musl@4.45.0':
-    resolution: {integrity: sha512-7ayfgvtmmWgKWBkCGg5+xTQ0r5V1owVm67zTrsEY1008L5ro7mCyGYORomARt/OquB9KY7LpxVBZes+oSniAAQ==}
+  '@rollup/rollup-linux-x64-musl@4.45.1':
+    resolution: {integrity: sha512-a6WIAp89p3kpNoYStITT9RbTbTnqarU7D8N8F2CV+4Cl9fwCOZraLVuVFvlpsW0SbIiYtEnhCZBPLoNdRkjQFw==}
     cpu: [x64]
     os: [linux]
 
-  '@rollup/rollup-win32-arm64-msvc@4.45.0':
-    resolution: {integrity: sha512-B+IJgcBnE2bm93jEW5kHisqvPITs4ddLOROAcOc/diBgrEiQJJ6Qcjby75rFSmH5eMGrqJryUgJDhrfj942apQ==}
+  '@rollup/rollup-win32-arm64-msvc@4.45.1':
+    resolution: {integrity: sha512-T5Bi/NS3fQiJeYdGvRpTAP5P02kqSOpqiopwhj0uaXB6nzs5JVi2XMJb18JUSKhCOX8+UE1UKQufyD6Or48dJg==}
     cpu: [arm64]
     os: [win32]
 
-  '@rollup/rollup-win32-ia32-msvc@4.45.0':
-    resolution: {integrity: sha512-+CXwwG66g0/FpWOnP/v1HnrGVSOygK/osUbu3wPRy8ECXjoYKjRAyfxYpDQOfghC5qPJYLPH0oN4MCOjwgdMug==}
+  '@rollup/rollup-win32-ia32-msvc@4.45.1':
+    resolution: {integrity: sha512-lxV2Pako3ujjuUe9jiU3/s7KSrDfH6IgTSQOnDWr9aJ92YsFd7EurmClK0ly/t8dzMkDtd04g60WX6yl0sGfdw==}
     cpu: [ia32]
     os: [win32]
 
-  '@rollup/rollup-win32-x64-msvc@4.45.0':
-    resolution: {integrity: sha512-SRf1cytG7wqcHVLrBc9VtPK4pU5wxiB/lNIkNmW2ApKXIg+RpqwHfsaEK+e7eH4A1BpI6BX/aBWXxZCIrJg3uA==}
+  '@rollup/rollup-win32-x64-msvc@4.45.1':
+    resolution: {integrity: sha512-M/fKi4sasCdM8i0aWJjCSFm2qEnYRR8AMLG2kxp6wD13+tMGA4Z1tVAuHkNRjud5SW2EM3naLuK35w9twvf6aA==}
     cpu: [x64]
     os: [win32]
 
-  '@secretlint/config-creator@10.2.0':
-    resolution: {integrity: sha512-KW0aNs45F480TXy8NfqAHeB9vq0vHmU2lzGzXXul6vSqshWkZD0ArAyww/yj8Wq9Y3TEI1JinxNO4G+RWWvKdg==}
+  '@secretlint/config-creator@10.2.1':
+    resolution: {integrity: sha512-nyuRy8uo2+mXPIRLJ93wizD1HbcdDIsVfgCT01p/zGVFrtvmiL7wqsl4KgZH0QFBM/KRLDLeog3/eaM5ASjtvw==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/config-loader@10.2.0':
-    resolution: {integrity: sha512-Mmi3/GVg2wIS4VuBiYdV7eOLD+bV7IbwHHka8fBh2N/ODeQmulPfeIgmbDzcpBWxHFQPYZBN0mLYEC5iSj9f7g==}
+  '@secretlint/config-loader@10.2.1':
+    resolution: {integrity: sha512-ob1PwhuSw/Hc6Y4TA63NWj6o++rZTRJOwPZG82o6tgEURqkrAN44fXH9GIouLsOxKa8fbCRLMeGmSBtJLdSqtw==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/core@10.2.0':
-    resolution: {integrity: sha512-7yIk6wSP4AGsgqzGZm5v4hW3Tr/wXAth8Ax3D6ikPvv5oCNTj/3Dgq6JdaLOQa2sUJbyQrYcLCONtmwEdiQzxw==}
+  '@secretlint/core@10.2.1':
+    resolution: {integrity: sha512-2sPp5IE7pM5Q+f1/NK6nJ49FKuqh+e3fZq5MVbtVjegiD4NMhjcoML1Cg7atCBgXPufhXRHY1DWhIhkGzOx/cw==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/formatter@10.2.0':
-    resolution: {integrity: sha512-0pu7QA+ebVzJS/sSf0JWMx0QwgiZnYRHxWjRaSsYkUCqY/MZeMn+TAs0jiSDCci23OcmRcNNrrpkjm6N/hIXcg==}
+  '@secretlint/formatter@10.2.1':
+    resolution: {integrity: sha512-0A7ho3j0Y4ysK0mREB3O6FKQtScD4rQgfzuI4Slv9Cut1ynQOI7JXAoIFm4XVzhNcgtmEPeD3pQB206VFphBgQ==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/node@10.2.0':
-    resolution: {integrity: sha512-B8acPnY5xNBfdOl5PrsG9Z+7vujhMHWx1pJChrCUIDo3HvRu3IM2SfFUt6TAmLzr7jz12BP55/xJa5ebzBXWHg==}
+  '@secretlint/node@10.2.1':
+    resolution: {integrity: sha512-MQFte7C+5ZHINQGSo6+eUECcUCGvKR9PVgZcTsRj524xsbpeBqF1q1dHsUsdGb9r2jlvf40Q14MRZwMcpmLXWQ==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/profiler@10.2.0':
-    resolution: {integrity: sha512-Om/0m84ApSTTPWdm/tUCL4rTQ1D+s5XFDz8Ew+kPMScHedBsrM+dZQNRHj67y7CW+YmrgE8n4zFCYtvjQHAf4Q==}
+  '@secretlint/profiler@10.2.1':
+    resolution: {integrity: sha512-gOlfPZ1ASc5mP5cqsL809uMJGp85t+AJZg1ZPscWvB/m5UFFgeNTZcOawggb1S5ExDvR388sIJxagx5hyDZ34g==}
 
-  '@secretlint/resolver@10.2.0':
-    resolution: {integrity: sha512-0CQvCkMCtDo8sgASJHlE02YigCgWK7DYR2cSM1PW9rA01jnlV4zWb3skTfgUeZw0F6Ie3c/eQMriEYe0SiWxJw==}
+  '@secretlint/resolver@10.2.1':
+    resolution: {integrity: sha512-AuwehKwnE2uxKaJVv2Z5a8FzGezBmlNhtLKm70Cvsvtwd0oAtenxCSTKXkiPGYC0+S91fAw3lrX7CUkyr9cTCA==}
 
-  '@secretlint/secretlint-formatter-sarif@10.2.0':
-    resolution: {integrity: sha512-y1jIHG5VXHn8lywSUm9YhsuqIYHbQJNx6UZFWyAFAUUE9Isg1sto7NDSnlzY2JWsVG8B1xOzv2uEnDegZvL7qw==}
+  '@secretlint/secretlint-formatter-sarif@10.2.1':
+    resolution: {integrity: sha512-qOZUYBesLkhCBP7YVMv0l1Pypt8e3V2rX2PT2Q5aJhJvKTcMiP9YTHG/3H9Zb7Gq3UIwZLEAGXRqJOu1XlE0Fg==}
 
-  '@secretlint/secretlint-rule-no-dotenv@10.2.0':
-    resolution: {integrity: sha512-9hGk5e+Zxvo6SAIQglGk63tQ5Dn+IIfkEsuGLIh0gZDMu/PudKl/LeTC4fM3+lJLEA73QoVv4HJ057PRD1XSHw==}
+  '@secretlint/secretlint-rule-no-dotenv@10.2.1':
+    resolution: {integrity: sha512-XwPjc9Wwe2QljerfvGlBmLJAJVATLvoXXw1fnKyCDNgvY33cu1Z561Kxg93xfRB5LSep0S5hQrAfZRJw6x7MBQ==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/secretlint-rule-preset-recommend@10.2.0':
-    resolution: {integrity: sha512-gRe3I7r5VQgwmG6HO8r3e0PVEl2cSmCqxzvThBLNGUehB0w1zMsav6emoYAIsfsZU29OukZ5hnJPzXH6sth1qQ==}
+  '@secretlint/secretlint-rule-preset-recommend@10.2.1':
+    resolution: {integrity: sha512-/kj3UOpFbJt80dqoeEaUVv5nbeW1jPqPExA447FItthiybnaDse5C5HYcfNA2ywEInr399ELdcmpEMRe+ld1iQ==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/source-creator@10.2.0':
-    resolution: {integrity: sha512-BwHt5TiAx3aAfeLAd27LV9JbEIf33Wi1stke2x/V/1GpHPvyxcgCljTh2hm+Mib7oZQaU8Esj8Jkp4zlWPsgOA==}
+  '@secretlint/source-creator@10.2.1':
+    resolution: {integrity: sha512-1CgO+hsRx8KdA5R/LEMNTJkujjomwSQQVV0BcuKynpOefV/rRlIDVQJOU0tJOZdqUMC15oAAwQXs9tMwWLu4JQ==}
     engines: {node: '>=20.0.0'}
 
-  '@secretlint/types@10.2.0':
-    resolution: {integrity: sha512-8fHvsBMQtibVDxHKCyjaxDdWStE6E063xwBqrBz1zl/VArzEVUzXF+NLNc/LdIuyVrgQ41BG7Bmvo5bbZQ+XEg==}
+  '@secretlint/types@10.2.1':
+    resolution: {integrity: sha512-F5k1qpoMoUe7rrZossOBgJ3jWKv/FGDBZIwepqnefgPmNienBdInxhtZeXiGwjcxXHVhsdgp6I5Fi/M8PMgwcw==}
     engines: {node: '>=20.0.0'}
 
   '@sindresorhus/merge-streams@2.3.0':
@@ -948,8 +948,8 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@24.0.13':
-    resolution: {integrity: sha512-Qm9OYVOFHFYg3wJoTSrz80hoec5Lia/dPp84do3X7dZvLikQvM1YpmvTBEdIr/e+U8HTkFjLHLnl78K/qjf+jQ==}
+  '@types/node@24.0.14':
+    resolution: {integrity: sha512-4zXMWD91vBLGRtHK3YbIoFMia+1nqEz72coM42C5ETjnNCa/heoj7NT1G67iAfOqMmcfhuCZ4uNpyz8EjlAejw==}
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
@@ -1507,8 +1507,8 @@ packages:
     resolution: {integrity: sha512-ofkXJtn7z0urokN62DI3SBo/5xAtF0rR7tn+S/bSYV79Ka8pTajIIl+fFQ1q88DQEImymmo97M4azY3WX/nUdg==}
     engines: {node: '>=4'}
 
-  effect@3.16.13:
-    resolution: {integrity: sha512-xJDgOhD7+3qIY1d8PGfkaPZMfmdJuSp2XAQgc9dVF8pSl1FJL6WK4ZUpMh177R+GH8XgPloT8dlZsEYUYDo1Ag==}
+  effect@3.16.16:
+    resolution: {integrity: sha512-q8jsuAJykQJJ9jDkR9VaAR1JeHnEDn49g6+LkveIcfW3nIPUJw6BrC9ZPaVCJWmU23vKoVj9XqJmC/EW8kiI8g==}
 
   emoji-regex@10.4.0:
     resolution: {integrity: sha512-EC+0oUMY1Rqm4O6LLrgjtYDvcVYTy7chDnM4Q7030tP4Kwj3u/pR6gP9ygnp2CJMK5Gq+9Q2oqmrFJAz01DXjw==}
@@ -1748,8 +1748,8 @@ packages:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
 
-  form-data@4.0.3:
-    resolution: {integrity: sha512-qsITQPfmvMOSAdeyZ+12I1c+CKSstAFAwu+97zrnWAbIr5u8wfsExUzCesVLC8NgHuRUqNN4Zy6UPWUTRGslcA==}
+  form-data@4.0.4:
+    resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
     engines: {node: '>= 6'}
 
   fs-constants@1.0.0:
@@ -2233,11 +2233,11 @@ packages:
     resolution: {integrity: sha512-P0efT1C9jIdVRefqjzOQ9Xml57zpOXnIuS+csaB4MdZbTdmGDLo8XhzBG1N7aO11gKDDkJvBLULeFTo46wwreA==}
     hasBin: true
 
-  msgpackr@1.11.4:
-    resolution: {integrity: sha512-uaff7RG9VIC4jacFW9xzL3jc0iM32DNHe4jYVycBcjUePT/Klnfj7pqtWJt9khvDFizmjN2TlYniYmSS2LIaZg==}
+  msgpackr@1.11.5:
+    resolution: {integrity: sha512-UjkUHN0yqp9RWKy0Lplhh+wlpdt9oQBYgULZOiFhV3VclSF1JnSQWZ5r9gORQlNYaUKQoR8itv7g7z1xDDuACA==}
 
-  multipasta@0.2.5:
-    resolution: {integrity: sha512-c8eMDb1WwZcE02WVjHoOmUVk7fnKU/RmUcosHACglrWAuPQsEJv+E8430sXj6jNc1jHw0zrS16aCjQh4BcEb4A==}
+  multipasta@0.2.7:
+    resolution: {integrity: sha512-KPA58d68KgGil15oDqXjkUBEBYc00XvbPj5/X+dyzeo/lWm9Nc25pQRlf1D+gv4OpK7NM0J1odrbu9JNNGvynA==}
 
   mute-stream@0.0.8:
     resolution: {integrity: sha512-nnbWWOkoWyUsTjKrhgD0dcz22mdkSnpYqbEjIm2nhwhuxlSkpywJmBo8h0ZqJdkp73mb90SssHkN4rsRaBAfAA==}
@@ -2425,8 +2425,8 @@ packages:
     resolution: {integrity: sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==}
     engines: {node: '>=8.6'}
 
-  picomatch@4.0.2:
-    resolution: {integrity: sha512-M7BAV6Rlcy5u+m6oPhAPFgJTzAioX/6B0DxyvDlo9l8+T3nLKbrczg2WLUyzd45L8RqfUMyGPzekbMvX2Ldkwg==}
+  picomatch@4.0.3:
+    resolution: {integrity: sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==}
     engines: {node: '>=12'}
 
   pify@4.0.1:
@@ -2575,8 +2575,8 @@ packages:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
 
-  rollup@4.45.0:
-    resolution: {integrity: sha512-WLjEcJRIo7i3WDDgOIJqVI2d+lAC3EwvOGy+Xfq6hs+GQuAA4Di/H72xmXkOhrIWFg2PFYSKZYfH0f4vfKXN4A==}
+  rollup@4.45.1:
+    resolution: {integrity: sha512-4iya7Jb76fVpQyLoiVpzUrsjQ12r3dM7fIVz+4NwoYvZOShknRmiv+iu9CClZml5ZLGb0XMcYLutK6w9tgxHDw==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
@@ -2599,8 +2599,8 @@ packages:
   sax@1.4.1:
     resolution: {integrity: sha512-+aWOz7yVScEGoKNd4PA10LZ8sk0A/z5+nXQG5giUO5rprX9jgYsTdov9qCchZiPIZezbZH+jRut8nPodFAX4Jg==}
 
-  secretlint@10.2.0:
-    resolution: {integrity: sha512-JxbGUpsa8OYeF9LsMKxyHbBMrojTIF+p6R7BHxbOSiMgD9Qct0Rlh3flkEZ3EeL/hQvANGSbL+EY7zyrxdY1EQ==}
+  secretlint@10.2.1:
+    resolution: {integrity: sha512-3BghQkIGrDz3xJklX/COxgKbxHz2CAsGkXH4oh8MxeYVLlhA3L/TLhAxZiTyqeril+CnDGg8MUEZdX1dZNsxVA==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
@@ -3293,13 +3293,13 @@ snapshots:
 
   '@dprint/typescript@0.91.8': {}
 
-  '@effect/cluster@0.42.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)':
+  '@effect/cluster@0.43.0(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)':
     dependencies:
-      '@effect/platform': 0.88.0(effect@3.16.13)
-      '@effect/rpc': 0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
-      '@effect/sql': 0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
-      '@effect/workflow': 0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)
-      effect: 3.16.13
+      '@effect/platform': 0.88.1(effect@3.16.16)
+      '@effect/rpc': 0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
+      '@effect/sql': 0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
+      '@effect/workflow': 0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)
+      effect: 3.16.16
 
   '@effect/eslint-plugin@0.3.2':
     dependencies:
@@ -3307,36 +3307,36 @@ snapshots:
       '@dprint/typescript': 0.91.8
       prettier-linter-helpers: 1.0.0
 
-  '@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)':
+  '@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)':
     dependencies:
-      '@effect/platform': 0.88.0(effect@3.16.13)
-      effect: 3.16.13
+      '@effect/platform': 0.88.1(effect@3.16.16)
+      effect: 3.16.16
       uuid: 11.1.0
 
-  '@effect/language-service@0.26.0': {}
+  '@effect/language-service@0.27.2': {}
 
-  '@effect/platform-node-shared@0.43.0(@effect/cluster@0.42.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)':
+  '@effect/platform-node-shared@0.44.0(@effect/cluster@0.43.0(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)':
     dependencies:
-      '@effect/cluster': 0.42.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)
-      '@effect/platform': 0.88.0(effect@3.16.13)
-      '@effect/rpc': 0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
-      '@effect/sql': 0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
+      '@effect/cluster': 0.43.0(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)
+      '@effect/platform': 0.88.1(effect@3.16.16)
+      '@effect/rpc': 0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
+      '@effect/sql': 0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
       '@parcel/watcher': 2.5.1
-      effect: 3.16.13
-      multipasta: 0.2.5
+      effect: 3.16.16
+      multipasta: 0.2.7
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node@0.90.0(@effect/cluster@0.42.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)':
+  '@effect/platform-node@0.91.0(@effect/cluster@0.43.0(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)':
     dependencies:
-      '@effect/cluster': 0.42.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)
-      '@effect/platform': 0.88.0(effect@3.16.13)
-      '@effect/platform-node-shared': 0.43.0(@effect/cluster@0.42.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)
-      '@effect/rpc': 0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
-      '@effect/sql': 0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
-      effect: 3.16.13
+      '@effect/cluster': 0.43.0(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)
+      '@effect/platform': 0.88.1(effect@3.16.16)
+      '@effect/platform-node-shared': 0.44.0(@effect/cluster@0.43.0(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)
+      '@effect/rpc': 0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
+      '@effect/sql': 0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
+      effect: 3.16.16
       mime: 3.0.0
       undici: 7.11.0
       ws: 8.18.3
@@ -3344,31 +3344,32 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform@0.88.0(effect@3.16.13)':
+  '@effect/platform@0.88.1(effect@3.16.16)':
     dependencies:
-      effect: 3.16.13
-      find-my-way-ts: 0.1.6
-      msgpackr: 1.11.4
-      multipasta: 0.2.5
-
-  '@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)':
-    dependencies:
-      '@effect/platform': 0.88.0(effect@3.16.13)
-      effect: 3.16.13
-
-  '@effect/sql@0.41.0(@effect/experimental@0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)':
-    dependencies:
-      '@effect/experimental': 0.52.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
-      '@effect/platform': 0.88.0(effect@3.16.13)
       '@opentelemetry/semantic-conventions': 1.36.0
-      effect: 3.16.13
+      effect: 3.16.16
+      find-my-way-ts: 0.1.6
+      msgpackr: 1.11.5
+      multipasta: 0.2.7
+
+  '@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)':
+    dependencies:
+      '@effect/platform': 0.88.1(effect@3.16.16)
+      effect: 3.16.16
+
+  '@effect/sql@0.42.0(@effect/experimental@0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)':
+    dependencies:
+      '@effect/experimental': 0.52.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
+      '@effect/platform': 0.88.1(effect@3.16.16)
+      '@opentelemetry/semantic-conventions': 1.36.0
+      effect: 3.16.16
       uuid: 11.1.0
 
-  '@effect/workflow@0.5.0(@effect/platform@0.88.0(effect@3.16.13))(@effect/rpc@0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13))(effect@3.16.13)':
+  '@effect/workflow@0.5.1(@effect/platform@0.88.1(effect@3.16.16))(@effect/rpc@0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16))(effect@3.16.16)':
     dependencies:
-      '@effect/platform': 0.88.0(effect@3.16.13)
-      '@effect/rpc': 0.65.0(@effect/platform@0.88.0(effect@3.16.13))(effect@3.16.13)
-      effect: 3.16.13
+      '@effect/platform': 0.88.1(effect@3.16.16)
+      '@effect/rpc': 0.65.2(@effect/platform@0.88.1(effect@3.16.16))(effect@3.16.16)
+      effect: 3.16.16
 
   '@emnapi/core@1.4.4':
     dependencies:
@@ -3668,94 +3669,94 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@rollup/rollup-android-arm-eabi@4.45.0':
+  '@rollup/rollup-android-arm-eabi@4.45.1':
     optional: true
 
-  '@rollup/rollup-android-arm64@4.45.0':
+  '@rollup/rollup-android-arm64@4.45.1':
     optional: true
 
-  '@rollup/rollup-darwin-arm64@4.45.0':
+  '@rollup/rollup-darwin-arm64@4.45.1':
     optional: true
 
-  '@rollup/rollup-darwin-x64@4.45.0':
+  '@rollup/rollup-darwin-x64@4.45.1':
     optional: true
 
-  '@rollup/rollup-freebsd-arm64@4.45.0':
+  '@rollup/rollup-freebsd-arm64@4.45.1':
     optional: true
 
-  '@rollup/rollup-freebsd-x64@4.45.0':
+  '@rollup/rollup-freebsd-x64@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-arm-gnueabihf@4.45.0':
+  '@rollup/rollup-linux-arm-gnueabihf@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-arm-musleabihf@4.45.0':
+  '@rollup/rollup-linux-arm-musleabihf@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-arm64-gnu@4.45.0':
+  '@rollup/rollup-linux-arm64-gnu@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-arm64-musl@4.45.0':
+  '@rollup/rollup-linux-arm64-musl@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-loongarch64-gnu@4.45.0':
+  '@rollup/rollup-linux-loongarch64-gnu@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-powerpc64le-gnu@4.45.0':
+  '@rollup/rollup-linux-powerpc64le-gnu@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-riscv64-gnu@4.45.0':
+  '@rollup/rollup-linux-riscv64-gnu@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-riscv64-musl@4.45.0':
+  '@rollup/rollup-linux-riscv64-musl@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-s390x-gnu@4.45.0':
+  '@rollup/rollup-linux-s390x-gnu@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-x64-gnu@4.45.0':
+  '@rollup/rollup-linux-x64-gnu@4.45.1':
     optional: true
 
-  '@rollup/rollup-linux-x64-musl@4.45.0':
+  '@rollup/rollup-linux-x64-musl@4.45.1':
     optional: true
 
-  '@rollup/rollup-win32-arm64-msvc@4.45.0':
+  '@rollup/rollup-win32-arm64-msvc@4.45.1':
     optional: true
 
-  '@rollup/rollup-win32-ia32-msvc@4.45.0':
+  '@rollup/rollup-win32-ia32-msvc@4.45.1':
     optional: true
 
-  '@rollup/rollup-win32-x64-msvc@4.45.0':
+  '@rollup/rollup-win32-x64-msvc@4.45.1':
     optional: true
 
-  '@secretlint/config-creator@10.2.0':
+  '@secretlint/config-creator@10.2.1':
     dependencies:
-      '@secretlint/types': 10.2.0
+      '@secretlint/types': 10.2.1
 
-  '@secretlint/config-loader@10.2.0':
+  '@secretlint/config-loader@10.2.1':
     dependencies:
-      '@secretlint/profiler': 10.2.0
-      '@secretlint/resolver': 10.2.0
-      '@secretlint/types': 10.2.0
+      '@secretlint/profiler': 10.2.1
+      '@secretlint/resolver': 10.2.1
+      '@secretlint/types': 10.2.1
       ajv: 8.17.1
       debug: 4.4.1(supports-color@8.1.1)
       rc-config-loader: 4.1.3
     transitivePeerDependencies:
       - supports-color
 
-  '@secretlint/core@10.2.0':
+  '@secretlint/core@10.2.1':
     dependencies:
-      '@secretlint/profiler': 10.2.0
-      '@secretlint/types': 10.2.0
+      '@secretlint/profiler': 10.2.1
+      '@secretlint/types': 10.2.1
       debug: 4.4.1(supports-color@8.1.1)
       structured-source: 4.0.0
     transitivePeerDependencies:
       - supports-color
 
-  '@secretlint/formatter@10.2.0':
+  '@secretlint/formatter@10.2.1':
     dependencies:
-      '@secretlint/resolver': 10.2.0
-      '@secretlint/types': 10.2.0
+      '@secretlint/resolver': 10.2.1
+      '@secretlint/types': 10.2.1
       '@textlint/linter-formatter': 15.2.0
       '@textlint/module-interop': 15.2.0
       '@textlint/types': 15.2.0
@@ -3768,39 +3769,39 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@secretlint/node@10.2.0':
+  '@secretlint/node@10.2.1':
     dependencies:
-      '@secretlint/config-loader': 10.2.0
-      '@secretlint/core': 10.2.0
-      '@secretlint/formatter': 10.2.0
-      '@secretlint/profiler': 10.2.0
-      '@secretlint/source-creator': 10.2.0
-      '@secretlint/types': 10.2.0
+      '@secretlint/config-loader': 10.2.1
+      '@secretlint/core': 10.2.1
+      '@secretlint/formatter': 10.2.1
+      '@secretlint/profiler': 10.2.1
+      '@secretlint/source-creator': 10.2.1
+      '@secretlint/types': 10.2.1
       debug: 4.4.1(supports-color@8.1.1)
       p-map: 7.0.3
     transitivePeerDependencies:
       - supports-color
 
-  '@secretlint/profiler@10.2.0': {}
+  '@secretlint/profiler@10.2.1': {}
 
-  '@secretlint/resolver@10.2.0': {}
+  '@secretlint/resolver@10.2.1': {}
 
-  '@secretlint/secretlint-formatter-sarif@10.2.0':
+  '@secretlint/secretlint-formatter-sarif@10.2.1':
     dependencies:
       node-sarif-builder: 3.2.0
 
-  '@secretlint/secretlint-rule-no-dotenv@10.2.0':
+  '@secretlint/secretlint-rule-no-dotenv@10.2.1':
     dependencies:
-      '@secretlint/types': 10.2.0
+      '@secretlint/types': 10.2.1
 
-  '@secretlint/secretlint-rule-preset-recommend@10.2.0': {}
+  '@secretlint/secretlint-rule-preset-recommend@10.2.1': {}
 
-  '@secretlint/source-creator@10.2.0':
+  '@secretlint/source-creator@10.2.1':
     dependencies:
-      '@secretlint/types': 10.2.0
+      '@secretlint/types': 10.2.1
       istextorbinary: 9.5.0
 
-  '@secretlint/types@10.2.0': {}
+  '@secretlint/types@10.2.1': {}
 
   '@sindresorhus/merge-streams@2.3.0': {}
 
@@ -3900,7 +3901,7 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@24.0.13':
+  '@types/node@24.0.14':
     dependencies:
       undici-types: 7.8.0
 
@@ -3912,7 +3913,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 24.0.13
+      '@types/node': 24.0.14
 
   '@typescript-eslint/eslint-plugin@8.37.0(@typescript-eslint/parser@8.37.0(eslint@9.31.0)(typescript@5.8.3))(eslint@9.31.0)(typescript@5.8.3)':
     dependencies:
@@ -4126,17 +4127,17 @@ snapshots:
   '@vscode/vsce@3.6.0':
     dependencies:
       '@azure/identity': 4.10.2
-      '@secretlint/node': 10.2.0
-      '@secretlint/secretlint-formatter-sarif': 10.2.0
-      '@secretlint/secretlint-rule-no-dotenv': 10.2.0
-      '@secretlint/secretlint-rule-preset-recommend': 10.2.0
+      '@secretlint/node': 10.2.1
+      '@secretlint/secretlint-formatter-sarif': 10.2.1
+      '@secretlint/secretlint-rule-no-dotenv': 10.2.1
+      '@secretlint/secretlint-rule-preset-recommend': 10.2.1
       '@vscode/vsce-sign': 2.0.6
       azure-devops-node-api: 12.5.0
       chalk: 4.1.2
       cheerio: 1.1.0
       cockatiel: 3.2.1
       commander: 12.1.0
-      form-data: 4.0.3
+      form-data: 4.0.4
       glob: 11.0.3
       hosted-git-info: 4.1.0
       jsonc-parser: 3.3.1
@@ -4146,7 +4147,7 @@ snapshots:
       minimatch: 3.1.2
       parse-semver: 1.1.1
       read: 1.0.7
-      secretlint: 10.2.0
+      secretlint: 10.2.1
       semver: 7.7.2
       tmp: 0.2.3
       typed-rest-client: 1.8.11
@@ -4465,7 +4466,7 @@ snapshots:
     dependencies:
       version-range: 4.14.0
 
-  effect@3.16.13:
+  effect@3.16.16:
     dependencies:
       '@standard-schema/spec': 1.0.0
       fast-check: 3.23.2
@@ -4703,9 +4704,9 @@ snapshots:
     dependencies:
       pend: 1.2.0
 
-  fdir@6.4.6(picomatch@4.0.2):
+  fdir@6.4.6(picomatch@4.0.3):
     optionalDependencies:
-      picomatch: 4.0.2
+      picomatch: 4.0.3
 
   file-entry-cache@8.0.0:
     dependencies:
@@ -4731,7 +4732,7 @@ snapshots:
     dependencies:
       magic-string: 0.30.17
       mlly: 1.7.4
-      rollup: 4.45.0
+      rollup: 4.45.1
 
   flat-cache@4.0.1:
     dependencies:
@@ -4747,7 +4748,7 @@ snapshots:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
 
-  form-data@4.0.3:
+  form-data@4.0.4:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
@@ -5250,11 +5251,11 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.3
     optional: true
 
-  msgpackr@1.11.4:
+  msgpackr@1.11.5:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
-  multipasta@0.2.5: {}
+  multipasta@0.2.7: {}
 
   mute-stream@0.0.8: {}
 
@@ -5439,7 +5440,7 @@ snapshots:
 
   picomatch@2.3.1: {}
 
-  picomatch@4.0.2: {}
+  picomatch@4.0.3: {}
 
   pify@4.0.1: {}
 
@@ -5583,30 +5584,30 @@ snapshots:
 
   reusify@1.1.0: {}
 
-  rollup@4.45.0:
+  rollup@4.45.1:
     dependencies:
       '@types/estree': 1.0.8
     optionalDependencies:
-      '@rollup/rollup-android-arm-eabi': 4.45.0
-      '@rollup/rollup-android-arm64': 4.45.0
-      '@rollup/rollup-darwin-arm64': 4.45.0
-      '@rollup/rollup-darwin-x64': 4.45.0
-      '@rollup/rollup-freebsd-arm64': 4.45.0
-      '@rollup/rollup-freebsd-x64': 4.45.0
-      '@rollup/rollup-linux-arm-gnueabihf': 4.45.0
-      '@rollup/rollup-linux-arm-musleabihf': 4.45.0
-      '@rollup/rollup-linux-arm64-gnu': 4.45.0
-      '@rollup/rollup-linux-arm64-musl': 4.45.0
-      '@rollup/rollup-linux-loongarch64-gnu': 4.45.0
-      '@rollup/rollup-linux-powerpc64le-gnu': 4.45.0
-      '@rollup/rollup-linux-riscv64-gnu': 4.45.0
-      '@rollup/rollup-linux-riscv64-musl': 4.45.0
-      '@rollup/rollup-linux-s390x-gnu': 4.45.0
-      '@rollup/rollup-linux-x64-gnu': 4.45.0
-      '@rollup/rollup-linux-x64-musl': 4.45.0
-      '@rollup/rollup-win32-arm64-msvc': 4.45.0
-      '@rollup/rollup-win32-ia32-msvc': 4.45.0
-      '@rollup/rollup-win32-x64-msvc': 4.45.0
+      '@rollup/rollup-android-arm-eabi': 4.45.1
+      '@rollup/rollup-android-arm64': 4.45.1
+      '@rollup/rollup-darwin-arm64': 4.45.1
+      '@rollup/rollup-darwin-x64': 4.45.1
+      '@rollup/rollup-freebsd-arm64': 4.45.1
+      '@rollup/rollup-freebsd-x64': 4.45.1
+      '@rollup/rollup-linux-arm-gnueabihf': 4.45.1
+      '@rollup/rollup-linux-arm-musleabihf': 4.45.1
+      '@rollup/rollup-linux-arm64-gnu': 4.45.1
+      '@rollup/rollup-linux-arm64-musl': 4.45.1
+      '@rollup/rollup-linux-loongarch64-gnu': 4.45.1
+      '@rollup/rollup-linux-powerpc64le-gnu': 4.45.1
+      '@rollup/rollup-linux-riscv64-gnu': 4.45.1
+      '@rollup/rollup-linux-riscv64-musl': 4.45.1
+      '@rollup/rollup-linux-s390x-gnu': 4.45.1
+      '@rollup/rollup-linux-x64-gnu': 4.45.1
+      '@rollup/rollup-linux-x64-musl': 4.45.1
+      '@rollup/rollup-win32-arm64-msvc': 4.45.1
+      '@rollup/rollup-win32-ia32-msvc': 4.45.1
+      '@rollup/rollup-win32-x64-msvc': 4.45.1
       fsevents: 2.3.3
 
   run-applescript@7.0.0: {}
@@ -5623,12 +5624,12 @@ snapshots:
 
   sax@1.4.1: {}
 
-  secretlint@10.2.0:
+  secretlint@10.2.1:
     dependencies:
-      '@secretlint/config-creator': 10.2.0
-      '@secretlint/formatter': 10.2.0
-      '@secretlint/node': 10.2.0
-      '@secretlint/profiler': 10.2.0
+      '@secretlint/config-creator': 10.2.1
+      '@secretlint/formatter': 10.2.1
+      '@secretlint/node': 10.2.1
+      '@secretlint/profiler': 10.2.1
       debug: 4.4.1(supports-color@8.1.1)
       globby: 14.1.0
       read-pkg: 9.0.1
@@ -5849,8 +5850,8 @@ snapshots:
 
   tinyglobby@0.2.14:
     dependencies:
-      fdir: 6.4.6(picomatch@4.0.2)
-      picomatch: 4.0.2
+      fdir: 6.4.6(picomatch@4.0.3)
+      picomatch: 4.0.3
 
   tmp@0.0.33:
     dependencies:
@@ -5891,7 +5892,7 @@ snapshots:
       picocolors: 1.1.1
       postcss-load-config: 6.0.1
       resolve-from: 5.0.0
-      rollup: 4.45.0
+      rollup: 4.45.1
       source-map: 0.8.0-beta.0
       sucrase: 3.35.0
       tinyexec: 0.3.2
