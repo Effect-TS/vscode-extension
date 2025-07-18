@@ -138,6 +138,7 @@ export class SpanStackEntry extends Data.Class<{
   readonly path?: string
   readonly line: number
   readonly column: number
+  readonly attributes: ReadonlyArray<readonly [string, DebugChannel.VariableReference]>
 }> {
 }
 
@@ -173,7 +174,8 @@ const SpanSchema = Schema.Struct({
   spanId: Schema.String,
   traceId: Schema.String,
   name: Schema.String,
-  stack: Schema.Array(StackLocation)
+  stack: Schema.Array(StackLocation),
+  attributes: Schema.Array(Schema.Tuple(Schema.String, DebugChannel.VariableReference.SchemaFromSelf))
 })
 
 const ExternalSpanSchema = Schema.Struct({
@@ -210,6 +212,7 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
       spanId: current.spanId,
       traceId: current.traceId,
       name: current.name,
+      attributes: current.attributes ? Array.from(current.attributes.entries()) : [],
       stack: stack
     })
     current = current.parent && current.parent._tag === "Some" ? current.parent.value : null;
@@ -257,7 +260,8 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
                 name: "<external span " + entry.spanId + ">",
                 stackIndex: -1,
                 line: 0,
-                column: 0
+                column: 0,
+                attributes: []
               })
             )
             break
