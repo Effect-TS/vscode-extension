@@ -23,7 +23,7 @@ jobs:
         run: pnpm build
       
       - name: Package extension
-        run: vsce package
+        run: vsce package --no-dependencies
       
       - name: Publish to VSCode Marketplace
         run: vsce publish --packagePath *.vsix

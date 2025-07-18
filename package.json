@@ -187,8 +187,7 @@
     "lint": "eslint src",
     "lint-fix": "eslint src --fix",
     "check": "tsc -b tsconfig.json",
-    "test": "node ./out/test/runTest.js",
-    "ci:publish": "vsce publish --no-dependencies"
+    "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.1",
