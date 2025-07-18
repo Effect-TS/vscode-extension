@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.2.3
+
+### Patch Changes
+
+- [#36](https://github.com/Effect-TS/vscode-extension/pull/36) [`e94d827`](https://github.com/Effect-TS/vscode-extension/commit/e94d8279885ffac6205ac4c3ddc8f4f6a058be73) Thanks [@effect-bot](https://github.com/effect-bot)! - Skip dependencies check
+
 ## 0.2.2
 
 ### Patch Changes
