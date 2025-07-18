@@ -1,5 +1,15 @@
 # effect-vscode
 
+## 0.2.2
+
+### Patch Changes
+
+- [#34](https://github.com/Effect-TS/vscode-extension/pull/34) [`9f32c5c`](https://github.com/Effect-TS/vscode-extension/commit/9f32c5c12706cf0d1a7764890b0f89118222c2f0) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Add span attributes in current span view
+
+- [#29](https://github.com/Effect-TS/vscode-extension/pull/29) [`d1b894d`](https://github.com/Effect-TS/vscode-extension/commit/d1b894d4a2784eb6bed572fc6c36ac134cedba3d) Thanks [@colelawrence](https://github.com/colelawrence)! - Add multi-marketplace publishing support
+
+  Extensions are now published to both VSCode Marketplace and Open VSX Registry automatically using the same extension bundle to ensure consistency across platforms.
+
 ## 0.2.1
 
 ### Patch Changes
