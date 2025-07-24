@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.2.4
+
+### Patch Changes
+
+- [#38](https://github.com/Effect-TS/vscode-extension/pull/38) [`25b673a`](https://github.com/Effect-TS/vscode-extension/commit/25b673a879cc0782e0d1d678d148504ebe04fc8f) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Fix instrumentation to work inside wrangler
+
 ## 0.2.3
 
 ### Patch Changes
