@@ -96,13 +96,17 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
 
 // --
 
-export const ensureInstrumentationInjected = Effect.gen(function*() {
-  const result = yield* DebugChannel.DebugChannel.evaluate(
-    `globalThis && "effect/devtools/instrumentation" in globalThis`
-  )
-  const isInjected = yield* result.parse(Schema.Boolean)
-  if (!isInjected) yield* DebugChannel.DebugChannel.evaluate(compiledInstrumentationString)
-})
+export const ensureInstrumentationInjected = (guessFrameId: boolean) =>
+  Effect.gen(function*() {
+    const result = yield* DebugChannel.DebugChannel.evaluate({
+      expression: `globalThis && "effect/devtools/instrumentation" in globalThis`,
+      guessFrameId
+    })
+    const isInjected = yield* result.parse(Schema.Boolean)
+    if (!isInjected) {
+      yield* DebugChannel.DebugChannel.evaluate({ expression: compiledInstrumentationString, guessFrameId })
+    }
+  })
 
 export class ContextPair extends Data.TaggedClass("ContextPair")<{
   readonly tag: string
@@ -117,9 +121,10 @@ const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.loc
 const ContextSchema = Schema.Array(Schema.Tuple(Schema.String, DebugChannel.VariableReference.SchemaFromSelf))
 
 const getContext = Effect.gen(function*() {
-  const result = yield* DebugChannel.DebugChannel.evaluate(contextExpression)
+  const result = yield* DebugChannel.DebugChannel.evaluate({ expression: contextExpression, guessFrameId: true })
   return yield* result.parse(ContextSchema)
 }).pipe(
+  Effect.tapError(Effect.logError),
   Effect.orElseSucceed(() => []),
   Effect.map(
     Array.map(
@@ -205,7 +210,9 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
       var stackFn = spanToTrace ? spanToTrace.get(current) : acc;
       return stackFn ? stackFn() : acc;
     }, undefined) || "";
-    var stack = stackString.split("\\n")
+    var stack = stackString.split("\\n").filter(function(_){
+      return _ !== ""
+    })
     
     spans.push({
       _tag: current._tag,
@@ -221,11 +228,15 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
 })(${currentFiberExpression})`
 
   return Effect.gen(function*() {
-    yield* ensureInstrumentationInjected
-    const result = yield* DebugChannel.DebugChannel.evaluate(currentSpanStackExpression)
+    yield* ensureInstrumentationInjected(true)
+    const result = yield* DebugChannel.DebugChannel.evaluate({
+      expression: currentSpanStackExpression,
+      guessFrameId: true
+    })
     return yield* result.parse(SpanStackSchema)
   }).pipe(
-    Effect.catchAll(() => Effect.succeed([])),
+    Effect.tapError(Effect.logError),
+    Effect.orElseSucceed(() => []),
     Effect.map((stack) => {
       // now, a single span can have a stack with multiple locations
       // so we need to duplicate the span for each location
@@ -301,10 +312,11 @@ const CurrentFiberSchema = Schema.Array(Schema.Struct({
 }))
 
 const getCurrentFibers = Effect.gen(function*() {
-  yield* ensureInstrumentationInjected
-  const result = yield* DebugChannel.DebugChannel.evaluate(currentFibersExpression)
+  yield* ensureInstrumentationInjected(true)
+  const result = yield* DebugChannel.DebugChannel.evaluate({ expression: currentFibersExpression, guessFrameId: true })
   return yield* result.parse(CurrentFiberSchema)
 }).pipe(
+  Effect.tapError(Effect.logError),
   Effect.orElseSucceed(() => []),
   Effect.flatMap((fibers) =>
     Effect.all(
