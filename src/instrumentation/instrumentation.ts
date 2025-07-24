@@ -1,3 +1,4 @@
+/* eslint-disable object-shorthand */
 import type * as Domain from "@effect/experimental/DevTools/Domain"
 import type { Fiber } from "effect/Fiber"
 import type * as Schema from "effect/Schema"
@@ -22,13 +23,17 @@ const instrumentationId = Math.random().toString(36).substring(2, 15)
 function addSetInterceptor<O extends object, K extends keyof O>(
   obj: O,
   key: K,
-  interceptor: (value: O[K]) => void
+  interceptor: (v: O[K]) => void
 ) {
   const previousProperty = Object.getOwnPropertyDescriptor(obj, key)
   if (previousProperty && previousProperty.set) {
     Object.defineProperty(obj, key, {
-      ...previousProperty,
-      set(this: O, value: O[K]) {
+      "value": previousProperty.value,
+      "writable": previousProperty.writable,
+      "enumerable": previousProperty.enumerable,
+      "configurable": previousProperty.configurable,
+      "get": previousProperty.get,
+      "set": function(this: O, value: O[K]) {
         interceptor(value)
         previousProperty.set?.bind(this)(value)
       }
@@ -36,11 +41,11 @@ function addSetInterceptor<O extends object, K extends keyof O>(
   } else {
     let _value: O[K]
     Object.defineProperty(obj, key, {
-      set(this: O, value: O[K]) {
+      "set": function(this: O, value: O[K]) {
         _value = value
         interceptor(value)
       },
-      get() {
+      "get": function() {
         return _value
       }
     })
@@ -50,7 +55,9 @@ function addSetInterceptor<O extends object, K extends keyof O>(
 function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot> {
   const metrics: Array<Schema.Schema.Encoded<typeof Domain.Metric>> = []
 
-  for (const store of globalStores()) {
+  const stores = globalStores()
+  for (let i = 0; i < stores.length; i++) {
+    const store = stores[i]
     const metricRegistry = store.get(globalMetricRegistrySymbol)
     if (!metricRegistry) continue
     const snapshot = metricRegistry.snapshot()
@@ -75,7 +82,7 @@ function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot>
           description: getOrUndefined(metricPair.metricKey.description),
           tags: metricPair.metricKey.tags,
           state: {
-            value: typeof metricPair.metricState.value === "bigint"
+            "value": typeof metricPair.metricState.value === "bigint"
               ? metricPair.metricState.value.toString()
               : metricPair.metricState.value
           }
@@ -248,7 +255,8 @@ if (!(instrumentationKey in globalThis)) {
 
     // handle the requests
     const processedRequestTypes: Array<string> = []
-    for (const request of requests) {
+    for (let i = 0; i < requests.length; i++) {
+      const request = requests[i]
       switch (request._tag) {
         case "Pong":
           continue

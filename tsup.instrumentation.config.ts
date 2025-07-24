@@ -13,7 +13,7 @@ export default defineConfig({
   external: ["effect"],
   treeshake: "smallest",
   target: "es5",
-  minify: true,
+  minify: false,
   onSuccess: () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

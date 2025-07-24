@@ -26,7 +26,7 @@ import * as vscode from "vscode"
 import * as DebugChannel from "./DebugChannel"
 import * as DebugEnv from "./DebugEnv"
 import type { ConfigRef } from "./VsCode"
-import { configWithDefault, executeCommand, listenFork, registerCommand } from "./VsCode"
+import { configWithDefault, executeCommand, listenFork, registerCommand, thenableCatch } from "./VsCode"
 
 export interface Client extends Equal.Equal {
   readonly id: number
@@ -254,7 +254,7 @@ export class Clients extends Effect.Service<Clients>()(
           const toSend = yield* Queue.unbounded<Domain.Response>()
 
           // inject the instrumentation into the debug session
-          yield* DebugEnv.ensureInstrumentationInjected.pipe(
+          yield* DebugEnv.ensureInstrumentationInjected(false).pipe(
             Effect.provideService(DebugChannel.DebugChannel, debugChannel)
           )
 
@@ -273,7 +273,10 @@ export class Clients extends Effect.Service<Clients>()(
                 const requestJs = `globalThis["effect/devtools/instrumentation"].debugProtocolDevtoolsClient(${
                   JSON.stringify(encodedRequests)
                 })`
-                const debugResponses = yield* DebugChannel.DebugChannel.evaluate(requestJs)
+                const debugResponses = yield* DebugChannel.DebugChannel.evaluate({
+                  expression: requestJs,
+                  guessFrameId: false
+                })
 
                 const result = yield* debugResponses.parse(DebugInstrumentationResponseSchema)
                 return yield* queue.offerAll(result.responses)

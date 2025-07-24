@@ -25,7 +25,10 @@ export class VariableReference extends Data.TaggedClass("VariableReference")<{
 
 export class DebugChannel extends Effect.Tag("effect-vscode/DebugChannel")<DebugChannel, {
   evaluate: (
-    expression: string
+    opts: {
+      expression: string
+      guessFrameId: boolean
+    }
   ) => Effect.Effect<VariableReference, DebugChannelError, never>
 }>() {}
 
@@ -42,6 +45,24 @@ interface DapEvaluateResponse {
   readonly variablesReference: number
 }
 
+interface DapThreadsResponse {
+  threads: Array<DapThread>
+}
+
+interface DapThread {
+  id: number
+  name: string
+}
+
+interface DapStackTracesResponse {
+  stackFrames: Array<DapStackFrame>
+}
+
+interface DapStackFrame {
+  id: number
+  name: string
+}
+
 interface DapVariablesResponse {
   variables: Array<DapVariableReference>
 }
@@ -49,8 +70,14 @@ interface DapVariablesResponse {
 export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["Type"]) =>
   Effect.gen(function*() {
     const debugRequest = <A = never>(command: string, args?: any) =>
-      VsCode.thenableCatch<A, DebugChannelError>(() => debugSession.customRequest(command, args), (error) =>
-        new DebugChannelError({ message: String(error) }))
+      VsCode.thenableCatch<A, DebugChannelError>(
+        () => {
+          return debugSession.customRequest(command, args)
+        },
+        (error) => {
+          return new DebugChannelError({ message: String(error) + " " + (args ? JSON.stringify(args) : "undefined") })
+        }
+      )
 
     const extractValue = (
       dapVariableReference: DapVariableReference,
@@ -69,9 +96,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
           }
           case "Union": {
             return yield* Effect.firstSuccessOf(
-              ast.types.map((typeAST) =>
-                extractValue(dapVariableReference, typeAST)
-              )
+              ast.types.map((typeAST) => extractValue(dapVariableReference, typeAST))
             )
           }
           case "Transformation":
@@ -181,9 +206,36 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
     }
 
     return DebugChannel.of({
-      evaluate: (expression: string) =>
+      evaluate: (opts) =>
         Effect.gen(function*() {
-          const response = yield* debugRequest<DapEvaluateResponse>("evaluate", { expression })
+          let request: any = {
+            expression: opts.expression,
+            context: "repl"
+          }
+          if (opts.guessFrameId) {
+            const threads = yield* debugRequest<DapThreadsResponse>("threads")
+            const thread = threads.threads[0]
+            if (!thread) {
+              return yield* new DebugChannelError({
+                message: "No thread found"
+              })
+            }
+            const stackTraces = yield* debugRequest<DapStackTracesResponse>("stackTrace", {
+              threadId: thread.id
+            })
+            const stackTrace = stackTraces.stackFrames[0]
+            if (!stackTrace) {
+              return yield* new DebugChannelError({
+                message: "No stack trace found"
+              })
+            }
+            request = {
+              expression: opts.expression,
+              context: "repl",
+              frameId: stackTrace.id
+            }
+          }
+          const response = yield* debugRequest<DapEvaluateResponse>("evaluate", request)
           return makeVariableReference({
             name: "",
             value: response.result,
