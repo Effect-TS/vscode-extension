@@ -9,6 +9,7 @@ import { DebugFibersProviderLive } from "./DebugFibersProvider"
 import { DebugSpanStackProviderLive } from "./DebugSpanStackProvider"
 import { MetricsProviderLive } from "./MetricsProvider"
 import { SpanProviderLive } from "./SpanProvider"
+import { TracerExtendedLive } from "./TracerProvider"
 import { TreeCommandsLive } from "./TreeCommands"
 import { launch, logger, VsCodeContext } from "./VsCode"
 
@@ -19,7 +20,8 @@ const MainLive = ClientsProviderLive.pipe(
     SpanProviderLive,
     MetricsProviderLive,
     TreeCommandsLive,
-    DebugFibersProviderLive
+    DebugFibersProviderLive,
+    TracerExtendedLive
   )),
   Layer.provide(Clients.Default),
   Layer.provide(DebugEnv.Live),

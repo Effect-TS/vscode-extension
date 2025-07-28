@@ -93,6 +93,13 @@
           "title": "Effect Dev Tools",
           "icon": "resources/icons/effect-light.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "effect-tracer-panel",
+          "title": "Effect Tracer",
+          "icon": "resources/icons/effect-light.svg"
+        }
       ]
     },
     "views": {
@@ -125,6 +132,13 @@
           "id": "effect-debug-fibers",
           "name": "Effect Fibers",
           "when": "inDebugMode"
+        }
+      ],
+      "effect-tracer-panel": [
+        {
+          "type": "webview",
+          "id": "effect-tracer-extended",
+          "name": "Effect Tracer"
         }
       ]
     },

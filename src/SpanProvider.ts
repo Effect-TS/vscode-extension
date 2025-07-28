@@ -118,20 +118,23 @@ export const SpanProviderLive = treeDataProvider<TreeNode>("effect-tracer")(
       yield* registerCommand("effect.resetTracer", () => reset)
 
       const handleClient = (client: Client) =>
-        client.spans.take.pipe(
-          Effect.flatMap((data) => {
-            switch (data._tag) {
-              case "Span": {
-                return registerSpan(data)
+        Effect.flatMap(client.spans, (spans) =>
+          spans.take.pipe(
+            Effect.flatMap((data) => {
+              switch (data._tag) {
+                case "Span": {
+                  return registerSpan(data)
+                }
+                case "SpanEvent": {
+                  return registerSpanEvent(data)
+                }
               }
-              case "SpanEvent": {
-                return registerSpanEvent(data)
-              }
-            }
-          }),
-          Effect.forever,
-          Effect.ignore
-        )
+            })
+          )).pipe(
+            Effect.forever,
+            Effect.ignore,
+            Effect.scoped
+          )
 
       yield* clients.clients.changes.pipe(
         Stream.flatMap(

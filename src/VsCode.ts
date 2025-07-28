@@ -53,6 +53,47 @@ export const registerCommand = <R, E, A>(
     )
   })
 
+export class Webview extends Context.Tag("vscode/Webview")<
+  Webview,
+  vscode.WebviewView
+>() {}
+
+export const registerWebview = <R>(
+  id: string,
+  f: (
+    context: vscode.WebviewViewResolveContext
+  ) => Effect.Effect<void, never, Webview | R | Scope.Scope>,
+  options?: {
+    readonly webviewOptions?: {
+      readonly retainContextWhenHidden?: boolean
+    }
+  }
+): Effect.Effect<
+  void,
+  never,
+  Exclude<R, Scope.Scope | Webview> | VsCodeContext
+> =>
+  Effect.gen(function*() {
+    const context = yield* VsCodeContext
+    const runtime = yield* Effect.runtime<Exclude<R, Scope.Scope | Webview>>()
+    const run = runWithToken(runtime)
+
+    context.subscriptions.push(
+      vscode.window.registerWebviewViewProvider(id, {
+        resolveWebviewView(view, context, token) {
+          run(
+            f(context).pipe(
+              Effect.zipRight(Effect.never),
+              Effect.scoped,
+              Effect.provideService(Webview, view)
+            ) as any,
+            token
+          )
+        }
+      }, options)
+    )
+  })
+
 export interface ConfigRef<A> {
   readonly get: Effect.Effect<A>
   readonly changes: Stream.Stream<A>

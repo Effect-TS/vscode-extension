@@ -17,22 +17,29 @@ import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
+import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
+import type { Dequeue } from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
+import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as vscode from "vscode"
 import * as DebugChannel from "./DebugChannel"
 import * as DebugEnv from "./DebugEnv"
 import type { ConfigRef } from "./VsCode"
-import { configWithDefault, executeCommand, listenFork, registerCommand, thenableCatch } from "./VsCode"
+import { configWithDefault, executeCommand, listenFork, registerCommand } from "./VsCode"
 
 export interface Client extends Equal.Equal {
   readonly id: number
   readonly name: string
-  readonly spans: Mailbox.ReadonlyMailbox<Domain.Span | Domain.SpanEvent>
-  readonly metrics: Mailbox.ReadonlyMailbox<Domain.MetricsSnapshot>
+  readonly spans: Effect.Effect<
+    Dequeue<Domain.Span | Domain.SpanEvent>,
+    never,
+    Scope
+  >
+  readonly metrics: Effect.Effect<Dequeue<Domain.MetricsSnapshot>, never, Scope>
   readonly requestMetrics: Effect.Effect<void>
 }
 
@@ -98,25 +105,23 @@ const makeClient = (serverClient: Server.Client, name?: string) =>
     const { activeClient, clientId, clients } = yield* ClientsContext
 
     const spans = yield* Effect.acquireRelease(
-      Mailbox.make<Domain.Span | Domain.SpanEvent>({
-        capacity: 100,
-        strategy: "sliding"
+      PubSub.sliding<Domain.Span | Domain.SpanEvent>({
+        capacity: 100
       }),
-      (mailbox) => mailbox.end
+      PubSub.shutdown
     )
     const metrics = yield* Effect.acquireRelease(
-      Mailbox.make<Domain.MetricsSnapshot>({
-        capacity: 2,
-        strategy: "sliding"
+      PubSub.sliding<Domain.MetricsSnapshot>({
+        capacity: 2
       }),
-      (mailbox) => mailbox.end
+      PubSub.shutdown
     )
     const id = yield* Ref.getAndUpdate(clientId, (_) => _ + 1)
     const client: Client = {
       id,
       name: name ?? `Client #${id}`,
-      spans,
-      metrics,
+      spans: PubSub.subscribe(spans),
+      metrics: PubSub.subscribe(metrics),
       requestMetrics: serverClient.request({ _tag: "MetricsRequest" }),
       [Equal.symbol](that: Client) {
         return id === that.id
