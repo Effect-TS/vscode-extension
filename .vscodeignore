@@ -8,3 +8,11 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/*.map
 **/*.ts
+.claude
+.changeset
+.github
+tracer/
+eslint.config.mjs
+flake.*
+pnpm-lock.yaml
+*.tsbuildinfo
