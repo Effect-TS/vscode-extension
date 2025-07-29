@@ -1,15 +1,15 @@
 import { useCallback, useState } from "react"
-import TraceLabels from "./components/TraceLabels"
 import TraceMinimap from "./components/TraceMinimap"
 import TraceViewer from "./components/TraceViewer"
 import type { TraceEvent, TraceViewerOptions, ViewState } from "./components/TraceViewerUtils"
 import "./App.css"
-import { useRxSuspenseSuccess } from "@effect-rx/rx-react"
-import { timeOriginRx, traceEventsRx } from "./RxStore"
+import { useRxSet, useRxSuspenseSuccess } from "@effect-rx/rx-react"
+import { timeOriginRx, toggleSpanExpandedRx, traceEventsRx } from "./RxStore"
 
 function App() {
   const { value: traces } = useRxSuspenseSuccess(traceEventsRx)
   const { value: timeOrigin } = useRxSuspenseSuccess(timeOriginRx)
+  const toggleSpanExpanded = useRxSet(toggleSpanExpandedRx)
 
   // Initialize view to show the first 2 seconds of the trace
   const [viewState, setViewState] = useState<ViewState>({
@@ -32,7 +32,7 @@ function App() {
   }
 
   const handleTraceClick = (trace: TraceEvent) => {
-    console.log("Trace clicked:", trace)
+    toggleSpanExpanded(trace.id)
   }
 
   const handleTraceHover = (trace: TraceEvent | null) => {
@@ -56,14 +56,6 @@ function App() {
         />
       </div>
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <div style={{ width: "250px", borderRight: "1px solid #e0e0e0" }}>
-          <TraceLabels
-            traces={traces}
-            viewState={viewState}
-            options={options}
-            width={250}
-          />
-        </div>
         <div style={{ flex: 1 }}>
           <TraceViewer
             traces={traces}

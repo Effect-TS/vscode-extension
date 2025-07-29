@@ -8,7 +8,7 @@ export default defineConfig({
   entry: ["src/instrumentation/instrumentation.ts"],
   outDir: "out",
   format: "iife",
-  clean: true,
+  clean: false,
   sourcemap: false,
   external: ["effect"],
   treeshake: "smallest",

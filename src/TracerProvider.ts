@@ -47,15 +47,15 @@ export const TracerExtendedLive = Layer.effectDiscard(
 
       // The CSS file from the React build output
       const stylesUri = getUri(extension.extensionUri, [
+        "out",
         "tracer",
-        "build",
         "assets",
         "index.css"
       ])
       // The JS file from the React build output
       const scriptUri = getUri(extension.extensionUri, [
+        "out",
         "tracer",
-        "build",
         "assets",
         "index.js"
       ])
