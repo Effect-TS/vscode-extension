@@ -1,30 +1,31 @@
 import React, { useCallback, useEffect, useRef } from "react"
-import type { TraceEvent, ViewState } from "./TraceViewerUtils"
+import type { TraceEvent, TraceViewerOptions, ViewState } from "./TraceViewerUtils"
 
 interface MinimapProps {
   traces: ReadonlyArray<TraceEvent>
   viewState: ViewState
   onViewStateChange: (viewState: ViewState) => void
-  height: number
-  barHeight: number
-  barPadding: number
+  options?: TraceViewerOptions
 }
 
 const TraceMinimap: React.FC<MinimapProps> = ({
   traces,
   viewState,
   onViewStateChange,
-  height,
-  barHeight,
-  barPadding
+  options = {}
 }) => {
+  const {
+    barHeight = 30,
+    barPadding = 4,
+    minimapHeight = 80
+  } = options
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDraggingRef = useRef(false)
   const fullTimeRangeRef = useRef<{ start: bigint; end: bigint } | null>(null)
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
-    if (!canvas || traces.length === 0 || height === 0) return
+    if (!canvas || traces.length === 0 || minimapHeight === 0) return
 
     const ctx = canvas.getContext("2d")
     if (!ctx) return
@@ -39,19 +40,19 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     fullTimeRangeRef.current = fullTimeRange
 
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, height)
+    ctx.clearRect(0, 0, canvas.width, minimapHeight)
 
     const totalDuration = fullTimeRange.end - fullTimeRange.start
     const pixelsPerNano = canvas.width / Number(totalDuration)
 
     // Find max depth for scaling
     const maxDepth = Math.max(...traces.map((t) => t.depth)) + 1
-    const minimapBarHeight = Math.min(Math.max(1, height / maxDepth), height / 10)
+    const minimapBarHeight = Math.min(Math.max(1, minimapHeight / maxDepth), minimapHeight / 10)
 
     // Draw all traces in minimap
     traces.forEach((trace) => {
       const x = Number(trace.startTime - fullTimeRange.start) * pixelsPerNano
-      const y = maxDepth === 0 ? 0 : (trace.depth / maxDepth) * height
+      const y = maxDepth === 0 ? 0 : (trace.depth / maxDepth) * minimapHeight
       const width = Math.max(1, Number(trace.endTime - trace.startTime) * pixelsPerNano)
 
       // Check if trace is within current view
@@ -74,15 +75,15 @@ const TraceMinimap: React.FC<MinimapProps> = ({
 
     // Calculate vertical view range
     const maxDepthPixels = maxDepth * (barHeight + barPadding)
-    const viewportHeight = window.innerHeight - height - 25 - 100 // Approximate visible area height
-    const verticalScale = height / maxDepthPixels
+    const viewportHeight = window.innerHeight - minimapHeight - 25 - 100 // Approximate visible area height
+    const verticalScale = minimapHeight / maxDepthPixels
 
     // Calculate vertical view position and height in minimap
     const viewY = -viewState.offsetY * verticalScale
-    const viewHeight = Math.min(height, viewportHeight * verticalScale)
+    const viewHeight = Math.min(minimapHeight, viewportHeight * verticalScale)
 
     // Draw horizontal time range
-    ctx.strokeRect(viewX, 0, viewWidth, height)
+    ctx.strokeRect(viewX, 0, viewWidth, minimapHeight)
 
     // Draw vertical range indicator if there's vertical scrolling
     if (maxDepthPixels > viewportHeight) {
@@ -94,7 +95,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
 
     // Reset line width
     ctx.lineWidth = 1
-  }, [traces, viewState, height, barHeight, barPadding])
+  }, [traces, viewState, minimapHeight, barHeight, barPadding])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -102,7 +103,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
 
     const resizeCanvas = () => {
       canvas.width = canvas.offsetWidth
-      canvas.height = height
+      canvas.height = minimapHeight
       draw()
     }
 
@@ -112,7 +113,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     return () => {
       window.removeEventListener("resize", resizeCanvas)
     }
-  }, [draw, height])
+  }, [draw, minimapHeight])
 
   useEffect(() => {
     draw()
@@ -138,13 +139,13 @@ const TraceMinimap: React.FC<MinimapProps> = ({
       // Calculate Y offset based on click position
       const maxDepth = Math.max(...traces.map((t) => t.depth)) + 1
       const maxDepthPixels = maxDepth * (barHeight + barPadding)
-      const verticalScale = height / maxDepthPixels
-      
+      const verticalScale = minimapHeight / maxDepthPixels
+
       // Calculate the maximum allowed offset (same logic as TraceViewer)
-      const viewportHeight = window.innerHeight - height - 25 - 100 // Approximate visible area height
+      const viewportHeight = window.innerHeight - minimapHeight - 25 - 100 // Approximate visible area height
       const lowestTraceY = 25 + (maxDepth - 1) * (barHeight + barPadding) // 25 is timelineHeight
       const maxOffsetY = Math.max(0, lowestTraceY + barHeight - viewportHeight)
-      
+
       // Convert click Y to offset
       const clickOffsetY = -(y / verticalScale)
       const limitedOffsetY = Math.max(-maxOffsetY, Math.min(0, clickOffsetY))
@@ -178,13 +179,13 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     // Calculate Y offset based on mouse position
     const maxDepth = Math.max(...traces.map((t) => t.depth)) + 1
     const maxDepthPixels = maxDepth * (barHeight + barPadding)
-    const verticalScale = height / maxDepthPixels
-    
+    const verticalScale = minimapHeight / maxDepthPixels
+
     // Calculate the maximum allowed offset (same logic as TraceViewer)
-    const viewportHeight = window.innerHeight - height - 25 - 100 // Approximate visible area height
+    const viewportHeight = window.innerHeight - minimapHeight - 25 - 100 // Approximate visible area height
     const lowestTraceY = 25 + (maxDepth - 1) * (barHeight + barPadding) // 25 is timelineHeight
     const maxOffsetY = Math.max(0, lowestTraceY + barHeight - viewportHeight)
-    
+
     // Convert mouse Y to offset
     const mouseOffsetY = -(mouseY / verticalScale)
     const limitedOffsetY = Math.max(-maxOffsetY, Math.min(0, mouseOffsetY))
@@ -204,14 +205,14 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     isDraggingRef.current = false
   }
 
-  if (height === 0) return null
+  if (minimapHeight === 0) return null
 
   return (
     <canvas
       ref={canvasRef}
       style={{
         width: "100%",
-        height: `${height}px`,
+        height: `${minimapHeight}px`,
         cursor: "pointer",
         display: "block"
       }}

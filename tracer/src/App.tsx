@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react"
+import TraceInfoPanel from "./components/TraceInfoPanel"
 import TraceMinimap from "./components/TraceMinimap"
 import TraceViewer from "./components/TraceViewer"
 import type { TraceEvent, TraceViewerOptions, ViewState } from "./components/TraceViewerUtils"
@@ -18,6 +19,9 @@ function App() {
     offsetY: 0
   })
 
+  // State for selected trace
+  const [selectedTrace, setSelectedTrace] = useState<TraceEvent | null>(null)
+
   // cap the max time range to 1 hour
   const changeViewState = useCallback((viewState: ViewState) => {
     if (viewState.endTime - viewState.startTime < 3600n * 1_000_000_000n) {
@@ -28,31 +32,23 @@ function App() {
   const options: TraceViewerOptions = {
     barHeight: 18,
     barPadding: 4,
-    timelineHeight: 16
+    timelineHeight: 16,
+    minimapHeight: 80
   }
 
   const handleTraceClick = (trace: TraceEvent) => {
     toggleSpanExpanded(trace.id)
-  }
-
-  const handleTraceHover = (trace: TraceEvent | null) => {
-    if (trace) {
-      console.log("Hovering over trace:", trace)
-    } else {
-      console.log("No longer hovering over any trace")
-    }
+    setSelectedTrace(trace)
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <div style={{ height: "80px", borderBottom: "1px solid #e0e0e0" }}>
+      <div style={{ height: `${options.minimapHeight}px`, borderBottom: "1px solid #e0e0e0" }}>
         <TraceMinimap
           traces={traces}
           viewState={viewState}
           onViewStateChange={changeViewState}
-          height={80}
-          barHeight={options.barHeight || 18}
-          barPadding={options.barPadding || 4}
+          options={options}
         />
       </div>
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -64,7 +60,12 @@ function App() {
             onViewStateChange={changeViewState}
             options={options}
             onTraceClick={handleTraceClick}
-            onTraceHover={handleTraceHover}
+          />
+        </div>
+        <div style={{ width: "300px", flexShrink: 0 }}>
+          <TraceInfoPanel
+            trace={selectedTrace}
+            timeOrigin={timeOrigin}
           />
         </div>
       </div>

@@ -17,6 +17,7 @@ export interface TraceViewerOptions {
   barHeight?: number
   barPadding?: number
   timelineHeight?: number
+  minimapHeight?: number
 }
 
 // Utility function to get visible traces

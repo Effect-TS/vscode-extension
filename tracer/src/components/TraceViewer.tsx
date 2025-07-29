@@ -319,7 +319,7 @@ const TraceViewer: React.FC<TraceViewerProps> = ({
       window.removeEventListener("resize", resizeCanvas)
       canvas.removeEventListener("wheel", handleWheel)
     }
-  }, [draw, viewState, onViewStateChange])
+  }, [draw, viewState, onViewStateChange, traces, barHeight, barPadding, timelineHeight])
 
   useEffect(() => {
     draw()
