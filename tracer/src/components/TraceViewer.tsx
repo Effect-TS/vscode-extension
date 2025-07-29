@@ -296,10 +296,18 @@ const TraceViewer: React.FC<TraceViewerProps> = ({
       const newStartTime = timeUnderMouse - newLeftDuration
       const newEndTime = timeUnderMouse + newRightDuration
 
+      // Calculate the maximum depth to limit vertical panning
+      const maxDepth = traces.reduce((max, trace) => Math.max(max, trace.depth), 0)
+      const lowestTraceY = timelineHeight + maxDepth * (barHeight + barPadding)
+      const maxOffsetY = Math.max(0, lowestTraceY + barHeight - canvas.height)
+
+      // Ensure offsetY stays within bounds
+      const limitedOffsetY = Math.max(-maxOffsetY, Math.min(0, viewState.offsetY))
+
       onViewStateChange({
         startTime: newStartTime,
         endTime: newEndTime,
-        offsetY: viewState.offsetY
+        offsetY: limitedOffsetY
       })
     }
 
@@ -347,10 +355,19 @@ const TraceViewer: React.FC<TraceViewerProps> = ({
       const deltaX = dragStartRef.current.x - e.clientX
       const deltaTimeNanos = BigInt(Math.round(deltaX / pixelsPerNano))
 
+      // Calculate the maximum depth to limit vertical panning
+      const maxDepth = traces.reduce((max, trace) => Math.max(max, trace.depth), 0)
+      const lowestTraceY = timelineHeight + maxDepth * (barHeight + barPadding)
+      const maxOffsetY = Math.max(0, lowestTraceY + barHeight - canvas.height)
+
+      // Calculate new offsetY with limits
+      const newOffsetY = e.clientY - dragStartRef.current.y
+      const limitedOffsetY = Math.max(-maxOffsetY, Math.min(0, newOffsetY))
+
       onViewStateChange({
         startTime: viewState.startTime + deltaTimeNanos,
         endTime: viewState.endTime + deltaTimeNanos,
-        offsetY: Math.min(0, e.clientY - dragStartRef.current.y)
+        offsetY: limitedOffsetY
       })
 
       dragStartRef.current.x = e.clientX

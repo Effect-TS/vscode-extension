@@ -39,7 +39,7 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
         // layout the span
         const span = spanById.get(spanId)
         const name = span ? span._tag === "ExternalSpan" ? "<external>" : span.name : "<" + spanId + ">"
-        const expandCollapseChevron = childIds && expandedSpanIds.includes(spanId) ? "▼ " : childIds ? "▶ " : ""
+        const expandCollapseChevron = childIds && expandedSpanIds.includes(spanId) ? "⌄ " : childIds ? "› " : ""
         layoutedEvents.push({
           id: spanId,
           name: expandCollapseChevron + name,

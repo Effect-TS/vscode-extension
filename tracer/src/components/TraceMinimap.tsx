@@ -121,11 +121,12 @@ const TraceMinimap: React.FC<MinimapProps> = ({
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect()
     const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
 
     isDraggingRef.current = true
 
     // Update view immediately on minimap click
-    if (fullTimeRangeRef.current) {
+    if (fullTimeRangeRef.current && traces.length > 0) {
       const totalDuration = fullTimeRangeRef.current.end - fullTimeRangeRef.current.start
       const currentViewDuration = viewState.endTime - viewState.startTime
 
@@ -134,22 +135,38 @@ const TraceMinimap: React.FC<MinimapProps> = ({
       const newStartTime = clickTime - currentViewDuration / 2n
       const newEndTime = clickTime + currentViewDuration / 2n
 
+      // Calculate Y offset based on click position
+      const maxDepth = Math.max(...traces.map((t) => t.depth)) + 1
+      const maxDepthPixels = maxDepth * (barHeight + barPadding)
+      const verticalScale = height / maxDepthPixels
+      
+      // Calculate the maximum allowed offset (same logic as TraceViewer)
+      const viewportHeight = window.innerHeight - height - 25 - 100 // Approximate visible area height
+      const lowestTraceY = 25 + (maxDepth - 1) * (barHeight + barPadding) // 25 is timelineHeight
+      const maxOffsetY = Math.max(0, lowestTraceY + barHeight - viewportHeight)
+      
+      // Convert click Y to offset
+      const clickOffsetY = -(y / verticalScale)
+      const limitedOffsetY = Math.max(-maxOffsetY, Math.min(0, clickOffsetY))
+
       onViewStateChange({
         startTime: newStartTime,
         endTime: newEndTime,
-        offsetY: viewState.offsetY
+        offsetY: limitedOffsetY
       })
     }
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDraggingRef.current || !fullTimeRangeRef.current) return
+    if (!isDraggingRef.current || !fullTimeRangeRef.current || traces.length === 0) return
 
     const rect = canvasRef.current!.getBoundingClientRect()
     const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
 
     // Handle minimap dragging
     const mouseX = Math.max(0, Math.min(rect.width, x))
+    const mouseY = Math.max(0, Math.min(rect.height, y))
     const totalDuration = fullTimeRangeRef.current.end - fullTimeRangeRef.current.start
     const currentViewDuration = viewState.endTime - viewState.startTime
 
@@ -158,10 +175,24 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     const newStartTime = mouseTime - currentViewDuration / 2n
     const newEndTime = mouseTime + currentViewDuration / 2n
 
+    // Calculate Y offset based on mouse position
+    const maxDepth = Math.max(...traces.map((t) => t.depth)) + 1
+    const maxDepthPixels = maxDepth * (barHeight + barPadding)
+    const verticalScale = height / maxDepthPixels
+    
+    // Calculate the maximum allowed offset (same logic as TraceViewer)
+    const viewportHeight = window.innerHeight - height - 25 - 100 // Approximate visible area height
+    const lowestTraceY = 25 + (maxDepth - 1) * (barHeight + barPadding) // 25 is timelineHeight
+    const maxOffsetY = Math.max(0, lowestTraceY + barHeight - viewportHeight)
+    
+    // Convert mouse Y to offset
+    const mouseOffsetY = -(mouseY / verticalScale)
+    const limitedOffsetY = Math.max(-maxOffsetY, Math.min(0, mouseOffsetY))
+
     onViewStateChange({
       startTime: newStartTime,
       endTime: newEndTime,
-      offsetY: viewState.offsetY
+      offsetY: limitedOffsetY
     })
   }
 
