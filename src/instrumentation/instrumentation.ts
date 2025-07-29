@@ -133,6 +133,15 @@ function convertExternalSpan(span: Tracer.ExternalSpan): Schema.Schema.Encoded<t
 }
 
 function convertSpan(span: Tracer.Span): Schema.Schema.Encoded<typeof Domain.Span> {
+  const stackString = globalStores().reduce((acc, store) => {
+    if (acc || !store) return acc
+    const spanToTrace = store.get("effect/Tracer/spanToTrace")
+    const stackFn = spanToTrace ? spanToTrace.get(span) : acc
+    return stackFn ? stackFn() : acc
+  }, undefined) || ""
+  const stack = stackString.split("\n").filter(function(_) {
+    return _ !== ""
+  })
   return {
     _tag: "Span",
     spanId: span.spanId,
@@ -145,7 +154,9 @@ function convertSpan(span: Tracer.Span): Schema.Schema.Encoded<typeof Domain.Spa
     parent: span.parent._tag === "None"
       ? span.parent
       : ({ _tag: "Some", value: convertAnySpan(span.parent.value) }),
-    attributes: Array.from(span.attributes.entries())
+    attributes: Array.from(span.attributes.entries()).concat(
+      stack.length > 0 ? [["@effect/devtools/trace", stack[0]]] : []
+    )
   }
 }
 

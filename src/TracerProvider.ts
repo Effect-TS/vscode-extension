@@ -7,12 +7,17 @@ import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
 import type { Client } from "./Clients"
 import { Clients } from "./Clients"
-import { listenFork, registerCommand, registerWebview, VsCodeContext, Webview } from "./VsCode"
+import { listenFork, registerCommand, registerWebview, revealFile, VsCodeContext, Webview } from "./VsCode"
 
 export class Booted extends Schema.TaggedClass<Booted>()("Booted", {}) {}
 export class ResetTracer extends Schema.TaggedClass<ResetTracer>()("ResetTracer", {}) {}
+export class GoToLocation extends Schema.TaggedClass<GoToLocation>()("GoToLocation", {
+  path: Schema.String,
+  line: Schema.Int,
+  column: Schema.Int
+}) {}
 
-export const WebviewMessage = Schema.Union(Booted)
+export const WebviewMessage = Schema.Union(Booted, GoToLocation)
 const HostMessage = Schema.Union(ResetTracer, Span, SpanEvent)
 
 const encode = Schema.encodeSync(HostMessage)
@@ -27,7 +32,24 @@ export const TracerExtendedLive = Layer.effectDiscard(
 
       yield* listenFork(
         view.webview.onDidReceiveMessage,
-        (_message: typeof WebviewMessage.Encoded) => Deferred.succeed(booted, void 0)
+        (_message: typeof WebviewMessage.Encoded) =>
+          Effect.gen(function*() {
+            const message = yield* Schema.decode(WebviewMessage)(_message)
+            switch (message._tag) {
+              case "Booted": {
+                yield* Deferred.succeed(booted, void 0)
+                break
+              }
+              case "GoToLocation": {
+                const { column, line, path } = message
+                yield* revealFile(
+                  path,
+                  new vscode.Range(line, column, line, column)
+                )
+                break
+              }
+            }
+          }).pipe(Effect.ignoreLogged)
       )
 
       yield* registerCommand("effect.resetTracerExtended", () =>

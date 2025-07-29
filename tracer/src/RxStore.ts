@@ -1,10 +1,39 @@
 import { Rx } from "@effect-rx/rx-react"
 import * as DevToolsDomain from "@effect/experimental/DevTools/Domain"
-import { Clock } from "effect"
+import { Clock, Schema } from "effect"
 import * as Effect from "effect/Effect"
+import { isString } from "effect/String"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import type { TraceEvent } from "./components/TraceViewerUtils"
 import { VscodeWebview } from "./VscodeWebview"
+
+const StackLocation = Schema.NonEmptyString.pipe(Schema.compose(
+  Schema.TemplateLiteralParser(
+    Schema.NonEmptyString,
+    Schema.Literal(" ("),
+    Schema.NonEmptyString,
+    Schema.Literal(":"),
+    Schema.NumberFromString.pipe(Schema.compose(Schema.Int), Schema.positive()),
+    Schema.Literal(":"),
+    Schema.NumberFromString.pipe(Schema.compose(Schema.Int), Schema.positive()),
+    Schema.Literal(")")
+  ).pipe(
+    Schema.transform(
+      Schema.Struct({
+        name: Schema.NonEmptyString,
+        path: Schema.NonEmptyString,
+        line: Schema.Int,
+        column: Schema.Int
+      }),
+      {
+        strict: true,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        decode: ([name, _, path, __, line, ___, column]) => ({ path, line: line - 1, column: column - 1, name }),
+        encode: ({ column, line, name, path }) => [name, " (", path, ":", line + 1, ":", column + 1, ")"] as const
+      }
+    )
+  )
+))
 
 export class RxStore extends Effect.Service<RxStore>()("RxStore", {
   accessors: true,
@@ -14,9 +43,15 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
     const traceEvents = yield* SubscriptionRef.make<ReadonlyArray<TraceEvent>>([])
     const timeOrigin = yield* SubscriptionRef.make<bigint>(BigInt(Date.now()) * 1_000_000n)
     const expandedSpanIds = yield* SubscriptionRef.make<ReadonlyArray<string>>(["<root>"])
+    const selectedSpan = yield* SubscriptionRef.make<DevToolsDomain.ParentSpan | undefined>(undefined)
 
     const spanById = new Map<string, DevToolsDomain.ParentSpan>()
     const spanIdsByParentId = new Map<string, Set<string>>()
+    const locationBySpanId = new Map<string, {
+      path: string
+      line: number
+      column: number
+    }>()
 
     function layoutTraceEvents(now: bigint, expandedSpanIds: ReadonlyArray<string>) {
       const toProcess: Array<string> = ["<root>"]
@@ -67,6 +102,7 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
         Effect.sync(() => {
           spanById.clear()
           spanIdsByParentId.clear()
+          locationBySpanId.clear()
         })
       )
     )
@@ -79,6 +115,10 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
           : [...expandedSpanIds, spanId]
         return newExpandedSpanIds
       }).pipe(Effect.andThen(layoutNow))
+    }
+
+    function selectSpan(spanId: string | undefined) {
+      return SubscriptionRef.set(selectedSpan, spanId ? spanById.get(spanId) : undefined)
     }
 
     function registerSpan(span: DevToolsDomain.ParentSpan) {
@@ -101,6 +141,25 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
       return layoutNow
     }
 
+    function goToLocation() {
+      return Effect.gen(function*() {
+        const span = yield* SubscriptionRef.get(selectedSpan)
+        if (span && span._tag === "Span") {
+          const traceFromSpan = span.attributes.get("@effect/devtools/trace")
+          if (traceFromSpan && isString(traceFromSpan)) {
+            const parsedLocation = Schema.decodeUnknownOption(StackLocation)(traceFromSpan)
+            if (parsedLocation._tag === "Some") {
+              return yield* vscode.goToLocation(
+                parsedLocation.value.path,
+                parsedLocation.value.line,
+                parsedLocation.value.column
+              )
+            }
+          }
+        }
+      })
+    }
+
     yield* vscode.messages.take.pipe(
       Effect.tap((message) => {
         switch (message._tag) {
@@ -117,7 +176,7 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
       Effect.forkScoped
     )
 
-    return { traceEvents, timeOrigin, toggleSpanExpanded } as const
+    return { traceEvents, timeOrigin, toggleSpanExpanded, selectSpan, selectedSpan, goToLocation } as const
   }),
   dependencies: [VscodeWebview.Default]
 }) {}
@@ -142,3 +201,11 @@ export const timeOriginRx = runtime.subscribable(Effect.map(RxStore, (service) =
 export const toggleSpanExpandedRx = runtime.fn((spanId: string) =>
   Effect.flatMap(RxStore, (service) => service.toggleSpanExpanded(spanId))
 )
+
+export const selectedSpanRx = runtime.subscribable(Effect.map(RxStore, (service) => service.selectedSpan))
+
+export const selectSpanRx = runtime.fn((spanId: string | undefined) =>
+  Effect.flatMap(RxStore, (service) => service.selectSpan(spanId))
+)
+
+export const goToLocationRx = runtime.fn(() => Effect.flatMap(RxStore, (service) => service.goToLocation()))

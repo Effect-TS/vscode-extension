@@ -1,9 +1,10 @@
+import * as DevToolsDomain from "@effect/experimental/DevTools/Domain"
 import React from "react"
-import type { TraceEvent } from "./TraceViewerUtils"
 
 interface TraceInfoPanelProps {
-  trace: TraceEvent | null
+  trace?: DevToolsDomain.ParentSpan | undefined
   timeOrigin: bigint
+  onGoToLocation: () => void
 }
 
 // Common style constants
@@ -33,7 +34,15 @@ const valueStyle: React.CSSProperties = {
   marginTop: styles.valueMarginTop
 }
 
-const TraceInfoPanel: React.FC<TraceInfoPanelProps> = ({ trace, timeOrigin }) => {
+function formatDuration(duration: bigint) {
+  const durationMs = Number(duration) / 1_000_000
+  const durationSec = durationMs / 1000
+  return durationSec >= 1
+    ? `${durationSec.toFixed(3)} s`
+    : `${durationMs.toFixed(3)} ms`
+}
+
+const TraceInfoPanel: React.FC<TraceInfoPanelProps> = ({ trace, timeOrigin, onGoToLocation }) => {
   if (!trace) {
     return (
       <div style={panelStyle}>
@@ -44,45 +53,69 @@ const TraceInfoPanel: React.FC<TraceInfoPanelProps> = ({ trace, timeOrigin }) =>
     )
   }
 
-  const duration = trace.endTime - trace.startTime
-  const durationMs = Number(duration) / 1_000_000
-  const durationSec = durationMs / 1000
-
-  const startTimeRelative = Number(trace.startTime - timeOrigin) / 1_000_000_000
-  const endTimeRelative = Number(trace.endTime - timeOrigin) / 1_000_000_000
-
   return (
     <div style={panelStyle}>
       <h3 style={{ marginTop: 0, marginBottom: styles.headerMarginBottom }}>Span Details</h3>
 
       <div style={fieldStyle}>
-        <strong>Name:</strong>
-        <div style={{ ...valueStyle, wordBreak: "break-word" }}>{trace.name}</div>
+        <strong>Span ID</strong>
+        <div style={{ ...valueStyle, fontFamily: "monospace", fontSize: styles.monospaceFontSize }}>{trace.spanId}</div>
       </div>
 
-      <div style={fieldStyle}>
-        <strong>ID:</strong>
-        <div style={{ ...valueStyle, fontFamily: "monospace", fontSize: styles.monospaceFontSize }}>{trace.id}</div>
-      </div>
+      {trace._tag === "Span" ?
+        (
+          <div style={fieldStyle}>
+            <strong>Name</strong>
+            <div style={{ ...valueStyle, wordBreak: "break-word" }}>{trace.name}</div>
+          </div>
+        ) :
+        null}
 
-      <div style={fieldStyle}>
-        <strong>Duration:</strong>
-        <div style={valueStyle}>
-          {durationSec >= 1
-            ? `${durationSec.toFixed(3)} s`
-            : `${durationMs.toFixed(3)} ms`}
-        </div>
-      </div>
+      {trace._tag === "Span" && trace.status._tag === "Ended" ?
+        (
+          <div style={fieldStyle}>
+            <strong>Duration</strong>
+            <div style={valueStyle}>
+              {formatDuration(trace.status.endTime - trace.status.startTime)}
+            </div>
+          </div>
+        ) :
+        null}
 
-      <div style={fieldStyle}>
-        <strong>Start Time:</strong>
-        <div style={valueStyle}>{startTimeRelative.toFixed(6)} s</div>
-      </div>
+      {trace._tag === "Span" ?
+        (
+          <div style={fieldStyle}>
+            <strong>Start Time</strong>
+            <div style={valueStyle}>{formatDuration(trace.status.startTime - timeOrigin)}</div>
+          </div>
+        ) :
+        null}
 
-      <div style={fieldStyle}>
-        <strong>End Time:</strong>
-        <div style={valueStyle}>{endTimeRelative.toFixed(6)} s</div>
-      </div>
+      {trace._tag === "Span" && trace.status._tag === "Ended" ?
+        (
+          <div style={fieldStyle}>
+            <strong>End Time</strong>
+            <div style={valueStyle}>{formatDuration(trace.status.endTime - timeOrigin)}</div>
+          </div>
+        ) :
+        null}
+
+      {trace._tag === "Span" ?
+        Array.from(trace.attributes.entries()).map(([name, value]) => (
+          <div style={fieldStyle} key={name}>
+            <strong>
+              {name === "@effect/devtools/trace"
+                ? "Location"
+                : String(name)}
+            </strong>
+            <div style={valueStyle}>
+              {name === "@effect/devtools/trace"
+                ? <a href="#" onClick={onGoToLocation}>Go to location</a>
+                : String(value)}
+            </div>
+          </div>
+        )) :
+        null}
     </div>
   )
 }

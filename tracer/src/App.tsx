@@ -5,12 +5,22 @@ import TraceViewer from "./components/TraceViewer"
 import type { TraceEvent, TraceViewerOptions, ViewState } from "./components/TraceViewerUtils"
 import "./App.css"
 import { useRxSet, useRxSuspenseSuccess } from "@effect-rx/rx-react"
-import { timeOriginRx, toggleSpanExpandedRx, traceEventsRx } from "./RxStore"
+import {
+  goToLocationRx,
+  selectedSpanRx,
+  selectSpanRx,
+  timeOriginRx,
+  toggleSpanExpandedRx,
+  traceEventsRx
+} from "./RxStore"
 
 function App() {
   const { value: traces } = useRxSuspenseSuccess(traceEventsRx)
   const { value: timeOrigin } = useRxSuspenseSuccess(timeOriginRx)
+  const { value: selectedSpan } = useRxSuspenseSuccess(selectedSpanRx)
   const toggleSpanExpanded = useRxSet(toggleSpanExpandedRx)
+  const selectSpan = useRxSet(selectSpanRx)
+  const goToLocation = useRxSet(goToLocationRx)
 
   // Initialize view to show the first 2 seconds of the trace
   const [viewState, setViewState] = useState<ViewState>({
@@ -18,9 +28,6 @@ function App() {
     endTime: timeOrigin + 60_000_000_000n, // 60 seconds in nanoseconds
     offsetY: 0
   })
-
-  // State for selected trace
-  const [selectedTrace, setSelectedTrace] = useState<TraceEvent | null>(null)
 
   // cap the max time range to 1 hour
   const changeViewState = useCallback((viewState: ViewState) => {
@@ -38,7 +45,7 @@ function App() {
 
   const handleTraceClick = (trace: TraceEvent) => {
     toggleSpanExpanded(trace.id)
-    setSelectedTrace(trace)
+    selectSpan(trace.id)
   }
 
   return (
@@ -64,8 +71,9 @@ function App() {
         </div>
         <div style={{ width: "300px", flexShrink: 0 }}>
           <TraceInfoPanel
-            trace={selectedTrace}
+            trace={selectedSpan}
             timeOrigin={timeOrigin}
+            onGoToLocation={goToLocation}
           />
         </div>
       </div>

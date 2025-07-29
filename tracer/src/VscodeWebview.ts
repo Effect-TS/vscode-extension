@@ -6,10 +6,16 @@ import type { WebviewApi } from "vscode-webview"
 
 export class Booted extends Schema.TaggedClass<Booted>()("Booted", {}) {}
 export class ResetTracer extends Schema.TaggedClass<ResetTracer>()("ResetTracer", {}) {}
+export class GoToLocation extends Schema.TaggedClass<GoToLocation>()("GoToLocation", {
+  path: Schema.String,
+  line: Schema.Int,
+  column: Schema.Int
+}) {}
 
-export const HostMessage = Schema.Union(Booted, ResetTracer, Span, SpanEvent)
+export const HostMessage = Schema.Union(ResetTracer, Span, SpanEvent)
 
 const decode = Schema.decodeUnknownSync(HostMessage)
+const encode = Schema.encodeUnknownSync(Schema.Union(GoToLocation))
 
 declare const acquireVsCodeApi: () => WebviewApi<unknown>
 const booted: typeof Booted.Encoded = { _tag: "Booted" }
@@ -42,6 +48,8 @@ export class VscodeWebview extends Effect.Service<VscodeWebview>()(
 
       return {
         api,
+        goToLocation: (path: string, line: number, column: number) =>
+          Effect.sync(() => api.postMessage(encode(new GoToLocation({ path, line, column })))),
         messages: mailbox as Mailbox.ReadonlyMailbox<typeof HostMessage.Type>
       } as const
     })
