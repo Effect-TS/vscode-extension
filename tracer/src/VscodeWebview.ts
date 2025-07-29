@@ -1,8 +1,8 @@
-import * as Effect from "effect/Effect"
-import * as Schema from "effect/Schema"
-import * as Mailbox from "effect/Mailbox"
-import type { WebviewApi } from "vscode-webview"
 import { Span, SpanEvent } from "@effect/experimental/DevTools/Domain"
+import * as Effect from "effect/Effect"
+import * as Mailbox from "effect/Mailbox"
+import * as Schema from "effect/Schema"
+import type { WebviewApi } from "vscode-webview"
 
 export class Booted extends Schema.TaggedClass<Booted>()("Booted", {}) {}
 export const HostMessage = Schema.Union(Booted, Span, SpanEvent)
@@ -16,11 +16,11 @@ export class VscodeWebview extends Effect.Service<VscodeWebview>()(
   "VscodeWebview",
   {
     accessors: true,
-    scoped: Effect.gen(function* () {
+    scoped: Effect.gen(function*() {
       const api = acquireVsCodeApi()
       const mailbox = yield* Effect.acquireRelease(
         Mailbox.make<typeof HostMessage.Type>(),
-        mailbox => mailbox.shutdown,
+        (mailbox) => mailbox.shutdown
       )
 
       api.postMessage(booted)
@@ -35,13 +35,13 @@ export class VscodeWebview extends Effect.Service<VscodeWebview>()(
         () =>
           Effect.sync(() => {
             window.removeEventListener("message", onMessage)
-          }),
+          })
       )
 
       return {
         api,
-        messages: mailbox as Mailbox.ReadonlyMailbox<typeof HostMessage.Type>,
+        messages: mailbox as Mailbox.ReadonlyMailbox<typeof HostMessage.Type>
       } as const
-    }),
-  },
+    })
+  }
 ) {}
