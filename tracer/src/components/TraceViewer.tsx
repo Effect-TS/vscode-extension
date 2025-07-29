@@ -260,7 +260,7 @@ const TraceViewer: React.FC<TraceViewerProps> = ({
 
     // Draw time scale on top
     drawTimeScale(ctx, canvas.width, viewState, timelineHeight, 0, timeOrigin)
-  }, [traces, viewState, barHeight, barPadding, timelineHeight])
+  }, [traces, viewState, barHeight, barPadding, timelineHeight, timeOrigin])
 
   useEffect(() => {
     const canvas = canvasRef.current

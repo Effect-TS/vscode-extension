@@ -7,12 +7,13 @@ import * as Stream from "effect/Stream"
 import * as vscode from "vscode"
 import type { Client } from "./Clients"
 import { Clients } from "./Clients"
-import { listenFork, registerWebview, VsCodeContext, Webview } from "./VsCode"
+import { listenFork, registerCommand, registerWebview, VsCodeContext, Webview } from "./VsCode"
 
 export class Booted extends Schema.TaggedClass<Booted>()("Booted", {}) {}
+export class ResetTracer extends Schema.TaggedClass<ResetTracer>()("ResetTracer", {}) {}
 
 export const WebviewMessage = Schema.Union(Booted)
-const HostMessage = Schema.Union(Span, SpanEvent)
+const HostMessage = Schema.Union(ResetTracer, Span, SpanEvent)
 
 const encode = Schema.encodeSync(HostMessage)
 
@@ -28,6 +29,11 @@ export const TracerExtendedLive = Layer.effectDiscard(
         view.webview.onDidReceiveMessage,
         (_message: typeof WebviewMessage.Encoded) => Deferred.succeed(booted, void 0)
       )
+
+      yield* registerCommand("effect.resetTracerExtended", () =>
+        Effect.sync(() => {
+          view.webview.postMessage(encode(new ResetTracer()))
+        }))
 
       view.webview.options = {
         enableScripts: true

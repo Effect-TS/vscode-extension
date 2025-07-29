@@ -84,6 +84,11 @@
         "command": "effect.revealFiberCurrentSpan",
         "title": "Effect Dev Tools: Reveal Fiber Current Span Location",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "effect.resetTracerExtended",
+        "title": "Effect Dev Tools: Reset Tracer Extended",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -174,6 +179,11 @@
           "command": "effect.resetTracer",
           "when": "view === effect-tracer",
           "group": "navigation"
+        },
+        {
+          "command": "effect.resetTracerExtended",
+          "when": "view === effect-tracer-extended",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -196,7 +206,7 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm build",
-    "build": "tsup --config tsup.instrumentation.config.ts && tsup",
+    "build": "pnpm --filter \"tracer\" run build && tsup --config tsup.instrumentation.config.ts && tsup",
     "dev": "tsup --watch",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix",

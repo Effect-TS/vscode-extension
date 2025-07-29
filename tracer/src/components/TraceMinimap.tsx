@@ -46,13 +46,13 @@ const TraceMinimap: React.FC<MinimapProps> = ({
 
     // Find max depth for scaling
     const maxDepth = Math.max(...traces.map((t) => t.depth)) + 1
-    const minimapBarHeight = Math.max(1, (height - 10) / maxDepth)
+    const minimapBarHeight = Math.min(Math.max(1, height / maxDepth), height / 10)
 
     // Draw all traces in minimap
     traces.forEach((trace) => {
       const x = Number(trace.startTime - fullTimeRange.start) * pixelsPerNano
-      const y = 5 + trace.depth * minimapBarHeight
-      const width = Number(trace.endTime - trace.startTime) * pixelsPerNano
+      const y = maxDepth === 0 ? 0 : (trace.depth / maxDepth) * height
+      const width = Math.max(1, Number(trace.endTime - trace.startTime) * pixelsPerNano)
 
       // Check if trace is within current view
       const traceStart = trace.startTime
@@ -62,7 +62,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
       // Set transparency based on whether trace is in view
       ctx.globalAlpha = isInView ? 0.8 : 0.3
       ctx.fillStyle = trace.color
-      ctx.fillRect(x, y, Math.max(1, width), minimapBarHeight - 1)
+      ctx.fillRect(x, y, width, minimapBarHeight)
     })
 
     // Draw current view rectangle with vertical offset indicator

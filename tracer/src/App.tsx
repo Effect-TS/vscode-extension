@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import TraceLabels from "./components/TraceLabels"
 import TraceMinimap from "./components/TraceMinimap"
 import TraceViewer from "./components/TraceViewer"
@@ -17,6 +17,13 @@ function App() {
     endTime: timeOrigin + 60_000_000_000n, // 60 seconds in nanoseconds
     offsetY: 0
   })
+
+  // cap the max time range to 1 hour
+  const changeViewState = useCallback((viewState: ViewState) => {
+    if (viewState.endTime - viewState.startTime < 3600n * 1_000_000_000n) {
+      setViewState(viewState)
+    }
+  }, [setViewState])
 
   const options: TraceViewerOptions = {
     barHeight: 18,
@@ -42,7 +49,7 @@ function App() {
         <TraceMinimap
           traces={traces}
           viewState={viewState}
-          onViewStateChange={setViewState}
+          onViewStateChange={changeViewState}
           height={80}
           barHeight={options.barHeight || 18}
           barPadding={options.barPadding || 4}
@@ -62,7 +69,7 @@ function App() {
             traces={traces}
             viewState={viewState}
             timeOrigin={timeOrigin}
-            onViewStateChange={setViewState}
+            onViewStateChange={changeViewState}
             options={options}
             onTraceClick={handleTraceClick}
             onTraceHover={handleTraceHover}

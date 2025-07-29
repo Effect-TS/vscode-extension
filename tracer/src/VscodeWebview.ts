@@ -5,7 +5,9 @@ import * as Schema from "effect/Schema"
 import type { WebviewApi } from "vscode-webview"
 
 export class Booted extends Schema.TaggedClass<Booted>()("Booted", {}) {}
-export const HostMessage = Schema.Union(Booted, Span, SpanEvent)
+export class ResetTracer extends Schema.TaggedClass<ResetTracer>()("ResetTracer", {}) {}
+
+export const HostMessage = Schema.Union(Booted, ResetTracer, Span, SpanEvent)
 
 const decode = Schema.decodeUnknownSync(HostMessage)
 

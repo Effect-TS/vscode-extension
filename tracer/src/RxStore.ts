@@ -13,6 +13,10 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
     const traceEvents = yield* SubscriptionRef.make<ReadonlyArray<TraceEvent>>([])
     const timeOrigin = yield* SubscriptionRef.make<bigint>(BigInt(Date.now()) * 1_000_000n)
 
+    const reset = SubscriptionRef.set(traceEvents, []).pipe(
+      Effect.andThen(() => SubscriptionRef.set(timeOrigin, BigInt(Date.now()) * 1_000_000n))
+    )
+
     function registerSpan(span: DevToolsDomain.ParentSpan) {
       return SubscriptionRef.update(traceEvents, (rootSpans) => {
         const withoutSpan = rootSpans.filter((_) => _.id !== span.spanId)
@@ -41,6 +45,9 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
         switch (message._tag) {
           case "Span": {
             return registerSpan(message)
+          }
+          case "ResetTracer": {
+            return reset
           }
         }
       }),
