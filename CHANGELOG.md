@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.3.0
+
+### Minor Changes
+
+- [#40](https://github.com/Effect-TS/vscode-extension/pull/40) [`5b2a6dc`](https://github.com/Effect-TS/vscode-extension/commit/5b2a6dc50a92b98f88bd726c1997bd40436a7981) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Adds a visual tracer for connected clients
+
 ## 0.2.4
 
 ### Patch Changes
