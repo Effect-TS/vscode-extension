@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.3.1
+
+### Patch Changes
+
+- [#42](https://github.com/Effect-TS/vscode-extension/pull/42) [`305bd3d`](https://github.com/Effect-TS/vscode-extension/commit/305bd3de8fee2ac1e6eaee397d0d424666624b66) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - add missing workspace yaml
+
 ## 0.3.0
 
 ### Minor Changes
