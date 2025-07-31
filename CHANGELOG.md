@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.3.3
+
+### Patch Changes
+
+- [#46](https://github.com/Effect-TS/vscode-extension/pull/46) [`9e2850f`](https://github.com/Effect-TS/vscode-extension/commit/9e2850fc41fd4efe5e5c2cf43c73fd756a0b55e7) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Ensure all debug requests use ES5 syntax
+
 ## 0.3.2
 
 ### Patch Changes
