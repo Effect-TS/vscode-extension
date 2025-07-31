@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.3.2
+
+### Patch Changes
+
+- [#44](https://github.com/Effect-TS/vscode-extension/pull/44) [`407726b`](https://github.com/Effect-TS/vscode-extension/commit/407726b97467fcb92e9521645c528c7c0c8f8637) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Use stopped threadId from debugger event
+
 ## 0.3.1
 
 ### Patch Changes
