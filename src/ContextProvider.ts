@@ -26,17 +26,18 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
       const debug = yield* Debug.DebugEnv
       let nodes: Array<TagNode> = []
 
-      const capture = Effect.gen(function*(_) {
-        const sessionOption = yield* _(SubscriptionRef.get(debug.session))
-        if (Option.isNone(sessionOption)) {
-          nodes = []
-        } else {
-          const session = sessionOption.value
-          const pairs = yield* _(session.context)
-          nodes = pairs.map((_) => new TagNode(_))
-        }
-        yield* _(refresh(Option.none()))
-      })
+      const capture = (threadId?: number) =>
+        Effect.gen(function*(_) {
+          const sessionOption = yield* _(SubscriptionRef.get(debug.session))
+          if (Option.isNone(sessionOption)) {
+            nodes = []
+          } else {
+            const session = sessionOption.value
+            const pairs = yield* _(session.context(threadId))
+            nodes = pairs.map((_) => new TagNode(_))
+          }
+          yield* _(refresh(Option.none()))
+        })
 
       yield* Stream.fromPubSub(debug.messages).pipe(
         Stream.mapEffect((event) => {
@@ -44,7 +45,7 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
 
           switch (event.event) {
             case "stopped": {
-              return Effect.delay(capture, 500)
+              return Effect.delay(capture(event.body?.threadId), 500)
             }
             case "continued": {
               nodes = []

@@ -28,6 +28,7 @@ export class DebugChannel extends Effect.Tag("effect-vscode/DebugChannel")<Debug
     opts: {
       expression: string
       guessFrameId: boolean
+      threadId: number | undefined
     }
   ) => Effect.Effect<VariableReference, DebugChannelError, never>
 }>() {}
@@ -213,15 +214,19 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
             context: "repl"
           }
           if (opts.guessFrameId) {
-            const threads = yield* debugRequest<DapThreadsResponse>("threads")
-            const thread = threads.threads[0]
-            if (!thread) {
-              return yield* new DebugChannelError({
-                message: "No thread found"
-              })
+            let threadId = opts.threadId
+            if (threadId === undefined) {
+              const threads = yield* debugRequest<DapThreadsResponse>("threads")
+              const thread = threads.threads[0]
+              if (!thread) {
+                return yield* new DebugChannelError({
+                  message: "No thread found"
+                })
+              }
+              threadId = thread.id
             }
             const stackTraces = yield* debugRequest<DapStackTracesResponse>("stackTrace", {
-              threadId: thread.id
+              threadId
             })
             const stackTrace = stackTraces.stackFrames[0]
             if (!stackTrace) {

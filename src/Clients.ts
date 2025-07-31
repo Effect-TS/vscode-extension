@@ -280,7 +280,8 @@ export class Clients extends Effect.Service<Clients>()(
                 })`
                 const debugResponses = yield* DebugChannel.DebugChannel.evaluate({
                   expression: requestJs,
-                  guessFrameId: false
+                  guessFrameId: false,
+                  threadId: undefined
                 })
 
                 const result = yield* debugResponses.parse(DebugInstrumentationResponseSchema)
