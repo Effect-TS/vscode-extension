@@ -33,20 +33,20 @@ function addSetInterceptor<O extends object, K extends keyof O>(
       "enumerable": previousProperty.enumerable,
       "configurable": previousProperty.configurable,
       "get": previousProperty.get,
-      "set": function(this: O, value: O[K]) {
-        interceptor(value)
-        previousProperty.set?.bind(this)(value)
+      "set": function(this: O, _: O[K]) {
+        interceptor(_)
+        previousProperty.set?.bind(this)(_)
       }
     })
   } else {
-    let _value: O[K]
+    let _val: O[K]
     Object.defineProperty(obj, key, {
-      "set": function(this: O, value: O[K]) {
-        _value = value
-        interceptor(value)
+      "set": function(this: O, _: O[K]) {
+        _val = _
+        interceptor(_)
       },
       "get": function() {
-        return _value
+        return _val
       }
     })
   }
@@ -65,23 +65,23 @@ function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot>
       const metricPair = snapshot[i]
       if (isCounterState(metricPair.metricState)) {
         metrics.push({
-          _tag: "Counter",
-          name: metricPair.metricKey.name,
-          description: getOrUndefined(metricPair.metricKey.description),
-          tags: metricPair.metricKey.tags,
-          state: {
-            count: typeof metricPair.metricState.count === "bigint"
+          "_tag": "Counter",
+          "name": metricPair.metricKey.name,
+          "description": getOrUndefined(metricPair.metricKey.description),
+          "tags": metricPair.metricKey.tags,
+          "state": {
+            "count": typeof metricPair.metricState.count === "bigint"
               ? metricPair.metricState.count.toString()
               : metricPair.metricState.count
           }
         })
       } else if (isGaugeState(metricPair.metricState)) {
         metrics.push({
-          _tag: "Gauge",
-          name: metricPair.metricKey.name,
-          description: getOrUndefined(metricPair.metricKey.description),
-          tags: metricPair.metricKey.tags,
-          state: {
+          "_tag": "Gauge",
+          "name": metricPair.metricKey.name,
+          "description": getOrUndefined(metricPair.metricKey.description),
+          "tags": metricPair.metricKey.tags,
+          "state": {
             "value": typeof metricPair.metricState.value === "bigint"
               ? metricPair.metricState.value.toString()
               : metricPair.metricState.value
@@ -89,28 +89,28 @@ function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot>
         })
       } else if (isHistogramState(metricPair.metricState)) {
         metrics.push({
-          _tag: "Histogram",
-          name: metricPair.metricKey.name,
-          description: getOrUndefined(metricPair.metricKey.description),
-          tags: metricPair.metricKey.tags,
-          state: metricPair.metricState
+          "_tag": "Histogram",
+          "name": metricPair.metricKey.name,
+          "description": getOrUndefined(metricPair.metricKey.description),
+          "tags": metricPair.metricKey.tags,
+          "state": metricPair.metricState
         })
       } else if (isSummaryState(metricPair.metricState)) {
         metrics.push({
-          _tag: "Summary",
-          name: metricPair.metricKey.name,
-          description: getOrUndefined(metricPair.metricKey.description),
-          tags: metricPair.metricKey.tags,
-          state: metricPair.metricState
+          "_tag": "Summary",
+          "name": metricPair.metricKey.name,
+          "description": getOrUndefined(metricPair.metricKey.description),
+          "tags": metricPair.metricKey.tags,
+          "state": metricPair.metricState
         })
       } else if (isFrequencyState(metricPair.metricState)) {
         metrics.push({
-          _tag: "Frequency",
-          name: metricPair.metricKey.name,
-          description: getOrUndefined(metricPair.metricKey.description),
-          tags: metricPair.metricKey.tags,
-          state: {
-            occurrences: Object.fromEntries(metricPair.metricState.occurrences.entries())
+          "_tag": "Frequency",
+          "name": metricPair.metricKey.name,
+          "description": getOrUndefined(metricPair.metricKey.description),
+          "tags": metricPair.metricKey.tags,
+          "state": {
+            "occurrences": Object.fromEntries(metricPair.metricState.occurrences.entries())
           }
         })
       }
@@ -118,21 +118,21 @@ function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot>
   }
 
   return {
-    _tag: "MetricsSnapshot",
-    metrics
+    "_tag": "MetricsSnapshot",
+    "metrics": metrics
   }
 }
 
 function convertExternalSpan(span: Tracer.ExternalSpan): Schema.Schema.Encoded<typeof Domain.ExternalSpan> {
   return {
-    _tag: "ExternalSpan",
-    traceId: span.traceId,
-    spanId: span.spanId,
-    sampled: span.sampled
+    "_tag": "ExternalSpan",
+    "traceId": span.traceId,
+    "spanId": span.spanId,
+    "sampled": span.sampled
   }
 }
 
-function getSpanStack(span: Tracer.AnySpan): Array<string> {
+function getSpanStack(span: Tracer.AnySpan): Array<{ path: string; line: number; column: number }> {
   const stackString = globalStores().reduce((acc, store) => {
     if (acc || !store) return acc
     const spanToTrace = store.get("effect/Tracer/spanToTrace")
@@ -140,25 +140,47 @@ function getSpanStack(span: Tracer.AnySpan): Array<string> {
     return stackFn ? stackFn() : acc
   }, undefined) || ""
   const stack = stackString.split("\n").filter((_) => String(_).length > 0)
-  return stack
+  const out: Array<{ path: string; line: number; column: number }> = []
+  for (let i = 0; i < stack.length; i++) {
+    const line = stack[i]
+    const match = line.match(/^at (.*) \((.*):(\d+):(\d+)\)$/)
+    if (match) {
+      out.push({ "path": match[2], "line": parseInt(match[3]) - 1, "column": parseInt(match[4]) - 1 })
+    } else {
+      const matchOnlyAt = line.match(/^at (.*):(\d+):(\d+)$/)
+      if (matchOnlyAt) {
+        out.push({
+          "path": matchOnlyAt[1],
+          "line": parseInt(matchOnlyAt[2]) - 1,
+          "column": parseInt(matchOnlyAt[3]) - 1
+        })
+      }
+    }
+  }
+  return out
 }
 
 function convertSpan(span: Tracer.Span): Schema.Schema.Encoded<typeof Domain.Span> {
   const stack = getSpanStack(span)
   return {
-    _tag: "Span",
-    spanId: span.spanId,
-    traceId: span.traceId,
-    name: span.name,
-    sampled: span.sampled,
-    status: span.status._tag === "Started"
-      ? { _tag: "Started", startTime: String(span.status.startTime) }
-      : { _tag: "Ended", startTime: String(span.status.startTime), endTime: String(span.status.endTime) },
-    parent: span.parent._tag === "None"
+    "_tag": "Span",
+    "spanId": span.spanId,
+    "traceId": span.traceId,
+    "name": span.name,
+    "sampled": span.sampled,
+    "status": span.status._tag === "Started"
+      ? { _tag: "Started", "startTime": String(span.status.startTime) }
+      : { _tag: "Ended", "startTime": String(span.status.startTime), "endTime": String(span.status.endTime) },
+    "parent": span.parent._tag === "None"
       ? span.parent
-      : ({ _tag: "Some", value: convertAnySpan(span.parent.value) }),
-    attributes: Array.from(span.attributes.entries()).concat(
-      stack.length > 0 ? [["@effect/devtools/trace", stack[0]]] : []
+      : ({ _tag: "Some", "value": convertAnySpan(span.parent.value) }),
+    "attributes": Array.from(span.attributes.entries()).concat(
+      stack.length > 0
+        ? [[
+          "@effect/devtools/trace",
+          "at " + span.name + " (" + stack[0].path + ":" + (stack[0].line + 1) + ":" + (stack[0].column + 1) + ")"
+        ]]
+        : []
     )
   }
 }
@@ -219,12 +241,12 @@ if (!(instrumentationKey in globalThis)) {
           span.event = (name, startTime, attributes, ...args) => {
             const result = _event(name, startTime, attributes, ...args)
             pushNotification({
-              _tag: "SpanEvent",
-              spanId: span.spanId,
-              traceId: span.traceId,
-              name,
-              startTime: String(startTime),
-              attributes: attributes || {}
+              "_tag": "SpanEvent",
+              "spanId": span.spanId,
+              "traceId": span.traceId,
+              "name": name,
+              "startTime": String(startTime),
+              "attributes": attributes || {}
             })
             return result
           }
@@ -295,12 +317,12 @@ if (!(instrumentationKey in globalThis)) {
     let current: Tracer.AnySpan | undefined = fiber.currentSpan
     while (current) {
       spans.push({
-        _tag: current._tag,
-        spanId: current.spanId,
-        traceId: current.traceId,
-        name: current._tag === "Span" ? current.name : current.spanId,
-        attributes: current._tag === "Span" && current.attributes ? Array.from(current.attributes.entries()) : [],
-        stack: getSpanStack(current)
+        "_tag": current._tag,
+        "spanId": current.spanId,
+        "traceId": current.traceId,
+        "name": current._tag === "Span" ? current.name : current.spanId,
+        "attributes": current._tag === "Span" && current.attributes ? Array.from(current.attributes.entries()) : [],
+        "stack": getSpanStack(current)
       })
       current = current._tag === "Span" && current.parent && current.parent._tag === "Some"
         ? current.parent.value
@@ -319,25 +341,25 @@ if (!(instrumentationKey in globalThis)) {
 
   function getAliveFibers() {
     return fibers.map((fiber) => ({
-      id: fiber.id().id.toString(),
-      isCurrent: fiber === (globalThis as any)["effect/FiberCurrent"]
+      "id": fiber.id().id.toString(),
+      "isCurrent": fiber === (globalThis as any)["effect/FiberCurrent"]
     }))
   }
 
   // set the instrumentation
   _globalThis[instrumentationKey] = {
-    fibers,
-    debugProtocolDevtoolsClient,
-    getFiberCurrentSpanStack,
-    getFiberCurrentContext,
-    getAliveFibers
+    "fibers": fibers,
+    "debugProtocolDevtoolsClient": debugProtocolDevtoolsClient,
+    "getFiberCurrentSpanStack": getFiberCurrentSpanStack,
+    "getFiberCurrentContext": getFiberCurrentContext,
+    "getAliveFibers": getAliveFibers
   }
 
   // replace the effect/FiberCurrent with a getter/setter so we can detect fibers
   // starting for the first time
   const _previousFiber = _globalThis["effect/FiberCurrent"]
-  addSetInterceptor(_globalThis, "effect/FiberCurrent", (_value: Fiber.Runtime<any, any> | undefined) => {
-    if (_value) addTrackedFiber(_value)
+  addSetInterceptor(_globalThis, "effect/FiberCurrent", (_: Fiber.Runtime<any, any> | undefined) => {
+    if (_) addTrackedFiber(_)
   })
   // trigger the setter by re-setting its value
   _globalThis["effect/FiberCurrent"] = _previousFiber

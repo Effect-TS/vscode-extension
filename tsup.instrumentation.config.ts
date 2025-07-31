@@ -19,11 +19,11 @@ export default defineConfig({
       const fs = yield* FileSystem.FileSystem
       const path = yield* Path.Path
       const compiled = yield* fs.readFileString("out/instrumentation.global.js")
+      const code =
+        `(function(){ var Array = globalThis.Array; var Object = globalThis.Object; var String = globalThis.String; \n${compiled}} )()`
       yield* fs.writeFileString(
         path.join(__dirname, "src", "instrumentation", "instrumentation.compiled.ts"),
-        `/* eslint-disable @effect/dprint */\nexport const compiledInstrumentationString = ${
-          JSON.stringify(`(function(){ ${compiled}} )()`)
-        }`
+        `/* eslint-disable @effect/dprint */\nexport const compiledInstrumentationString = ${JSON.stringify(code)}`
       )
     }).pipe(Effect.provide(NodeContext.layer), Effect.runPromise)
 })
