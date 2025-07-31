@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.4.0
+
+### Minor Changes
+
+- [#48](https://github.com/Effect-TS/vscode-extension/pull/48) [`488b2d4`](https://github.com/Effect-TS/vscode-extension/commit/488b2d4f0f397c1716ffd85a49c6f532f42274b1) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Fix some wrangler issues with parsing object properties and stack traces
+
 ## 0.3.3
 
 ### Patch Changes
