@@ -153,32 +153,11 @@ export class SpanStackEntry extends Data.Class<{
 }> {
 }
 
-const StackLocation = Schema.NonEmptyString.pipe(Schema.compose(
-  Schema.TemplateLiteralParser(
-    Schema.NonEmptyString,
-    Schema.Literal(" ("),
-    Schema.NonEmptyString,
-    Schema.Literal(":"),
-    Schema.NumberFromString.pipe(Schema.compose(Schema.Int), Schema.positive()),
-    Schema.Literal(":"),
-    Schema.NumberFromString.pipe(Schema.compose(Schema.Int), Schema.positive()),
-    Schema.Literal(")")
-  ).pipe(
-    Schema.transform(
-      Schema.Struct({
-        name: Schema.NonEmptyString,
-        path: Schema.NonEmptyString,
-        line: Schema.Int,
-        column: Schema.Int
-      }),
-      {
-        strict: true,
-        decode: ([name, _, path, __, line, ___, column]) => ({ path, line: line - 1, column: column - 1, name }),
-        encode: ({ column, line, name, path }) => [name, " (", path, ":", line + 1, ":", column + 1, ")"] as const
-      }
-    )
-  )
-))
+const StackLocation = Schema.Struct({
+  path: Schema.String,
+  line: Schema.Int,
+  column: Schema.Int
+})
 
 const SpanSchema = Schema.Struct({
   _tag: Schema.Literal("Span"),
