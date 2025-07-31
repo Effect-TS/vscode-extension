@@ -30,17 +30,18 @@ export const DebugFibersProviderLive = treeDataProvider<TreeNode>("effect-debug-
         return Effect.void
       })
 
-      const capture = Effect.gen(function*(_) {
-        const sessionOption = yield* _(SubscriptionRef.get(debug.session))
-        if (Option.isNone(sessionOption)) {
-          nodes = []
-        } else {
-          const session = sessionOption.value
-          const pairs = yield* _(session.currentFibers)
-          nodes = pairs.map((_) => new TreeNode(_))
-        }
-        yield* _(refresh(Option.none()))
-      })
+      const capture = (threadId?: number) =>
+        Effect.gen(function*(_) {
+          const sessionOption = yield* _(SubscriptionRef.get(debug.session))
+          if (Option.isNone(sessionOption)) {
+            nodes = []
+          } else {
+            const session = sessionOption.value
+            const pairs = yield* _(session.currentFibers(threadId))
+            nodes = pairs.map((_) => new TreeNode(_))
+          }
+          yield* _(refresh(Option.none()))
+        })
 
       yield* Stream.fromPubSub(debug.messages).pipe(
         Stream.mapEffect((event) =>
@@ -49,7 +50,7 @@ export const DebugFibersProviderLive = treeDataProvider<TreeNode>("effect-debug-
 
             switch (event.event) {
               case "stopped": {
-                return yield* Effect.delay(capture, 500)
+                return yield* Effect.delay(capture(event.body?.threadId), 500)
               }
               case "continued": {
                 nodes = []

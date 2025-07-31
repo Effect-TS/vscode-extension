@@ -19,9 +19,9 @@ export interface DebugEnvImpl {
 
 export interface Session {
   readonly vscode: vscode.DebugSession
-  readonly context: Effect.Effect<Array<ContextPair>>
-  readonly currentSpanStack: Effect.Effect<Array<SpanStackEntry>>
-  readonly currentFibers: Effect.Effect<Array<FiberEntry>>
+  readonly context: (threadId: number | undefined) => Effect.Effect<Array<ContextPair>>
+  readonly currentSpanStack: (threadId: number | undefined) => Effect.Effect<Array<SpanStackEntry>>
+  readonly currentFibers: (threadId: number | undefined) => Effect.Effect<Array<FiberEntry>>
 }
 
 export type Message =
@@ -62,15 +62,18 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
             sessionRef,
             Option.some({
               vscode: session,
-              context: getContext.pipe(
-                Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-              ),
-              currentSpanStack: getCurrentSpanStack.pipe(
-                Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-              ),
-              currentFibers: getCurrentFibers.pipe(
-                Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-              )
+              context: (threadId) =>
+                getContext(threadId).pipe(
+                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+                ),
+              currentSpanStack: (threadId) =>
+                getCurrentSpanStack(threadId).pipe(
+                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+                ),
+              currentFibers: (threadId) =>
+                getCurrentFibers(threadId).pipe(
+                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+                )
             })
           )
         })
@@ -96,15 +99,16 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
 
 // --
 
-export const ensureInstrumentationInjected = (guessFrameId: boolean) =>
+export const ensureInstrumentationInjected = (guessFrameId: boolean, threadId?: number) =>
   Effect.gen(function*() {
     const result = yield* DebugChannel.DebugChannel.evaluate({
       expression: `globalThis && "effect/devtools/instrumentation" in globalThis`,
-      guessFrameId
+      guessFrameId,
+      threadId
     })
     const isInjected = yield* result.parse(Schema.Boolean)
     if (!isInjected) {
-      yield* DebugChannel.DebugChannel.evaluate({ expression: compiledInstrumentationString, guessFrameId })
+      yield* DebugChannel.DebugChannel.evaluate({ expression: compiledInstrumentationString, guessFrameId, threadId })
     }
   })
 
@@ -120,18 +124,23 @@ const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.loc
 
 const ContextSchema = Schema.Array(Schema.Tuple(Schema.String, DebugChannel.VariableReference.SchemaFromSelf))
 
-const getContext = Effect.gen(function*() {
-  const result = yield* DebugChannel.DebugChannel.evaluate({ expression: contextExpression, guessFrameId: true })
-  return yield* result.parse(ContextSchema)
-}).pipe(
-  Effect.tapError(Effect.logError),
-  Effect.orElseSucceed(() => []),
-  Effect.map(
-    Array.map(
-      ([tag, service]) => new ContextPair({ tag, service })
+const getContext = (threadId: number | undefined) =>
+  Effect.gen(function*() {
+    const result = yield* DebugChannel.DebugChannel.evaluate({
+      expression: contextExpression,
+      guessFrameId: true,
+      threadId
+    })
+    return yield* result.parse(ContextSchema)
+  }).pipe(
+    Effect.tapError(Effect.logError),
+    Effect.orElseSucceed(() => []),
+    Effect.map(
+      Array.map(
+        ([tag, service]) => new ContextPair({ tag, service })
+      )
     )
   )
-)
 
 // --
 
@@ -191,7 +200,7 @@ const ExternalSpanSchema = Schema.Struct({
 
 const SpanStackSchema = Schema.Array(Schema.Union(SpanSchema, ExternalSpanSchema))
 
-function getFiberCurrentSpan(currentFiberExpression: string) {
+function getFiberCurrentSpan(currentFiberExpression: string, threadId: number | undefined) {
   // NOTE: Keep this expression as backwards compatible as possible
   // so avoid const, let, arrow functions, etc.
   const currentSpanStackExpression = `(function(fiber){
@@ -228,10 +237,11 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
 })(${currentFiberExpression})`
 
   return Effect.gen(function*() {
-    yield* ensureInstrumentationInjected(true)
+    yield* ensureInstrumentationInjected(true, threadId)
     const result = yield* DebugChannel.DebugChannel.evaluate({
       expression: currentSpanStackExpression,
-      guessFrameId: true
+      guessFrameId: true,
+      threadId
     })
     return yield* result.parse(SpanStackSchema)
   }).pipe(
@@ -285,7 +295,8 @@ function getFiberCurrentSpan(currentFiberExpression: string) {
   )
 }
 
-export const getCurrentSpanStack = getFiberCurrentSpan(`globalThis["effect/FiberCurrent"]`)
+export const getCurrentSpanStack = (threadId: number | undefined) =>
+  getFiberCurrentSpan(`globalThis["effect/FiberCurrent"]`, threadId)
 
 // --
 
@@ -311,20 +322,25 @@ const CurrentFiberSchema = Schema.Array(Schema.Struct({
   isCurrent: Schema.Boolean
 }))
 
-const getCurrentFibers = Effect.gen(function*() {
-  yield* ensureInstrumentationInjected(true)
-  const result = yield* DebugChannel.DebugChannel.evaluate({ expression: currentFibersExpression, guessFrameId: true })
-  return yield* result.parse(CurrentFiberSchema)
-}).pipe(
-  Effect.tapError(Effect.logError),
-  Effect.orElseSucceed(() => []),
-  Effect.flatMap((fibers) =>
-    Effect.all(
-      fibers.map((fiber, idx) =>
-        Effect.map(
-          getFiberCurrentSpan(`(globalThis["effect/devtools/instrumentation"].fibers || [])[${idx}]`),
-          (stack) => new FiberEntry({ ...fiber, stack })
-        ), { concurrency: "unbounded" })
+const getCurrentFibers = (threadId: number | undefined) =>
+  Effect.gen(function*() {
+    yield* ensureInstrumentationInjected(true, threadId)
+    const result = yield* DebugChannel.DebugChannel.evaluate({
+      expression: currentFibersExpression,
+      guessFrameId: true,
+      threadId
+    })
+    return yield* result.parse(CurrentFiberSchema)
+  }).pipe(
+    Effect.tapError(Effect.logError),
+    Effect.orElseSucceed(() => []),
+    Effect.flatMap((fibers) =>
+      Effect.all(
+        fibers.map((fiber, idx) =>
+          Effect.map(
+            getFiberCurrentSpan(`(globalThis["effect/devtools/instrumentation"].fibers || [])[${idx}]`, threadId),
+            (stack) => new FiberEntry({ ...fiber, stack })
+          ), { concurrency: "unbounded" })
+      )
     )
   )
-)

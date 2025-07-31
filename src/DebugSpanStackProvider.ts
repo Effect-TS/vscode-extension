@@ -41,17 +41,18 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
         return Effect.void
       })
 
-      const capture = Effect.gen(function*(_) {
-        const sessionOption = yield* _(SubscriptionRef.get(debug.session))
-        if (Option.isNone(sessionOption)) {
-          nodes = []
-        } else {
-          const session = sessionOption.value
-          const pairs = yield* _(session.currentSpanStack)
-          nodes = pairs.map((_) => new SpanNode(_))
-        }
-        yield* _(refresh(Option.none()))
-      })
+      const capture = (threadId?: number) =>
+        Effect.gen(function*(_) {
+          const sessionOption = yield* _(SubscriptionRef.get(debug.session))
+          if (Option.isNone(sessionOption)) {
+            nodes = []
+          } else {
+            const session = sessionOption.value
+            const pairs = yield* _(session.currentSpanStack(threadId))
+            nodes = pairs.map((_) => new SpanNode(_))
+          }
+          yield* _(refresh(Option.none()))
+        })
 
       yield* Stream.fromPubSub(debug.messages).pipe(
         Stream.mapEffect((event) => {
@@ -59,7 +60,7 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
 
           switch (event.event) {
             case "stopped": {
-              return Effect.delay(capture, 500)
+              return Effect.delay(capture(event.body?.threadId), 500)
             }
             case "continued": {
               nodes = []
