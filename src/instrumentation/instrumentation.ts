@@ -132,16 +132,19 @@ function convertExternalSpan(span: Tracer.ExternalSpan): Schema.Schema.Encoded<t
   }
 }
 
-function convertSpan(span: Tracer.Span): Schema.Schema.Encoded<typeof Domain.Span> {
+function getSpanStack(span: Tracer.AnySpan): Array<string> {
   const stackString = globalStores().reduce((acc, store) => {
     if (acc || !store) return acc
     const spanToTrace = store.get("effect/Tracer/spanToTrace")
     const stackFn = spanToTrace ? spanToTrace.get(span) : acc
     return stackFn ? stackFn() : acc
   }, undefined) || ""
-  const stack = stackString.split("\n").filter(function(_) {
-    return _ !== ""
-  })
+  const stack = stackString.split("\n").filter((_) => String(_).length > 0)
+  return stack
+}
+
+function convertSpan(span: Tracer.Span): Schema.Schema.Encoded<typeof Domain.Span> {
+  const stack = getSpanStack(span)
   return {
     _tag: "Span",
     spanId: span.spanId,
@@ -286,10 +289,48 @@ if (!(instrumentationKey in globalThis)) {
     return JSON.stringify({ responses: responsesToSend.concat(notificationsToSend), instrumentationId })
   }
 
+  function getFiberCurrentSpanStack(fiber: Fiber.Runtime<any, any>) {
+    const spans: Array<any> = []
+    if (!fiber || !fiber.currentSpan) return spans
+    let current: Tracer.AnySpan | undefined = fiber.currentSpan
+    while (current) {
+      spans.push({
+        _tag: current._tag,
+        spanId: current.spanId,
+        traceId: current.traceId,
+        name: current._tag === "Span" ? current.name : current.spanId,
+        attributes: current._tag === "Span" && current.attributes ? Array.from(current.attributes.entries()) : [],
+        stack: getSpanStack(current)
+      })
+      current = current._tag === "Span" && current.parent && current.parent._tag === "Some"
+        ? current.parent.value
+        : undefined
+    }
+    return spans
+  }
+
+  function getFiberCurrentContext(fiber: Fiber.Runtime<any, any>) {
+    if (!fiber) return []
+    return [...(fiber as any)._fiberRefs.locals.values() ?? []]
+      .map((_) => _[0][1])
+      .filter((_) => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
+      .flatMap((context) => [...context.unsafeMap.entries()])
+  }
+
+  function getAliveFibers() {
+    return fibers.map((fiber) => ({
+      id: fiber.id().id.toString(),
+      isCurrent: fiber === (globalThis as any)["effect/FiberCurrent"]
+    }))
+  }
+
   // set the instrumentation
   _globalThis[instrumentationKey] = {
     fibers,
-    debugProtocolDevtoolsClient
+    debugProtocolDevtoolsClient,
+    getFiberCurrentSpanStack,
+    getFiberCurrentContext,
+    getAliveFibers
   }
 
   // replace the effect/FiberCurrent with a getter/setter so we can detect fibers

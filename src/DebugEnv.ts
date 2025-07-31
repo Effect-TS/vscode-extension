@@ -117,17 +117,14 @@ export class ContextPair extends Data.TaggedClass("ContextPair")<{
   readonly service: DebugChannel.VariableReference
 }> {}
 
-const contextExpression = `[...globalThis["effect/FiberCurrent"]?._fiberRefs.locals.values() ?? []]
-    .map(_ => _[0][1])
-    .filter(_ => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
-    .flatMap(context => [...context.unsafeMap.entries()]);`
-
 const ContextSchema = Schema.Array(Schema.Tuple(Schema.String, DebugChannel.VariableReference.SchemaFromSelf))
 
 const getContext = (threadId: number | undefined) =>
   Effect.gen(function*() {
+    yield* ensureInstrumentationInjected(true, threadId)
     const result = yield* DebugChannel.DebugChannel.evaluate({
-      expression: contextExpression,
+      expression:
+        `globalThis["effect/devtools/instrumentation"].getFiberCurrentContext(globalThis["effect/FiberCurrent"])`,
       guessFrameId: true,
       threadId
     })
@@ -201,45 +198,10 @@ const ExternalSpanSchema = Schema.Struct({
 const SpanStackSchema = Schema.Array(Schema.Union(SpanSchema, ExternalSpanSchema))
 
 function getFiberCurrentSpan(currentFiberExpression: string, threadId: number | undefined) {
-  // NOTE: Keep this expression as backwards compatible as possible
-  // so avoid const, let, arrow functions, etc.
-  const currentSpanStackExpression = `(function(fiber){
-  var spans = [];
-  if(!fiber || !fiber.currentSpan) return spans;
-  var globalStores = Object.keys(globalThis).filter(function(key){
-    return key.indexOf("effect/GlobalValue/globalStoreId") > -1
-  }).map(function(key){
-    return globalThis[key];
-  });
-  var current = fiber.currentSpan;
-  while(current) {
-    var stackString = globalStores.reduce(function(acc, store){
-      if(acc || !store) return acc;
-      var spanToTrace = store.get("effect/Tracer/spanToTrace");
-      var stackFn = spanToTrace ? spanToTrace.get(current) : acc;
-      return stackFn ? stackFn() : acc;
-    }, undefined) || "";
-    var stack = stackString.split("\\n").filter(function(_){
-      return _ !== ""
-    })
-    
-    spans.push({
-      _tag: current._tag,
-      spanId: current.spanId,
-      traceId: current.traceId,
-      name: current.name,
-      attributes: current.attributes ? Array.from(current.attributes.entries()) : [],
-      stack: stack
-    })
-    current = current.parent && current.parent._tag === "Some" ? current.parent.value : null;
-  }
-  return spans;
-})(${currentFiberExpression})`
-
   return Effect.gen(function*() {
     yield* ensureInstrumentationInjected(true, threadId)
     const result = yield* DebugChannel.DebugChannel.evaluate({
-      expression: currentSpanStackExpression,
+      expression: `globalThis["effect/devtools/instrumentation"].getFiberCurrentSpanStack(${currentFiberExpression})`,
       guessFrameId: true,
       threadId
     })
@@ -307,16 +269,6 @@ export class FiberEntry extends Data.Class<{
 }> {
 }
 
-const currentFibersExpression = `(function(){
-  var fibers = (globalThis["effect/devtools/instrumentation"].fibers || []).map(function(fiber){
-    return {
-      id: fiber.id().id.toString(),
-      isCurrent: fiber === globalThis["effect/FiberCurrent"],
-    }
-  });
-  return fibers;
-})()`
-
 const CurrentFiberSchema = Schema.Array(Schema.Struct({
   id: Schema.String,
   isCurrent: Schema.Boolean
@@ -326,7 +278,7 @@ const getCurrentFibers = (threadId: number | undefined) =>
   Effect.gen(function*() {
     yield* ensureInstrumentationInjected(true, threadId)
     const result = yield* DebugChannel.DebugChannel.evaluate({
-      expression: currentFibersExpression,
+      expression: `globalThis["effect/devtools/instrumentation"].getAliveFibers()`,
       guessFrameId: true,
       threadId
     })
