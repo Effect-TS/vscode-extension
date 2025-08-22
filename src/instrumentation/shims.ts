@@ -96,7 +96,7 @@ export const globalMetricRegistrySymbol = Symbol.for("effect/Metric/globalMetric
 
 export function globalStores(): Array<Map<any, any>> {
   return Object.keys(globalThis).filter(function(key) {
-    return key.indexOf("effect/GlobalValue/globalStoreId") > -1
+    return key.indexOf("effect/GlobalValue/globalStoreId") > -1 || key === "effect/GlobalValue"
   }).map(function(key) {
     return (globalThis as any)[key]
   })
