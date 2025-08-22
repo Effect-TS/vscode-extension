@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.4.1
+
+### Patch Changes
+
+- [#52](https://github.com/Effect-TS/vscode-extension/pull/52) [`567dcd6`](https://github.com/Effect-TS/vscode-extension/commit/567dcd6b7182d2c109e1a5e19786b91d58fa7379) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Handle spanToTrace for newer effect versions without globalstore id
+
 ## 0.4.0
 
 ### Minor Changes
