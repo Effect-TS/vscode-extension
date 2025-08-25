@@ -80,17 +80,17 @@ export const DebugFibersProviderLive = treeDataProvider<TreeNode>("effect-debug-
 
 const treeItem = (node: TreeNode): vscode.TreeItem => {
   const item = new vscode.TreeItem(
-    "Fiber#" + node.entry.id,
+    "Fiber#" + node.entry.id + (node.entry.isInterruptible ? "" : " (uninterruptible)"),
     vscode.TreeItemCollapsibleState.None
   )
+  if (node.entry.isCurrent) {
+    item.iconPath = new vscode.ThemeIcon("arrow-small-right")
+  }
   const firstEntry = node.entry.stack[0]
   if (firstEntry) {
     item.description = firstEntry.name
     if (firstEntry.path) {
       item.tooltip = firstEntry.path + ":" + firstEntry.line + ":" + firstEntry.column
-    }
-    if (node.entry.isCurrent) {
-      item.iconPath = new vscode.ThemeIcon("arrow-small-right")
     }
   }
 

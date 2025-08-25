@@ -1,5 +1,6 @@
 import type * as MetricState from "effect/MetricState"
 import type * as Option from "effect/Option"
+import type * as RuntimeFlags from "effect/RuntimeFlags"
 
 /** @internal */
 const MetricStateSymbolKey = "effect/MetricState"
@@ -105,3 +106,11 @@ export function globalStores(): Array<Map<any, any>> {
 export function getOrUndefined<T>(option: Option.Option<T>): T | undefined {
   return option._tag === "Some" ? option.value : undefined
 }
+
+/* RuntimeFlags */
+const Interruption: RuntimeFlags.RuntimeFlag = 1 << 0 as RuntimeFlags.RuntimeFlag
+const WindDown: RuntimeFlags.RuntimeFlag = 1 << 4 as RuntimeFlags.RuntimeFlag
+
+const isEnabled = (self: RuntimeFlags.RuntimeFlags, flag: RuntimeFlags.RuntimeFlag) => (self & flag) !== 0
+export const interruptible = (self: RuntimeFlags.RuntimeFlags): boolean =>
+  isEnabled(self, Interruption) && !isEnabled(self, WindDown)

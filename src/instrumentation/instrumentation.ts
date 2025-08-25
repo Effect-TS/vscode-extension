@@ -7,6 +7,7 @@ import {
   getOrUndefined,
   globalMetricRegistrySymbol,
   globalStores,
+  interruptible,
   isCounterState,
   isFrequencyState,
   isGaugeState,
@@ -342,7 +343,8 @@ if (!(instrumentationKey in globalThis)) {
   function getAliveFibers() {
     return fibers.map((fiber) => ({
       "id": fiber.id().id.toString(),
-      "isCurrent": fiber === (globalThis as any)["effect/FiberCurrent"]
+      "isCurrent": fiber === (globalThis as any)["effect/FiberCurrent"],
+      "isInterruptible": fiber && "currentRuntimeFlags" in fiber && interruptible(fiber.currentRuntimeFlags as any)
     }))
   }
 
