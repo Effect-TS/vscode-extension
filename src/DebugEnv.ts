@@ -245,12 +245,14 @@ export class FiberEntry extends Data.Class<{
   readonly id: string
   readonly stack: Array<SpanStackEntry>
   readonly isCurrent: boolean
+  readonly isInterruptible: boolean
 }> {
 }
 
 const CurrentFiberSchema = Schema.Array(Schema.Struct({
   id: Schema.String,
-  isCurrent: Schema.Boolean
+  isCurrent: Schema.Boolean,
+  isInterruptible: Schema.Boolean
 }))
 
 const getCurrentFibers = (threadId: number | undefined) =>

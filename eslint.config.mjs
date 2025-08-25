@@ -123,5 +123,22 @@ export default tseslint.config(
     rules: {
       "no-console": "error"
     }
+  },
+  {
+    files: ["src/instrumentation/**/*"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          "patterns": [
+            {
+              "group": ["effect", "effect/*"],
+              "message": "Importing the effect module is not allowed; only type imports are allowed.",
+              "allowTypeImports": true
+            }
+          ]
+        }
+      ]
+    }
   }
 )
