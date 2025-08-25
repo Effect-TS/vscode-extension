@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.4.2
+
+### Patch Changes
+
+- [#54](https://github.com/Effect-TS/vscode-extension/pull/54) [`541b8e2`](https://github.com/Effect-TS/vscode-extension/commit/541b8e23e39534a012880ac98211596441e2695a) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Report which fibers are uninterruptible in fibers view
+
 ## 0.4.1
 
 ### Patch Changes
