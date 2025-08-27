@@ -329,6 +329,6 @@ export const revealFile = (
   selection?: vscode.Range
 ) =>
   Effect.flatMap(
-    thenable(() => vscode.workspace.openTextDocument(path)),
+    thenable(() => vscode.workspace.openTextDocument(vscode.Uri.parse(path, false))),
     (doc) => thenable(() => vscode.window.showTextDocument(doc, { selection }))
   )
