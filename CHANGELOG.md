@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.4.3
+
+### Patch Changes
+
+- [#56](https://github.com/Effect-TS/vscode-extension/pull/56) [`2bbaace`](https://github.com/Effect-TS/vscode-extension/commit/2bbaace75a43a2366e5536745ea5985e2c401559) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Fix reveal file for file:// schemes
+
 ## 0.4.2
 
 ### Patch Changes
