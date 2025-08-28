@@ -324,11 +324,23 @@ export const debugRequest = <A = unknown>(
 ): Effect.Effect<A, never, VsCodeDebugSession> =>
   Effect.flatMap(VsCodeDebugSession, (session) => thenable(() => session.customRequest(command, args)))
 
+export const vscodeUriFromPath = (path: string) => {
+  const pathLowered = path.toLowerCase()
+  if (
+    pathLowered.startsWith("file://") || pathLowered.startsWith("http://") || pathLowered.startsWith("https://")
+  ) return vscode.Uri.parse(path, false)
+  return vscode.Uri.file(path)
+}
+
 export const revealFile = (
   path: string,
   selection?: vscode.Range
 ) =>
-  Effect.flatMap(
-    thenable(() => vscode.workspace.openTextDocument(vscode.Uri.parse(path, false))),
-    (doc) => thenable(() => vscode.window.showTextDocument(doc, { selection }))
+  thenable(() => vscode.workspace.openTextDocument(vscodeUriFromPath(path))).pipe(
+    Effect.flatMap((doc) => thenable(() => vscode.window.showTextDocument(doc, { selection })))
   )
+
+export const revealFileWithSelection = (
+  path: string,
+  selection: vscode.Range
+) => revealFile(path, selection)
