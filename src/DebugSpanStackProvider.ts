@@ -3,10 +3,18 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
+import { minimatch } from "minimatch"
 import * as vscode from "vscode"
 import type * as DebugChannel from "./DebugChannel"
 import * as Debug from "./DebugEnv"
-import { registerCommand, revealFile, TreeDataProvider, treeDataProvider } from "./VsCode"
+import {
+  configWithDefault,
+  executeCommand,
+  registerCommand,
+  revealFile,
+  TreeDataProvider,
+  treeDataProvider
+} from "./VsCode"
 
 class SpanNode {
   readonly _tag = "SpanNode"
@@ -23,7 +31,11 @@ class VariableNode {
   constructor(readonly variable: DebugChannel.VariableReference) {}
 }
 
-type TreeNode = SpanNode | AttributeNode | VariableNode
+class IgnoredNode {
+  readonly _tag = "IgnoredNode"
+}
+
+type TreeNode = SpanNode | AttributeNode | VariableNode | IgnoredNode
 
 export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-debug-span-stack")(
   (refresh) =>
@@ -31,6 +43,46 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
       const debug = yield* Debug.DebugEnv
       let nodes: Array<TreeNode> = []
 
+      // handle ignore list, so user can filter out spans that match the patterns
+      const ignoreList = yield* configWithDefault<Array<string>>(
+        "effect.spanStack",
+        "ignoreList",
+        []
+      )
+      let skipIgnoreList = false
+      yield* ignoreList.changes.pipe(Stream.mapEffect(() => refresh(Option.none())), Stream.runDrain, Effect.forkScoped)
+
+      const setSkipIgnoreList = (skip: boolean) => {
+        skipIgnoreList = skip
+        return refresh(Option.none()).pipe(
+          Effect.zipRight(executeCommand("setContext", "effect:skipSpanStackIgnoreList", skip))
+        )
+      }
+
+      const filteredNodes = Effect.gen(function*() {
+        const ignoreListValue = yield* ignoreList.get
+        if (skipIgnoreList || ignoreListValue.length === 0) return nodes
+        const result = []
+        for (const node of nodes) {
+          if (node._tag === "SpanNode") {
+            const isIgnored = ignoreListValue.some((pattern) => minimatch(node.span.name, pattern))
+            if (isIgnored) {
+              if (result.length === 0 || result[result.length - 1]._tag !== "IgnoredNode") {
+                result.push(new IgnoredNode())
+              }
+            } else {
+              result.push(node)
+            }
+          }
+        }
+        return result
+      }).pipe(Effect.asSome)
+
+      // allows to toggle ignore list
+      yield* registerCommand("effect.enableSpanStackIgnoreList", () => setSkipIgnoreList(true))
+      yield* registerCommand("effect.disableSpanStackIgnoreList", () => setSkipIgnoreList(false))
+
+      // jump to span location
       yield* registerCommand("effect.revealSpanLocation", (node: TreeNode) => {
         if (node && node._tag === "SpanNode" && node.span.path) {
           return revealFile(
@@ -77,7 +129,7 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
 
       return TreeDataProvider<TreeNode>({
         children: Option.match({
-          onNone: () => Effect.succeedSome(nodes),
+          onNone: () => filteredNodes,
           onSome: (node) => children(node)
         }),
         treeItem: (node) => Effect.succeed(treeItem(node))
@@ -111,6 +163,9 @@ const children = (node: TreeNode) => {
         Effect.asSome
       )
     }
+    case "IgnoredNode": {
+      return Effect.succeedNone
+    }
   }
 }
 
@@ -123,6 +178,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.None
       )
+      item.contextValue = "span"
       if (node.span.path) {
         item.description = vscode.workspace.asRelativePath(node.span.path) + ":" + node.span.line + ":" +
           node.span.column
@@ -140,6 +196,7 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.None
       )
+      item.contextValue = "attribute"
       item.description = node.variable.value
       item.tooltip = node.variable.value
       return item
@@ -151,8 +208,15 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
           ? vscode.TreeItemCollapsibleState.Collapsed
           : vscode.TreeItemCollapsibleState.None
       )
+      item.contextValue = "variable"
       item.description = node.variable.value
       item.tooltip = node.variable.value
+      return item
+    }
+    case "IgnoredNode": {
+      const item = new vscode.TreeItem("", vscode.TreeItemCollapsibleState.None)
+      item.contextValue = "ignored"
+      item.description = "...ignored..."
       return item
     }
   }
