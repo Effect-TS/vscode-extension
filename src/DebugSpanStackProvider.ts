@@ -13,7 +13,8 @@ import {
   registerCommand,
   revealFile,
   TreeDataProvider,
-  treeDataProvider
+  treeDataProvider,
+  vscodeUriFromPath
 } from "./VsCode"
 
 class SpanNode {
@@ -180,7 +181,8 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
       )
       item.contextValue = "span"
       if (node.span.path) {
-        item.description = vscode.workspace.asRelativePath(node.span.path) + ":" + node.span.line + ":" +
+        item.description = vscode.workspace.asRelativePath(vscodeUriFromPath(node.span.path)) + ":" + node.span.line +
+          ":" +
           node.span.column
       }
       if (node.span.stackIndex >= 1) {
