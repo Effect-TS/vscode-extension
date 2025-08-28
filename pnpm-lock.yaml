@@ -77,6 +77,9 @@ importers:
       glob:
         specifier: ^11.0.3
         version: 11.0.3
+      minimatch:
+        specifier: ^10.0.3
+        version: 10.0.3
       mocha:
         specifier: ^11.7.1
         version: 11.7.1

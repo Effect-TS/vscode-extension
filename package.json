@@ -41,6 +41,15 @@
           "type": "integer",
           "default": 250,
           "description": "The time in milliseconds between polling for span data while using the debug protocol transport"
+        },
+        "effect.spanStack.ignoreList": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "default": [],
+          "description": "A list of span patterns to ignore when showing the span stack"
         }
       }
     },
@@ -89,6 +98,16 @@
         "command": "effect.resetTracerExtended",
         "title": "Effect Dev Tools: Reset Tracer Extended",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "effect.enableSpanStackIgnoreList",
+        "title": "Effect Dev Tools: Enable Span Stack Ignore List",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "effect.disableSpanStackIgnoreList",
+        "title": "Effect Dev Tools: Disable Span Stack Ignore List",
+        "icon": "$(eye)"
       }
     ],
     "viewsContainers": {
@@ -184,6 +203,16 @@
           "command": "effect.resetTracerExtended",
           "when": "view === effect-tracer-extended",
           "group": "navigation"
+        },
+        {
+          "command": "effect.enableSpanStackIgnoreList",
+          "when": "view === effect-debug-span-stack && effect:skipSpanStackIgnoreList === false",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.disableSpanStackIgnoreList",
+          "when": "view === effect-debug-span-stack && effect:skipSpanStackIgnoreList === true",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -193,7 +222,7 @@
         },
         {
           "command": "effect.revealSpanLocation",
-          "when": "inDebugMode && view === effect-debug-span-stack",
+          "when": "inDebugMode && view === effect-debug-span-stack && viewItem === span",
           "group": "inline"
         },
         {
@@ -243,7 +272,8 @@
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "minimatch": "^10.0.3"
   },
   "sideEffects": false,
   "pnpm": {
