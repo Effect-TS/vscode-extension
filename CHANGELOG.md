@@ -1,5 +1,13 @@
 # effect-vscode
 
+## 0.4.4
+
+### Patch Changes
+
+- [#60](https://github.com/Effect-TS/vscode-extension/pull/60) [`2f22e62`](https://github.com/Effect-TS/vscode-extension/commit/2f22e627b2344f59efc084eae1f93917bfacbd9b) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Show filename as relative path to workspace in spans
+
+- [#58](https://github.com/Effect-TS/vscode-extension/pull/58) [`52f0fe4`](https://github.com/Effect-TS/vscode-extension/commit/52f0fe41cedef2124099d326db4d775c84eae7a0) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Add ignore list for span debug stack
+
 ## 0.4.3
 
 ### Patch Changes
