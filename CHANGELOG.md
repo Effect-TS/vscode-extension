@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.4.5
+
+### Patch Changes
+
+- [#61](https://github.com/Effect-TS/vscode-extension/pull/61) [`d2640b2`](https://github.com/Effect-TS/vscode-extension/commit/d2640b277946a9818668238b726cd9b91c9cc228) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Avoid naming collision while injecting devtools instrumentation
+
 ## 0.4.4
 
 ### Patch Changes
