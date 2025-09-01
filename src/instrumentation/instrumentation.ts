@@ -315,18 +315,18 @@ if (!(instrumentationKey in globalThis)) {
   function getFiberCurrentSpanStack(fiber: Fiber.Runtime<any, any>) {
     const spans: Array<any> = []
     if (!fiber || !fiber.currentSpan) return spans
-    let current: Tracer.AnySpan | undefined = fiber.currentSpan
-    while (current) {
+    let _fiberCurrentSpan: Tracer.AnySpan | undefined = fiber.currentSpan
+    while (_fiberCurrentSpan) {
       spans.push({
-        "_tag": current._tag,
-        "spanId": current.spanId,
-        "traceId": current.traceId,
-        "name": current._tag === "Span" ? current.name : current.spanId,
-        "attributes": current._tag === "Span" && current.attributes ? Array.from(current.attributes.entries()) : [],
-        "stack": getSpanStack(current)
+        "_tag": _fiberCurrentSpan._tag,
+        "spanId": _fiberCurrentSpan.spanId,
+        "traceId": _fiberCurrentSpan.traceId,
+        "name": _fiberCurrentSpan._tag === "Span" ? _fiberCurrentSpan.name : _fiberCurrentSpan.spanId,
+        "attributes": _fiberCurrentSpan._tag === "Span" && _fiberCurrentSpan.attributes ? Array.from(_fiberCurrentSpan.attributes.entries()) : [],
+        "stack": getSpanStack(_fiberCurrentSpan)
       })
-      current = current._tag === "Span" && current.parent && current.parent._tag === "Some"
-        ? current.parent.value
+      _fiberCurrentSpan = _fiberCurrentSpan._tag === "Span" && _fiberCurrentSpan.parent && _fiberCurrentSpan.parent._tag === "Some"
+        ? _fiberCurrentSpan.parent.value
         : undefined
     }
     return spans

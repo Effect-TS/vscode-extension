@@ -22,9 +22,10 @@ export const thenable = <A>(f: () => Thenable<A>) =>
     f().then((_) => resume(Effect.succeed(_)))
   })
 
-export const thenableCatch = <A, E>(f: () => Thenable<A>, error: (error: unknown) => E) =>
-  Effect.async<A, E>((resume) => {
-    f().then((_) => resume(Effect.succeed(_)), (_) => resume(Effect.fail(error(_))))
+export const thenableCatch = <A, E>(f: () => Thenable<A>, onError: (error: unknown) => E) =>
+  Effect.tryPromise({
+    try: () => f(),
+    catch: onError
   })
 
 export const dismissable = <A>(
