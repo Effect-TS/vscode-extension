@@ -224,7 +224,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
               const stackTraces = yield* debugRequest<DapStackTracesResponse>("stackTrace", {
                 threadId
               })
-              const stackTrace = stackTraces.stackFrames[0]
+              const stackTrace = stackTraces.stackFrames[stackTraces.stackFrames.length - 1]
               if (stackTrace) {
                 request = {
                   expression: opts.expression,
