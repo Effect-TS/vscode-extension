@@ -1,13 +1,20 @@
+import * as ChannelSchema from "@effect/platform/ChannelSchema"
+import * as Socket from "@effect/platform/Socket"
 import * as Array from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Function from "effect/Function"
+import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as SchemaAST from "effect/SchemaAST"
+import * as Stream from "effect/Stream"
+import * as ws from "ws"
 import * as VsCode from "./VsCode"
 
-export class DebugChannelError extends Data.TaggedError("VariableExtractError")<{
+export class DebugChannelError extends Data.TaggedError("DebugChannelError")<{
   readonly message: string
 }> {}
 
@@ -31,7 +38,43 @@ export class DebugChannel extends Effect.Tag("effect-vscode/DebugChannel")<Debug
       threadId: number | undefined
     }
   ) => Effect.Effect<VariableReference, DebugChannelError, never>
+  evaluateOnEveryExecutionContext: (
+    opts: {
+      expression: string
+    }
+  ) => Effect.Effect<void, DebugChannelError, never>
 }>() {}
+
+export interface CdpProxyClient {
+  readonly queue: Mailbox.ReadonlyMailbox<unknown>
+  readonly request: (_: unknown) => Effect.Effect<void>
+}
+
+export const run = Effect.fnUntraced(
+  function*<R, E, _>(socket: Socket.Socket, handle: (client: CdpProxyClient) => Effect.Effect<_, E, R>) {
+    const responses = yield* Mailbox.make<unknown>()
+    const requests = yield* Mailbox.make<unknown>()
+
+    const client: CdpProxyClient = {
+      queue: requests,
+      request: (res) => responses.offer(res)
+    }
+
+    yield* Mailbox.toStream(responses).pipe(
+      Stream.pipeThroughChannel(
+        ChannelSchema.duplexUnknown(Socket.toChannelString(socket), {
+          inputSchema: Schema.parseJson(Schema.Unknown),
+          outputSchema: Schema.parseJson(Schema.Unknown)
+        })
+      ),
+      Stream.runForEach((req) => requests.offer(req)),
+      Effect.ensuring(Effect.zipRight(responses.shutdown, requests.shutdown)),
+      Effect.forkScoped
+    )
+
+    yield* handle(client)
+  }
+)
 
 interface DapVariableReference {
   readonly name: string
@@ -142,7 +185,12 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
                 })
               }
               const elementAst = index < ast.elements.length ? ast.elements[index] : ast.rest[0]
-              return extractValue(indexProperty, elementAst.type)
+              return extractValue(indexProperty, elementAst.type).pipe(
+                Effect.catchTag(
+                  "DebugChannelError",
+                  (e) => new DebugChannelError({ message: "at index " + index + " " + e.message })
+                )
+              )
             })
             return yield* Effect.all(elements, { concurrency: "unbounded" })
           }
@@ -173,6 +221,14 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
               result[propertySignature.name] = extractValue(
                 propertyVariableReference,
                 propertySignature.type
+              ).pipe(
+                Effect.catchTag(
+                  "DebugChannelError",
+                  (e) =>
+                    new DebugChannelError({
+                      message: "in property " + String(propertySignature.name) + " " + e.message
+                    })
+                )
               )
             }
             return yield* Effect.all(result, { concurrency: "unbounded" })
@@ -207,6 +263,66 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
     }
 
     return DebugChannel.of({
+      evaluateOnEveryExecutionContext: (_opts) =>
+        Effect.gen(function*() {
+          const addr = yield* VsCode.executeCommand<{ host: string; port: number; path?: string }>(
+            "extension.js-debug.requestCDPProxy",
+            debugSession.id
+          )
+          const uri = `ws://${addr.host}:${addr.port}${addr.path || ""}`
+
+          const cdpSocket = yield* Socket.fromWebSocket(
+            Effect.sync(() => {
+              const wss = new ws.WebSocket(uri, {
+                perMessageDeflate: false,
+                maxPayload: 256 * 1024 * 1024
+              })
+
+              return wss as any
+            })
+          )
+
+          yield* run(
+            cdpSocket,
+            Effect.fn(function*(client) {
+              // we enable reporting of execution contexts
+              yield* client.request({
+                method: "Runtime.enable"
+              })
+
+              while (true) {
+                const response = yield* client.queue.take
+                if (
+                  Predicate.hasProperty(response, "method") && response.method === "Runtime.executionContextCreated" &&
+                  Predicate.hasProperty(response, "params") && Predicate.hasProperty(response.params, "context") &&
+                  Predicate.hasProperty(response.params.context, "id")
+                ) {
+                  const contextId = response.params.context.id
+
+                  // we send as notification and silent because we don't want to pollute the output
+                  yield* client.request({
+                    method: "Runtime.evaluate",
+                    params: {
+                      expression: _opts.expression,
+                      contextId,
+                      silent: true
+                    }
+                  })
+                }
+              }
+            })
+          )
+        }).pipe(
+          Effect.scoped,
+          Effect.timeoutTo({
+            onTimeout: Function.constUndefined,
+            onSuccess: Function.identity,
+            duration: 1000
+          }),
+          Effect.catchAll((socketError) => {
+            return new DebugChannelError({ message: String(socketError) })
+          })
+        ),
       evaluate: (opts) =>
         Effect.gen(function*() {
           let request: any = {
@@ -224,7 +340,7 @@ export const makeVsCodeDebugSession = (debugSession: VsCode.VsCodeDebugSession["
               const stackTraces = yield* debugRequest<DapStackTracesResponse>("stackTrace", {
                 threadId
               })
-              const stackTrace = stackTraces.stackFrames[stackTraces.stackFrames.length - 1]
+              const stackTrace = stackTraces.stackFrames[0]
               if (stackTrace) {
                 request = {
                   expression: opts.expression,

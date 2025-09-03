@@ -32,8 +32,8 @@ export const dismissable = <A>(
   f: () => Thenable<A | undefined>
 ): Effect.Effect<A, Cause.NoSuchElementException> => thenable(f).pipe(Effect.flatMap(Effect.fromNullable))
 
-export const executeCommand = (command: string, ...args: Array<any>) =>
-  thenable(() => vscode.commands.executeCommand(command, ...args))
+export const executeCommand = <A = unknown>(command: string, ...args: Array<any>) =>
+  thenable(() => vscode.commands.executeCommand<A>(command, ...args))
 
 export const registerCommand = <R, E, A>(
   command: string,

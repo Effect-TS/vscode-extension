@@ -99,16 +99,29 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
 
 // --
 
-export const ensureInstrumentationInjected = (guessFrameId: boolean, threadId?: number) =>
+export const ensureInstrumentationInjected = (
+  guessFrameId: boolean,
+  threadId?: number
+) =>
   Effect.gen(function*() {
     const result = yield* DebugChannel.DebugChannel.evaluate({
-      expression: `globalThis && "effect/devtools/instrumentation" in globalThis`,
+      expression: `(globalThis && "effect/devtools/instrumentation" in globalThis)`,
       guessFrameId,
       threadId
     })
     const isInjected = yield* result.parse(Schema.Boolean)
     if (!isInjected) {
-      yield* DebugChannel.DebugChannel.evaluate({ expression: compiledInstrumentationString, guessFrameId, threadId })
+      yield* DebugChannel.DebugChannel.evaluateOnEveryExecutionContext({
+        expression: compiledInstrumentationString
+      }).pipe(
+        Effect.orElse(() =>
+          DebugChannel.DebugChannel.evaluate({
+            expression: compiledInstrumentationString,
+            guessFrameId,
+            threadId
+          })
+        )
+      )
     }
   })
 
@@ -169,75 +182,83 @@ const SpanSchema = Schema.Struct({
 })
 
 const ExternalSpanSchema = Schema.Struct({
-  _tag: Schema.Literal("External"),
+  _tag: Schema.Literal("ExternalSpan"),
   spanId: Schema.String,
   traceId: Schema.String
 })
 
-const SpanStackSchema = Schema.Array(Schema.Union(SpanSchema, ExternalSpanSchema))
+const AnySpanSchema = Schema.Union(SpanSchema, ExternalSpanSchema)
+export type AnySpanSchema = Schema.Schema.Type<typeof AnySpanSchema>
 
-function getFiberCurrentSpan(currentFiberExpression: string, threadId: number | undefined) {
+function spanEntryToSpanStackEntry(entry: AnySpanSchema | undefined): Array<SpanStackEntry> {
+  const spans: Array<SpanStackEntry> = []
+  if (!entry) return []
+  switch (entry._tag) {
+    case "Span": {
+      let match = false
+      for (let stackIndex = 0; stackIndex < entry.stack.length; stackIndex++) {
+        const stackLine = entry.stack[stackIndex]!
+        match = true
+        spans.push(
+          new SpanStackEntry({
+            ...stackLine,
+            ...entry,
+            stackIndex
+          })
+        )
+      }
+
+      if (!match) {
+        spans.push(new SpanStackEntry({ ...entry, stackIndex: -1, line: 0, column: 0 }))
+      }
+      break
+    }
+    case "ExternalSpan": {
+      spans.push(
+        new SpanStackEntry({
+          ...entry,
+          name: "<external span " + entry.spanId + ">",
+          stackIndex: -1,
+          line: 0,
+          column: 0,
+          attributes: []
+        })
+      )
+      break
+    }
+  }
+  return spans
+}
+
+const FiberCurrentSpanResponseSchema = Schema.Array(Schema.Union(SpanSchema, ExternalSpanSchema))
+
+function getFiberCurrentSpan(currentFiberExpression: string, maxDepth: number, threadId: number | undefined) {
   return Effect.gen(function*() {
     yield* ensureInstrumentationInjected(true, threadId)
     const result = yield* DebugChannel.DebugChannel.evaluate({
-      expression: `globalThis["effect/devtools/instrumentation"].getFiberCurrentSpanStack(${currentFiberExpression})`,
+      expression:
+        `globalThis["effect/devtools/instrumentation"].getFiberCurrentSpanStack(${currentFiberExpression}, ${maxDepth})`,
       guessFrameId: true,
       threadId
     })
-    return yield* result.parse(SpanStackSchema)
+    return yield* result.parse(FiberCurrentSpanResponseSchema)
   }).pipe(
     Effect.tapError(Effect.logError),
     Effect.orElseSucceed(() => []),
     Effect.map((stack) => {
       // now, a single span can have a stack with multiple locations
       // so we need to duplicate the span for each location
-      const spans: Array<SpanStackEntry> = []
-      const stackEntries = [...stack]
-      while (stackEntries.length > 0) {
-        const entry = stackEntries.shift()!
-        switch (entry._tag) {
-          case "Span": {
-            let match = false
-            for (let stackIndex = 0; stackIndex < entry.stack.length; stackIndex++) {
-              const stackLine = entry.stack[stackIndex]!
-              match = true
-              spans.push(
-                new SpanStackEntry({
-                  ...stackLine,
-                  ...entry,
-                  stackIndex
-                })
-              )
-            }
-
-            if (!match) {
-              spans.push(new SpanStackEntry({ ...entry, stackIndex: -1, line: 0, column: 0 }))
-            }
-            break
-          }
-          case "External": {
-            spans.push(
-              new SpanStackEntry({
-                ...entry,
-                name: "<external span " + entry.spanId + ">",
-                stackIndex: -1,
-                line: 0,
-                column: 0,
-                attributes: []
-              })
-            )
-            break
-          }
-        }
+      let spans: Array<SpanStackEntry> = []
+      for (const entry of stack) {
+        spans = [...spans, ...spanEntryToSpanStackEntry(entry)]
       }
-
       return spans
     })
   )
 }
 
 export const getCurrentSpanStack = (threadId: number | undefined) =>
-  getFiberCurrentSpan(`globalThis["effect/FiberCurrent"]`, threadId)
+  getFiberCurrentSpan(`globalThis["effect/FiberCurrent"]`, 0, threadId)
 
 // --
 
@@ -271,9 +292,11 @@ const getCurrentFibers = (threadId: number | undefined) =>
       Effect.all(
         fibers.map((fiber, idx) =>
           Effect.map(
-            getFiberCurrentSpan(`(globalThis["effect/devtools/instrumentation"].fibers || [])[${idx}]`, threadId),
+            getFiberCurrentSpan(`(globalThis["effect/devtools/instrumentation"].fibers || [])[${idx}]`, 1, threadId),
             (stack) => new FiberEntry({ ...fiber, stack })
-          ), { concurrency: "unbounded" })
+          )
+        ),
+        { concurrency: "unbounded" }
       )
     )
   )
