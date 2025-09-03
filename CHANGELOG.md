@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.5.0
+
+### Minor Changes
+
+- [#63](https://github.com/Effect-TS/vscode-extension/pull/63) [`34bf90e`](https://github.com/Effect-TS/vscode-extension/commit/34bf90e02f44d602f32e9af47c9576fa58aa037f) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Use CDP (if available) to inject instrumentation to avoid scope conflicts
+
 ## 0.4.5
 
 ### Patch Changes
