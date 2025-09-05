@@ -51,7 +51,9 @@ export const ClientsProviderLive = treeDataProvider<TreeNode>("effect-clients")(
           onNone: () =>
             runningState.running || nodes.length > 0
               ? Effect.succeedSome(nodes.length ? nodes : [runningState])
-              : Effect.succeedNone,
+              : runningState.cause._tag === "Empty"
+              ? Effect.succeedNone
+              : Effect.succeedSome([runningState]),
           onSome: (_node) => Effect.succeedNone
         }),
         treeItem: (node) => Effect.succeed(treeItem(node))
@@ -81,9 +83,13 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
           ? `Server listening on port ${node.port}`
           : node.cause._tag === "Empty"
           ? "Server disabled"
-          : Cause.pretty(node.cause),
+          : "Error starting server on port " + node.port,
         vscode.TreeItemCollapsibleState.None
       )
+      if (node.cause._tag !== "Empty") {
+        item.description = Cause.pretty(node.cause)
+        item.tooltip = Cause.pretty(node.cause)
+      }
       return item
     }
   }
