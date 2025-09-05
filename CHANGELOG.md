@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.5.2
+
+### Patch Changes
+
+- [#68](https://github.com/Effect-TS/vscode-extension/pull/68) [`bee0974`](https://github.com/Effect-TS/vscode-extension/commit/bee09747c7ab66ed50e695bef6e95f9f4d2dc232) Thanks [@nikelborm](https://github.com/nikelborm)! - Added notes about docker setups and distinction of DevTools from debuggers in terms of client/server model
+
 ## 0.5.1
 
 ### Patch Changes
