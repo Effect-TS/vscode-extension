@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.5.1
+
+### Patch Changes
+
+- [#66](https://github.com/Effect-TS/vscode-extension/pull/66) [`3dcdd25`](https://github.com/Effect-TS/vscode-extension/commit/3dcdd2507f50f359ff6b708881fb68080a6b9c2e) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Report errors starting the devtools server
+
 ## 0.5.0
 
 ### Minor Changes
