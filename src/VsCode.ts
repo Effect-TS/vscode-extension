@@ -35,6 +35,9 @@ export const dismissable = <A>(
 export const executeCommand = <A = unknown>(command: string, ...args: Array<any>) =>
   thenable(() => vscode.commands.executeCommand<A>(command, ...args))
 
+export const executeCommandCatch = <A = unknown>(command: string, ...args: Array<any>) =>
+  thenableCatch(() => vscode.commands.executeCommand<A>(command, ...args), (error) => error)
+
 export const registerCommand = <R, E, A>(
   command: string,
   f: (...args: Array<any>) => Effect.Effect<A, E, R>
@@ -47,6 +50,25 @@ export const registerCommand = <R, E, A>(
     context.subscriptions.push(
       vscode.commands.registerCommand(command, (...args) =>
         f(...args).pipe(
+          Effect.catchAllCause(Effect.log),
+          Effect.annotateLogs({ command }),
+          run
+        ))
+    )
+  })
+
+export const registerTextEditorCommand = <R, E, A>(
+  command: string,
+  f: (textEditor: vscode.TextEditor, edit: vscode.TextEditorEdit, ...args: Array<any>) => Effect.Effect<A, E, R>
+) =>
+  Effect.gen(function*() {
+    const context = yield* VsCodeContext
+    const runtime = yield* Effect.runtime<R>()
+    const run = Runtime.runFork(runtime)
+
+    context.subscriptions.push(
+      vscode.commands.registerTextEditorCommand(command, (textEditor, edit, ...args) =>
+        f(textEditor, edit, ...args).pipe(
           Effect.catchAllCause(Effect.log),
           Effect.annotateLogs({ command }),
           run
@@ -148,6 +170,45 @@ export const listen = <A, R>(
         d.dispose()
       })
     }))
+
+export const registerUriHandler = <R>(
+  f: (uri: vscode.Uri) => Effect.Effect<void, never, R>
+) =>
+  Effect.forkScoped(Effect.flatMap(Effect.runtime<R>(), (runtime) =>
+    Effect.async<never>((_resume) => {
+      const run = Runtime.runPromise(runtime)
+      const d = vscode.window.registerUriHandler({
+        handleUri: (uri: vscode.Uri) =>
+          run(
+            Effect.catchAllCause(f(uri), (_) => Effect.log("unhandled defect in event listener", _))
+          )
+      })
+      return Effect.sync(() => {
+        d.dispose()
+      })
+    })))
+
+export const registerHoverProvider = <R>(
+  selector: vscode.DocumentSelector,
+  f: (
+    document: vscode.TextDocument,
+    position: vscode.Position
+  ) => Effect.Effect<vscode.Hover | null | undefined, never, R>
+) =>
+  Effect.forkScoped(Effect.flatMap(Effect.runtime<R>(), (runtime) =>
+    Effect.async<never>((_resume) => {
+      const run = Runtime.runPromise(runtime)
+      const d = vscode.languages.registerHoverProvider(selector, {
+        provideHover: (document, position) =>
+          run(
+            Effect.catchAllCause(f(document, position), (_) =>
+              Effect.log("unhandled defect in event listener", _).pipe(Effect.as(null)))
+          )
+      })
+      return Effect.sync(() => {
+        d.dispose()
+      })
+    })))
 
 export const listenStream = <A>(event: vscode.Event<A>): Stream.Stream<A> =>
   Stream.async<A>((emit) => {
@@ -338,6 +399,15 @@ export const revealFile = (
   selection?: vscode.Range
 ) =>
   thenable(() => vscode.workspace.openTextDocument(vscodeUriFromPath(path))).pipe(
+    Effect.flatMap((doc) => thenable(() => vscode.window.showTextDocument(doc, { selection })))
+  )
+
+export const revealCode = (
+  content: string,
+  language: string,
+  selection?: vscode.Range
+) =>
+  thenable(() => vscode.workspace.openTextDocument({ language, content })).pipe(
     Effect.flatMap((doc) => thenable(() => vscode.window.showTextDocument(doc, { selection })))
   )
 
