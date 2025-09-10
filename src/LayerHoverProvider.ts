@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { executeCommandCatch, registerTextEditorCommand, revealCode } from "./VsCode"
+import { executeCommandCatch, isExtensionInstalled, registerTextEditorCommand, revealCode } from "./VsCode"
 
 export const LayerHoverProviderLive = Effect.gen(function*() {
   yield* registerTextEditorCommand("effect.showLayerMermaid", (textEditor) =>
@@ -20,9 +20,12 @@ export const LayerHoverProviderLive = Effect.gen(function*() {
 
       // if success, launch the preview command
       if (result.success && result.body && result.body.success) {
-        const mermaidCode = String(result.body.mermaidCode)
+        const mermaidCode = "%% Install the mermaid chart extension to see the preview\n" +
+          String(result.body.mermaidCode)
         yield* revealCode(mermaidCode, "mermaid")
-        yield* executeCommandCatch("mermaidChart.preview", mermaidCode)
+        if (yield* isExtensionInstalled("MermaidChart.vscode-mermaid-chart")) {
+          yield* executeCommandCatch("mermaidChart.preview", mermaidCode)
+        }
       }
     }))
 }).pipe(Layer.scopedDiscard)

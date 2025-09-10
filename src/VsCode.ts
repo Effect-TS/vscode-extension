@@ -415,3 +415,9 @@ export const revealFileWithSelection = (
   path: string,
   selection: vscode.Range
 ) => revealFile(path, selection)
+
+export const isExtensionInstalled = (extension: string) =>
+  Effect.sync(() => {
+    const ext = vscode.extensions.getExtension(extension)
+    return ext && ext.isActive
+  })
