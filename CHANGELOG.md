@@ -1,5 +1,15 @@
 # effect-vscode
 
+## 0.6.0
+
+### Minor Changes
+
+- [#70](https://github.com/Effect-TS/vscode-extension/pull/70) [`f281790`](https://github.com/Effect-TS/vscode-extension/commit/f281790e78c97609fe2c91366783ae4af6eb7ca3) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Add support for local mermaid chart preview
+
+### Patch Changes
+
+- [#68](https://github.com/Effect-TS/vscode-extension/pull/68) [`bee0974`](https://github.com/Effect-TS/vscode-extension/commit/bee09747c7ab66ed50e695bef6e95f9f4d2dc232) Thanks [@nikelborm](https://github.com/nikelborm)! - Added notes about docker setups and distinction of DevTools from debuggers in terms of client/server model
+
 ## 0.5.1
 
 ### Patch Changes
