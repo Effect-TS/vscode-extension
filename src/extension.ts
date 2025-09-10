@@ -7,6 +7,7 @@ import { ContextProviderLive } from "./ContextProvider"
 import { DebugEnv } from "./DebugEnv"
 import { DebugFibersProviderLive } from "./DebugFibersProvider"
 import { DebugSpanStackProviderLive } from "./DebugSpanStackProvider"
+import { LayerHoverProviderLive } from "./LayerHoverProvider"
 import { MetricsProviderLive } from "./MetricsProvider"
 import { SpanProviderLive } from "./SpanProvider"
 import { TracerExtendedLive } from "./TracerProvider"
@@ -21,7 +22,8 @@ const MainLive = ClientsProviderLive.pipe(
     MetricsProviderLive,
     TreeCommandsLive,
     DebugFibersProviderLive,
-    TracerExtendedLive
+    TracerExtendedLive,
+    LayerHoverProviderLive
   )),
   Layer.provide(Clients.Default),
   Layer.provide(DebugEnv.Live),

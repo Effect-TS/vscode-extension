@@ -108,6 +108,10 @@
         "command": "effect.disableSpanStackIgnoreList",
         "title": "Effect Dev Tools: Disable Span Stack Ignore List",
         "icon": "$(eye)"
+      },
+      {
+        "command": "effect.showLayerMermaid",
+        "title": "Effect Dev Tools: Show Layer Mermaid Graph (locally)"
       }
     ],
     "viewsContainers": {
