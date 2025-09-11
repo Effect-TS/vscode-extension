@@ -5,7 +5,8 @@ import type * as MetricPair from "effect/MetricPair"
 import type * as Schema from "effect/Schema"
 import type * as Tracer from "effect/Tracer"
 import { encodeMetricPair, encodeSpan } from "./encoders"
-import { globalMetricRegistrySymbol, globalStores, interruptible } from "./shims"
+import { dieOption, globalMetricRegistrySymbol, globalStores, interruptible, isExitFailure } from "./shims"
+import { addSetInterceptor } from "./utils"
 
 const instrumentationKey = "effect/devtools/instrumentation"
 const currentInstrumentationTracerKey = "effect/instrumentation/currentTracer"
@@ -16,37 +17,17 @@ if (!(instrumentationKey in globalThis)) {
   // local state of the instrumentation
   const fibers: Array<Fiber.Runtime<any, any>> = []
   const instrumentationId = Math.random().toString(36).substring(2, 15)
+  let pauseOnDefects = false
 
-  function addSetInterceptor<O extends object, K extends keyof O>(
-    obj: O,
-    key: K,
-    onSet: (v: O[K]) => void
-  ) {
-    const previousProperty = Object.getOwnPropertyDescriptor(obj, key)
-    if (previousProperty && previousProperty.set) {
-      Object.defineProperty(obj, key, {
-        "value": previousProperty.value,
-        "writable": previousProperty.writable,
-        "enumerable": previousProperty.enumerable,
-        "configurable": previousProperty.configurable,
-        "get": previousProperty.get,
-        "set": function(this: O, _: O[K]) {
-          onSet(_)
-          previousProperty.set?.bind(this)(_)
-        }
-      })
-    } else {
-      let _val: O[K]
-      Object.defineProperty(obj, key, {
-        "set": function(this: O, _: O[K]) {
-          _val = _
-          onSet(_)
-        },
-        "get": function() {
-          return _val
-        }
-      })
-    }
+  // set the instrumentation
+  _globalThis[instrumentationKey] = {
+    "fibers": fibers,
+    "debugProtocolDevtoolsClient": debugProtocolDevtoolsClient,
+    "getFiberCurrentSpanStack": getFiberCurrentSpanStack,
+    "getFiberCurrentContext": getFiberCurrentContext,
+    "getAliveFibers": getAliveFibers,
+    "getAutoPauseConfig": getAutoPauseConfig,
+    "togglePauseOnDefects": togglePauseOnDefects
   }
 
   function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot> {
@@ -141,6 +122,16 @@ if (!(instrumentationKey in globalThis)) {
     }))
   }
 
+  function getAutoPauseConfig() {
+    return {
+      "pauseOnDefects": pauseOnDefects
+    }
+  }
+
+  function togglePauseOnDefects() {
+    pauseOnDefects = !pauseOnDefects
+  }
+
   // replace the current tracer in a fiber with a new tracer that sends events to the devtools
   const addTracerInterceptorToFiber = (fiber: Fiber.Runtime<any, any>) => {
     const _fiber = fiber as any
@@ -186,6 +177,23 @@ if (!(instrumentationKey in globalThis)) {
         }
         return span
       }
+
+      // patch the context method to pause on errors
+      const _context = tracer.context.bind(tracer)
+      tracer.context = (f, fiber, ...args) => {
+        const result = _context(f, fiber, ...args)
+
+        // pause on defects
+        if (pauseOnDefects && isExitFailure(result)) {
+          const maybeDefect = dieOption(result.cause)
+          if (maybeDefect._tag === "Some") {
+            // eslint-disable-next-line no-debugger
+            debugger
+          }
+        }
+
+        return result
+      }
     })
     _fiber.currentTracer = previousTracer
   }
@@ -213,20 +221,16 @@ if (!(instrumentationKey in globalThis)) {
     return JSON.stringify({ responses: responses.concat(notificationsToSend), instrumentationId })
   }
 
-  // set the instrumentation
-  _globalThis[instrumentationKey] = {
-    "fibers": fibers,
-    "debugProtocolDevtoolsClient": debugProtocolDevtoolsClient,
-    "getFiberCurrentSpanStack": getFiberCurrentSpanStack,
-    "getFiberCurrentContext": getFiberCurrentContext,
-    "getAliveFibers": getAliveFibers
-  }
-
   // invoked each time a fiber is running
   function addTrackedFiber(fiber: Fiber.Runtime<any, any>) {
     if (fibers.indexOf(fiber) === -1) {
+      // recursively track all children fibers and update the list
       addTracerInterceptorToFiber(fiber)
       fibers.push(fiber)
+      if ("_children" in fiber && fiber._children !== null) {
+        ;(fiber._children as Set<Fiber.Runtime<any, any>>).forEach(addTrackedFiber)
+      }
+      // add an observer to the fiber to remove it from the list when it is completed
       fiber.addObserver(() => {
         const index = fibers.indexOf(fiber)
         if (index > -1) {

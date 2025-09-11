@@ -22,6 +22,8 @@ export interface Session {
   readonly context: (threadId: number | undefined) => Effect.Effect<Array<ContextPair>>
   readonly currentSpanStack: (threadId: number | undefined) => Effect.Effect<Array<SpanStackEntry>>
   readonly currentFibers: (threadId: number | undefined) => Effect.Effect<Array<FiberEntry>>
+  readonly currentAutoPauseConfig: (threadId: number | undefined) => Effect.Effect<{ pauseOnDefects: boolean }>
+  readonly togglePauseOnDefects: (threadId: number | undefined) => Effect.Effect<void>
 }
 
 export type Message =
@@ -72,6 +74,14 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
                 ),
               currentFibers: (threadId) =>
                 getCurrentFibers(threadId).pipe(
+                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+                ),
+              currentAutoPauseConfig: (threadId) =>
+                getCurrentAutoPauseConfig(threadId).pipe(
+                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
+                ),
+              togglePauseOnDefects: (threadId) =>
+                togglePauseOnDefects(threadId).pipe(
                   Effect.provideService(DebugChannel.DebugChannel, debugChannel)
                 )
             })
@@ -299,4 +309,32 @@ const getCurrentFibers = (threadId: number | undefined) =>
         { concurrency: "unbounded" }
       )
     )
+  )
+
+const AutoPauseConfigSchema = Schema.Struct({ pauseOnDefects: Schema.Boolean })
+export type AutoPauseConfigSchema = Schema.Schema.Type<typeof AutoPauseConfigSchema>
+
+const getCurrentAutoPauseConfig = (threadId: number | undefined) =>
+  Effect.gen(function*() {
+    yield* ensureInstrumentationInjected(true, threadId)
+    const result = yield* DebugChannel.DebugChannel.evaluate({
+      expression: `globalThis["effect/devtools/instrumentation"].getAutoPauseConfig()`,
+      guessFrameId: true,
+      threadId
+    })
+    return yield* result.parse(AutoPauseConfigSchema)
+  }).pipe(
+    Effect.orElseSucceed(() => ({ pauseOnDefects: false }))
+  )
+
+const togglePauseOnDefects = (threadId: number | undefined) =>
+  Effect.gen(function*() {
+    yield* ensureInstrumentationInjected(true, threadId)
+    yield* DebugChannel.DebugChannel.evaluate({
+      expression: `globalThis["effect/devtools/instrumentation"].togglePauseOnDefects()`,
+      guessFrameId: true,
+      threadId
+    })
+  }).pipe(
+    Effect.ignoreLogged
   )

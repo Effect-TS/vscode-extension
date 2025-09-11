@@ -1,3 +1,6 @@
+import type * as Cause from "effect/Cause"
+import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
 import type * as MetricState from "effect/MetricState"
 import type * as Option from "effect/Option"
 import type * as RuntimeFlags from "effect/RuntimeFlags"
@@ -95,6 +98,8 @@ export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary
 /** @internal */
 export const globalMetricRegistrySymbol = Symbol.for("effect/Metric/globalMetricRegistry")
 
+export const EffectTypeId: Effect.EffectTypeId = Symbol.for("effect/Effect") as Effect.EffectTypeId
+
 export function globalStores(): Array<Map<any, any>> {
   return Object.keys(globalThis).filter(function(key) {
     return key.indexOf("effect/GlobalValue/globalStoreId") > -1 || key === "effect/GlobalValue"
@@ -114,3 +119,43 @@ const WindDown: RuntimeFlags.RuntimeFlag = 1 << 4 as RuntimeFlags.RuntimeFlag
 const isEnabled = (self: RuntimeFlags.RuntimeFlags, flag: RuntimeFlags.RuntimeFlag) => (self & flag) !== 0
 export const interruptible = (self: RuntimeFlags.RuntimeFlags): boolean =>
   isEnabled(self, Interruption) && !isEnabled(self, WindDown)
+
+export const optionSome = <T>(value: T): Option.Option<T> => ({ _tag: "Some", value }) as any
+export const optionNone = <T>(): Option.Option<T> => ({ _tag: "None" }) as any
+
+export const find = <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => Option.Option<Z>): Option.Option<Z> => {
+  const stack: Array<Cause.Cause<E>> = [self]
+  while (stack.length > 0) {
+    const item = stack.pop()!
+    if (!item) continue
+    const option = pf(item)
+    switch (option._tag) {
+      case "None": {
+        switch (item._tag) {
+          case "Parallel":
+          case "Sequential": {
+            stack.push(item.right)
+            stack.push(item.left)
+            break
+          }
+        }
+        break
+      }
+      case "Some": {
+        return option
+      }
+    }
+  }
+  return optionNone()
+}
+
+export const dieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
+  find(self, (cause) =>
+    typeof cause === "object" && cause !== null && "_tag" in cause && cause._tag === "Die" ?
+      optionSome(cause.defect) :
+      optionNone())
+
+export function isExitFailure(value: unknown): value is Exit.Failure<unknown, unknown> {
+  return typeof value === "object" && value !== null && EffectTypeId in value && "_tag" in value &&
+    value._tag === "Failure" && "cause" in value
+}

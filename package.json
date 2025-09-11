@@ -112,6 +112,10 @@
       {
         "command": "effect.showLayerMermaid",
         "title": "Effect Dev Tools: Show Layer Mermaid Graph (locally)"
+      },
+      {
+        "command": "effect.togglePauseOnDefects",
+        "title": "Effect Dev Tools: Toggle Pause on Defects"
       }
     ],
     "viewsContainers": {
