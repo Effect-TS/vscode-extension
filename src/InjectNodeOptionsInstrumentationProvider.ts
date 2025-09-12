@@ -35,7 +35,7 @@ export const InjectNodeOptionsInstrumentationLive = Effect.gen(function*() {
 
           // if enabled, then inject the instrumentation in NODE_OPTIONS
           const configEnv = config.env || {}
-          const previousNodeOptions = configEnv.NODE_OPTIONS || ""
+          const previousNodeOptions = configEnv.NODE_OPTIONS || "${env:NODE_OPTIONS}"
           const instrumentationPath = JSON.stringify(extension.extensionPath + "/out/instrumentation.global.js")
           return {
             ...config,
