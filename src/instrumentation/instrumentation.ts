@@ -2,11 +2,32 @@
 import type * as Domain from "@effect/experimental/DevTools/Domain"
 import type { Fiber } from "effect/Fiber"
 import type * as MetricPair from "effect/MetricPair"
+import type * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
 import type * as Tracer from "effect/Tracer"
-import { encodeMetricPair, encodeSpan } from "./encoders"
-import { dieOption, globalMetricRegistrySymbol, globalStores, interruptible, isExitFailure } from "./shims"
+import type { StackLocation } from "./encoders"
+import { encodeMetricPair, encodeOption, encodeSpan, encodeStackLocation, makeStackLocation } from "./encoders"
+import {
+  causeDieOption,
+  globalMetricRegistrySymbol,
+  globalStores,
+  interruptible,
+  isExitFailure,
+  optionNone,
+  optionSome,
+  originalInstance
+} from "./shims"
 import { addSetInterceptor } from "./utils"
+
+interface DebuggerState {
+  pauseOnDefects: boolean
+  lastDefect: Option.Option<{ span: Tracer.AnySpan | undefined; value: unknown }>
+  locationToReveal: Option.Option<StackLocation>
+  valuesToReveal: Array<{
+    label: string
+    value: unknown
+  }>
+}
 
 const instrumentationKey = "effect/devtools/instrumentation"
 const currentInstrumentationTracerKey = "effect/instrumentation/currentTracer"
@@ -17,7 +38,12 @@ if (!(instrumentationKey in globalThis)) {
   // local state of the instrumentation
   const fibers: Array<Fiber.Runtime<any, any>> = []
   const instrumentationId = Math.random().toString(36).substring(2, 15)
-  let pauseOnDefects = false
+  let debuggerState: DebuggerState = {
+    pauseOnDefects: false,
+    lastDefect: optionNone(),
+    locationToReveal: optionNone(),
+    valuesToReveal: []
+  }
 
   // set the instrumentation
   _globalThis[instrumentationKey] = {
@@ -27,7 +53,8 @@ if (!(instrumentationKey in globalThis)) {
     "getFiberCurrentContext": getFiberCurrentContext,
     "getAliveFibers": getAliveFibers,
     "getAutoPauseConfig": getAutoPauseConfig,
-    "togglePauseOnDefects": togglePauseOnDefects
+    "togglePauseOnDefects": togglePauseOnDefects,
+    "getAndUnsetPauseStateToReveal": getAndUnsetPauseStateToReveal
   }
 
   function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot> {
@@ -53,7 +80,7 @@ if (!(instrumentationKey in globalThis)) {
     }
   }
 
-  function getSpanStack(span: Tracer.AnySpan): Array<{ path: string; line: number; column: number }> {
+  function getSpanStack(span: Tracer.AnySpan): Array<StackLocation> {
     const stackString = globalStores().reduce((acc, store) => {
       if (acc || !store) return acc
       const spanToTrace = store.get("effect/Tracer/spanToTrace")
@@ -61,20 +88,18 @@ if (!(instrumentationKey in globalThis)) {
       return stackFn ? stackFn() : acc
     }, undefined) || ""
     const stack = stackString.split("\n").filter((_) => String(_).length > 0)
-    const out: Array<{ path: string; line: number; column: number }> = []
+    const out: Array<StackLocation> = []
     for (let i = 0; i < stack.length; i++) {
       const line = stack[i]
       const match = line.match(/^at (.*) \((.*):(\d+):(\d+)\)$/)
       if (match) {
-        out.push({ "path": match[2], "line": parseInt(match[3]) - 1, "column": parseInt(match[4]) - 1 })
+        out.push(makeStackLocation(match[2], parseInt(match[3], 10) - 1, parseInt(match[4], 10) - 1))
       } else {
         const matchOnlyAt = line.match(/^at (.*):(\d+):(\d+)$/)
         if (matchOnlyAt) {
-          out.push({
-            "path": matchOnlyAt[1],
-            "line": parseInt(matchOnlyAt[2]) - 1,
-            "column": parseInt(matchOnlyAt[3]) - 1
-          })
+          out.push(
+            makeStackLocation(matchOnlyAt[1], parseInt(matchOnlyAt[2], 10) - 1, parseInt(matchOnlyAt[3], 10) - 1)
+          )
         }
       }
     }
@@ -124,12 +149,46 @@ if (!(instrumentationKey in globalThis)) {
 
   function getAutoPauseConfig() {
     return {
-      "pauseOnDefects": pauseOnDefects
+      "pauseOnDefects": debuggerState.pauseOnDefects
     }
   }
 
   function togglePauseOnDefects() {
-    pauseOnDefects = !pauseOnDefects
+    debuggerState = {
+      ...debuggerState,
+      pauseOnDefects: !debuggerState.pauseOnDefects,
+      lastDefect: optionNone()
+    }
+  }
+
+  function getAndUnsetPauseStateToReveal() {
+    const stackEntryToReveal = debuggerState.locationToReveal
+    const valuesToReveal = debuggerState.valuesToReveal
+    debuggerState = {
+      ...debuggerState,
+      locationToReveal: optionNone(),
+      valuesToReveal: []
+    }
+    return ({
+      location: encodeOption(stackEntryToReveal, encodeStackLocation),
+      values: valuesToReveal
+    })
+  }
+
+  function pauseDebugger(stackEntry: StackLocation | undefined) {
+    /**
+     * READ ME!
+     * This is a hack to pause the debugger when something happens.
+     * The VSCode extension should redirect you to the location of the span,
+     * if that does not happen, you can check the current span stack
+     * to find out where the execution paused.
+     */
+    debuggerState = {
+      ...debuggerState,
+      locationToReveal: stackEntry ? optionSome(stackEntry) : optionNone()
+    }
+    // eslint-disable-next-line no-debugger
+    debugger
   }
 
   // replace the current tracer in a fiber with a new tracer that sends events to the devtools
@@ -184,11 +243,25 @@ if (!(instrumentationKey in globalThis)) {
         const result = _context(f, fiber, ...args)
 
         // pause on defects
-        if (pauseOnDefects && isExitFailure(result)) {
-          const maybeDefect = dieOption(result.cause)
+        if (debuggerState.pauseOnDefects && isExitFailure(result)) {
+          const maybeDefect = causeDieOption(result.cause)
           if (maybeDefect._tag === "Some") {
-            // eslint-disable-next-line no-debugger
-            debugger
+            // may be wrapped in a proxy for the spanSymbol
+            const currentDefect = originalInstance(maybeDefect.value)
+            // only if both the defect and the span changed since the last defect
+            const isSameAsLastDefect = debuggerState.lastDefect._tag === "Some" &&
+              currentDefect === debuggerState.lastDefect.value.value &&
+              fiber.currentSpan === debuggerState.lastDefect.value.span
+            // if they changed, update the last defect and pause the debugger
+            if (!isSameAsLastDefect) {
+              debuggerState = {
+                ...debuggerState,
+                lastDefect: optionSome({ span: fiber.currentSpan, value: currentDefect }),
+                valuesToReveal: [{ label: "Fiber Defect", value: currentDefect }]
+              }
+              const stack = fiber.currentSpan ? getSpanStack(fiber.currentSpan) : []
+              pauseDebugger(stack[0])
+            }
           }
         }
 

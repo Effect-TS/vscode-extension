@@ -36,19 +36,13 @@ class IgnoredNode {
   readonly _tag = "IgnoredNode"
 }
 
-class PauseOnDefectStatusNode {
-  readonly _tag = "PauseOnDefectStatusNode"
-  constructor(readonly pauseOnDefects: boolean, readonly threadId: number | undefined) {}
-}
-
-type TreeNode = SpanNode | AttributeNode | VariableNode | IgnoredNode | PauseOnDefectStatusNode
+type TreeNode = SpanNode | AttributeNode | VariableNode | IgnoredNode
 
 export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-debug-span-stack")(
   (refresh) =>
     Effect.gen(function*() {
       const debug = yield* Debug.DebugEnv
       let nodes: Array<TreeNode> = []
-      let pauseOnDefectsNode: PauseOnDefectStatusNode | null = null
 
       // handle ignore list, so user can filter out spans that match the patterns
       const ignoreList = yield* configWithDefault<Array<string>>(
@@ -68,8 +62,7 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
 
       const visibleNodes = Effect.gen(function*() {
         const ignoreListValue = yield* ignoreList.get
-        const extraNodes: Array<TreeNode> = pauseOnDefectsNode !== null ? [pauseOnDefectsNode] : []
-        if (skipIgnoreList || ignoreListValue.length === 0) return extraNodes.concat(nodes)
+        if (skipIgnoreList || ignoreListValue.length === 0) return nodes
         const result = []
         for (const node of nodes) {
           if (node._tag === "SpanNode") {
@@ -83,7 +76,7 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
             }
           }
         }
-        return extraNodes.concat(result)
+        return result
       }).pipe(Effect.asSome)
 
       // allows to toggle ignore list
@@ -101,29 +94,15 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
         return Effect.void
       })
 
-      // toggle pause on defects
-      yield* registerCommand("effect.togglePauseOnDefects", (threadId?: number | undefined) =>
-        Effect.gen(function*() {
-          const session = yield* SubscriptionRef.get(debug.session)
-          if (Option.isNone(session)) {
-            return
-          }
-          yield* session.value.togglePauseOnDefects(threadId)
-          yield* capture(threadId)
-        }))
-
       const capture = (threadId?: number) =>
         Effect.gen(function*(_) {
           const sessionOption = yield* _(SubscriptionRef.get(debug.session))
           if (Option.isNone(sessionOption)) {
             nodes = []
-            pauseOnDefectsNode = null
           } else {
             const session = sessionOption.value
             const pairs = yield* _(session.currentSpanStack(threadId))
             nodes = pairs.map((_) => new SpanNode(_))
-            const autoPauseConfig = yield* _(session.currentAutoPauseConfig(threadId))
-            pauseOnDefectsNode = new PauseOnDefectStatusNode(autoPauseConfig.pauseOnDefects, threadId)
           }
           yield* _(refresh(Option.none()))
         })
@@ -188,9 +167,6 @@ const children = (node: TreeNode) => {
     case "IgnoredNode": {
       return Effect.succeedNone
     }
-    case "PauseOnDefectStatusNode": {
-      return Effect.succeedNone
-    }
   }
 }
 
@@ -243,19 +219,6 @@ const treeItem = (node: TreeNode): vscode.TreeItem => {
       const item = new vscode.TreeItem("", vscode.TreeItemCollapsibleState.None)
       item.contextValue = "ignored"
       item.description = "...ignored..."
-      return item
-    }
-    case "PauseOnDefectStatusNode": {
-      const item = new vscode.TreeItem(
-        (node.pauseOnDefects ? "☑" : "☐") + " Pause debug on defects",
-        vscode.TreeItemCollapsibleState.None
-      )
-      item.contextValue = "pauseOnDefects"
-      item.command = {
-        command: "effect.togglePauseOnDefects",
-        title: "Toggle pause on defects",
-        arguments: [node.threadId]
-      }
       return item
     }
   }

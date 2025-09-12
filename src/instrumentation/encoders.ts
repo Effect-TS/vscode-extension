@@ -1,5 +1,6 @@
 import type * as Domain from "@effect/experimental/DevTools/Domain"
 import type * as MetricPair from "effect/MetricPair"
+import type * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
 import type * as Tracer from "effect/Tracer"
 import {
@@ -10,6 +11,39 @@ import {
   isHistogramState,
   isSummaryState
 } from "./shims"
+
+export function encodeOption<T, E>(
+  option: Option.Option<T>,
+  value: (x: T) => E
+): { _tag: "Some"; value: E } | { _tag: "None" } {
+  if (option._tag === "Some") {
+    return {
+      "_tag": "Some",
+      "value": value(option.value)
+    }
+  }
+  return { _tag: "None" }
+}
+
+export interface StackLocation {
+  path: string
+  line: number
+  column: number
+}
+
+export function makeStackLocation(
+  stackPath: string,
+  stackLine: number,
+  stackColumn: number
+): StackLocation {
+  return {
+    "path": stackPath,
+    "line": stackLine,
+    "column": stackColumn
+  }
+}
+
+export const encodeStackLocation = (x: StackLocation) => x
 
 export function encodeMetricPair(
   metricPair: MetricPair.MetricPair.Untyped
@@ -86,9 +120,7 @@ export function encodeSpan(span: Tracer.Span): Schema.Schema.Encoded<typeof Doma
     "status": span.status._tag === "Started"
       ? { _tag: "Started", "startTime": String(span.status.startTime) }
       : { _tag: "Ended", "startTime": String(span.status.startTime), "endTime": String(span.status.endTime) },
-    "parent": span.parent._tag === "None"
-      ? span.parent
-      : ({ _tag: "Some", "value": encodeParentSpan(span.parent.value) }),
+    "parent": encodeOption(span.parent, encodeParentSpan),
     "attributes": Array.from(span.attributes.entries())
   }
 }

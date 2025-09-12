@@ -128,6 +128,7 @@ export const find = <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => 
   while (stack.length > 0) {
     const item = stack.pop()!
     if (!item) continue
+    if (!("_tag" in item)) continue
     const option = pf(item)
     switch (option._tag) {
       case "None": {
@@ -149,13 +150,27 @@ export const find = <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => 
   return optionNone()
 }
 
-export const dieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
-  find(self, (cause) =>
-    typeof cause === "object" && cause !== null && "_tag" in cause && cause._tag === "Die" ?
-      optionSome(cause.defect) :
-      optionNone())
+export const causeDieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
+  find(
+    self,
+    (cause) =>
+      typeof cause === "object" && cause !== null && "_tag" in cause && cause._tag === "Die" && "defect" in cause ?
+        optionSome(cause.defect) :
+        optionNone()
+  )
 
 export function isExitFailure(value: unknown): value is Exit.Failure<unknown, unknown> {
   return typeof value === "object" && value !== null && EffectTypeId in value && "_tag" in value &&
     value._tag === "Failure" && "cause" in value
+}
+
+const originalSymbol = Symbol.for("effect/OriginalAnnotation")
+
+/* @internal */
+export const originalInstance = <E>(obj: E): E => {
+  if (typeof obj === "object" && obj !== null && originalSymbol in obj) {
+    // @ts-expect-error
+    return obj[originalSymbol]
+  }
+  return obj
 }
