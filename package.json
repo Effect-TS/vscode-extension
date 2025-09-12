@@ -274,7 +274,6 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@vscode/js-debug": "*",
     "@changesets/changelog-github": "^0.5.1",
     "@changesets/cli": "^2.29.5",
     "@effect/eslint-plugin": "^0.3.2",
