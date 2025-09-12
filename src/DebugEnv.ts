@@ -22,6 +22,9 @@ export interface Session {
   readonly context: (threadId: number | undefined) => Effect.Effect<Array<ContextPair>>
   readonly currentSpanStack: (threadId: number | undefined) => Effect.Effect<Array<SpanStackEntry>>
   readonly currentFibers: (threadId: number | undefined) => Effect.Effect<Array<FiberEntry>>
+  readonly currentAutoPauseConfig: (threadId: number | undefined) => Effect.Effect<{ pauseOnDefects: boolean }>
+  readonly togglePauseOnDefects: (threadId: number | undefined) => Effect.Effect<void>
+  readonly getAndUnsetPauseStateToReveal: (threadId: number | undefined) => Effect.Effect<PauseStateToReveal>
 }
 
 export type Message =
@@ -56,24 +59,19 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
         Effect.fn(function*(session) {
           if (!session) return yield* SubscriptionRef.set(sessionRef, Option.none())
           const debugChannel = yield* DebugChannel.makeVsCodeDebugSession(session)
+          const withDebugChannel = Effect.provideService(DebugChannel.DebugChannel, debugChannel)
 
           // return session
           return yield* SubscriptionRef.set(
             sessionRef,
             Option.some({
               vscode: session,
-              context: (threadId) =>
-                getContext(threadId).pipe(
-                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-                ),
-              currentSpanStack: (threadId) =>
-                getCurrentSpanStack(threadId).pipe(
-                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-                ),
-              currentFibers: (threadId) =>
-                getCurrentFibers(threadId).pipe(
-                  Effect.provideService(DebugChannel.DebugChannel, debugChannel)
-                )
+              context: (threadId) => withDebugChannel(getContext(threadId)),
+              currentSpanStack: (threadId) => withDebugChannel(getCurrentSpanStack(threadId)),
+              currentFibers: (threadId) => withDebugChannel(getCurrentFibers(threadId)),
+              currentAutoPauseConfig: (threadId) => withDebugChannel(getCurrentAutoPauseConfig(threadId)),
+              togglePauseOnDefects: (threadId) => withDebugChannel(togglePauseOnDefects(threadId)),
+              getAndUnsetPauseStateToReveal: (threadId) => withDebugChannel(getAndUnsetPauseStateToReveal(threadId))
             })
           )
         })
@@ -171,6 +169,7 @@ const StackLocation = Schema.Struct({
   line: Schema.Int,
   column: Schema.Int
 })
+export type StackLocation = Schema.Schema.Type<typeof StackLocation>
 
 const SpanSchema = Schema.Struct({
   _tag: Schema.Literal("Span"),
@@ -299,4 +298,55 @@ const getCurrentFibers = (threadId: number | undefined) =>
         { concurrency: "unbounded" }
       )
     )
+  )
+
+const AutoPauseConfigSchema = Schema.Struct({ pauseOnDefects: Schema.Boolean })
+export type AutoPauseConfigSchema = Schema.Schema.Type<typeof AutoPauseConfigSchema>
+
+const getCurrentAutoPauseConfig = (threadId: number | undefined) =>
+  Effect.gen(function*() {
+    yield* ensureInstrumentationInjected(true, threadId)
+    const result = yield* DebugChannel.DebugChannel.evaluate({
+      expression: `globalThis["effect/devtools/instrumentation"].getAutoPauseConfig()`,
+      guessFrameId: true,
+      threadId
+    })
+    return yield* result.parse(AutoPauseConfigSchema)
+  }).pipe(
+    Effect.orElseSucceed(() => ({ pauseOnDefects: false }))
+  )
+
+const togglePauseOnDefects = (threadId: number | undefined) =>
+  Effect.gen(function*() {
+    yield* ensureInstrumentationInjected(true, threadId)
+    yield* DebugChannel.DebugChannel.evaluate({
+      expression: `globalThis["effect/devtools/instrumentation"].togglePauseOnDefects()`,
+      guessFrameId: true,
+      threadId
+    })
+  }).pipe(
+    Effect.ignoreLogged
+  )
+
+class PauseStateToReveal extends Schema.Class<PauseStateToReveal>("PauseStateToReveal")({
+  location: Schema.Option(StackLocation),
+  values: Schema.Array(Schema.Struct({
+    label: Schema.String,
+    value: DebugChannel.VariableReference.SchemaFromSelf
+  }))
+}) {
+  static None = new PauseStateToReveal({ location: Option.none(), values: [] })
+}
+
+const getAndUnsetPauseStateToReveal = (threadId: number | undefined) =>
+  Effect.gen(function*() {
+    yield* ensureInstrumentationInjected(true, threadId)
+    const result = yield* DebugChannel.DebugChannel.evaluate({
+      expression: `globalThis["effect/devtools/instrumentation"].getAndUnsetPauseStateToReveal()`,
+      guessFrameId: true,
+      threadId
+    })
+    return yield* result.parse(PauseStateToReveal)
+  }).pipe(
+    Effect.orElseSucceed(() => PauseStateToReveal.None)
   )

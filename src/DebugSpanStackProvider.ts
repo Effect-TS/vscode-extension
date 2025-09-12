@@ -60,7 +60,7 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
         )
       }
 
-      const filteredNodes = Effect.gen(function*() {
+      const visibleNodes = Effect.gen(function*() {
         const ignoreListValue = yield* ignoreList.get
         if (skipIgnoreList || ignoreListValue.length === 0) return nodes
         const result = []
@@ -130,7 +130,7 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
 
       return TreeDataProvider<TreeNode>({
         children: Option.match({
-          onNone: () => filteredNodes,
+          onNone: () => visibleNodes,
           onSome: (node) => children(node)
         }),
         treeItem: (node) => Effect.succeed(treeItem(node))

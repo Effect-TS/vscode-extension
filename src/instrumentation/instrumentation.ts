@@ -1,315 +1,109 @@
 /* eslint-disable object-shorthand */
 import type * as Domain from "@effect/experimental/DevTools/Domain"
 import type { Fiber } from "effect/Fiber"
+import type * as MetricPair from "effect/MetricPair"
+import type * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
 import type * as Tracer from "effect/Tracer"
+import type { StackLocation } from "./encoders"
+import { encodeMetricPair, encodeOption, encodeSpan, encodeStackLocation, makeStackLocation } from "./encoders"
 import {
-  getOrUndefined,
+  causeDieOption,
   globalMetricRegistrySymbol,
   globalStores,
   interruptible,
-  isCounterState,
-  isFrequencyState,
-  isGaugeState,
-  isHistogramState,
-  isSummaryState
+  isExitFailure,
+  optionNone,
+  optionSome,
+  originalInstance
 } from "./shims"
+import { addSetInterceptor } from "./utils"
 
-const _globalThis = globalThis as any
+interface DebuggerState {
+  pauseOnDefects: boolean
+  lastDefect: Option.Option<{ span: Tracer.AnySpan | undefined; value: unknown }>
+  locationToReveal: Option.Option<StackLocation>
+  valuesToReveal: Array<{
+    label: string
+    value: unknown
+  }>
+}
 
 const instrumentationKey = "effect/devtools/instrumentation"
-
-const instrumentationId = Math.random().toString(36).substring(2, 15)
-
-function addSetInterceptor<O extends object, K extends keyof O>(
-  obj: O,
-  key: K,
-  interceptor: (v: O[K]) => void
-) {
-  const previousProperty = Object.getOwnPropertyDescriptor(obj, key)
-  if (previousProperty && previousProperty.set) {
-    Object.defineProperty(obj, key, {
-      "value": previousProperty.value,
-      "writable": previousProperty.writable,
-      "enumerable": previousProperty.enumerable,
-      "configurable": previousProperty.configurable,
-      "get": previousProperty.get,
-      "set": function(this: O, _: O[K]) {
-        interceptor(_)
-        previousProperty.set?.bind(this)(_)
-      }
-    })
-  } else {
-    let _val: O[K]
-    Object.defineProperty(obj, key, {
-      "set": function(this: O, _: O[K]) {
-        _val = _
-        interceptor(_)
-      },
-      "get": function() {
-        return _val
-      }
-    })
-  }
-}
-
-function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot> {
-  const metrics: Array<Schema.Schema.Encoded<typeof Domain.Metric>> = []
-
-  const stores = globalStores()
-  for (let i = 0; i < stores.length; i++) {
-    const store = stores[i]
-    const metricRegistry = store.get(globalMetricRegistrySymbol)
-    if (!metricRegistry) continue
-    const snapshot = metricRegistry.snapshot()
-    for (let i = 0, len = snapshot.length; i < len; i++) {
-      const metricPair = snapshot[i]
-      if (isCounterState(metricPair.metricState)) {
-        metrics.push({
-          "_tag": "Counter",
-          "name": metricPair.metricKey.name,
-          "description": getOrUndefined(metricPair.metricKey.description),
-          "tags": metricPair.metricKey.tags,
-          "state": {
-            "count": typeof metricPair.metricState.count === "bigint"
-              ? metricPair.metricState.count.toString()
-              : metricPair.metricState.count
-          }
-        })
-      } else if (isGaugeState(metricPair.metricState)) {
-        metrics.push({
-          "_tag": "Gauge",
-          "name": metricPair.metricKey.name,
-          "description": getOrUndefined(metricPair.metricKey.description),
-          "tags": metricPair.metricKey.tags,
-          "state": {
-            "value": typeof metricPair.metricState.value === "bigint"
-              ? metricPair.metricState.value.toString()
-              : metricPair.metricState.value
-          }
-        })
-      } else if (isHistogramState(metricPair.metricState)) {
-        metrics.push({
-          "_tag": "Histogram",
-          "name": metricPair.metricKey.name,
-          "description": getOrUndefined(metricPair.metricKey.description),
-          "tags": metricPair.metricKey.tags,
-          "state": metricPair.metricState
-        })
-      } else if (isSummaryState(metricPair.metricState)) {
-        metrics.push({
-          "_tag": "Summary",
-          "name": metricPair.metricKey.name,
-          "description": getOrUndefined(metricPair.metricKey.description),
-          "tags": metricPair.metricKey.tags,
-          "state": metricPair.metricState
-        })
-      } else if (isFrequencyState(metricPair.metricState)) {
-        metrics.push({
-          "_tag": "Frequency",
-          "name": metricPair.metricKey.name,
-          "description": getOrUndefined(metricPair.metricKey.description),
-          "tags": metricPair.metricKey.tags,
-          "state": {
-            "occurrences": Object.fromEntries(metricPair.metricState.occurrences.entries())
-          }
-        })
-      }
-    }
-  }
-
-  return {
-    "_tag": "MetricsSnapshot",
-    "metrics": metrics
-  }
-}
-
-function convertExternalSpan(span: Tracer.ExternalSpan): Schema.Schema.Encoded<typeof Domain.ExternalSpan> {
-  return {
-    "_tag": span._tag,
-    "traceId": span.traceId,
-    "spanId": span.spanId,
-    "sampled": span.sampled
-  }
-}
-
-function getSpanStack(span: Tracer.AnySpan): Array<{ path: string; line: number; column: number }> {
-  const stackString = globalStores().reduce((acc, store) => {
-    if (acc || !store) return acc
-    const spanToTrace = store.get("effect/Tracer/spanToTrace")
-    const stackFn = spanToTrace ? spanToTrace.get(span) : acc
-    return stackFn ? stackFn() : acc
-  }, undefined) || ""
-  const stack = stackString.split("\n").filter((_) => String(_).length > 0)
-  const out: Array<{ path: string; line: number; column: number }> = []
-  for (let i = 0; i < stack.length; i++) {
-    const line = stack[i]
-    const match = line.match(/^at (.*) \((.*):(\d+):(\d+)\)$/)
-    if (match) {
-      out.push({ "path": match[2], "line": parseInt(match[3]) - 1, "column": parseInt(match[4]) - 1 })
-    } else {
-      const matchOnlyAt = line.match(/^at (.*):(\d+):(\d+)$/)
-      if (matchOnlyAt) {
-        out.push({
-          "path": matchOnlyAt[1],
-          "line": parseInt(matchOnlyAt[2]) - 1,
-          "column": parseInt(matchOnlyAt[3]) - 1
-        })
-      }
-    }
-  }
-  return out
-}
-
-function convertSpan(span: Tracer.Span): Schema.Schema.Encoded<typeof Domain.Span> {
-  const stack = getSpanStack(span)
-  return {
-    "_tag": span._tag,
-    "spanId": span.spanId,
-    "traceId": span.traceId,
-    "name": span.name,
-    "sampled": span.sampled,
-    "status": span.status._tag === "Started"
-      ? { _tag: "Started", "startTime": String(span.status.startTime) }
-      : { _tag: "Ended", "startTime": String(span.status.startTime), "endTime": String(span.status.endTime) },
-    "parent": span.parent._tag === "None"
-      ? span.parent
-      : ({ _tag: "Some", "value": convertAnySpan(span.parent.value) }),
-    "attributes": Array.from(span.attributes.entries()).concat(
-      stack.length > 0
-        ? [[
-          "@effect/devtools/trace",
-          "at " + span.name + " (" + stack[0].path + ":" + (stack[0].line + 1) + ":" + (stack[0].column + 1) + ")"
-        ]]
-        : []
-    )
-  }
-}
-
-function convertAnySpan(span: Tracer.AnySpan): Schema.Schema.Encoded<typeof Domain.ParentSpan> {
-  if (span._tag === "ExternalSpan") {
-    return convertExternalSpan(span)
-  }
-  return convertSpan(span)
-}
+const currentInstrumentationTracerKey = "effect/instrumentation/currentTracer"
 
 // first inject the logic to track current and newly created fibers
 if (!(instrumentationKey in globalThis)) {
-  // keeps track if the devtools client has connected at least once
-  let hasDevtoolsConnected = false
-
-  // create a global array to store the current fibers
+  const _globalThis = globalThis as any
+  // local state of the instrumentation
   const fibers: Array<Fiber.Runtime<any, any>> = []
-
-  // invoked each time a fiber is running
-  function addTrackedFiber(fiber: Fiber.Runtime<any, any>) {
-    if (fibers.indexOf(fiber) === -1) {
-      if (hasDevtoolsConnected) addTracerInterceptorToFiber(fiber)
-      fibers.push(fiber)
-      fiber.addObserver(() => {
-        const index = fibers.indexOf(fiber)
-        if (index > -1) {
-          fibers.splice(index, 1)
-        }
-      })
-    }
+  const instrumentationId = Math.random().toString(36).substring(2, 15)
+  let debuggerState: DebuggerState = {
+    pauseOnDefects: false,
+    lastDefect: optionNone(),
+    locationToReveal: optionNone(),
+    valuesToReveal: []
   }
 
-  // replace the current tracer in a fiber with a new tracer that sends events to the devtools
-  const patchedTracers: Array<Tracer.Tracer> = []
-  const addTracerInterceptorToFiber = (fiber: Fiber.Runtime<any, any>) => {
-    const _fiber = fiber as any
-    // avoid to double patch the same fiber
-    if (_fiber["effect/instrumentation/patchedCurrentTracer"]) return
-    _fiber["effect/instrumentation/patchedCurrentTracer"] = true
-
-    const previousTracer = fiber.currentTracer
-    addSetInterceptor(fiber, "currentTracer", (tracer) => {
-      // avoid to double patch the same tracer
-      if (!tracer) return
-      if (patchedTracers.indexOf(tracer) !== -1) return
-      patchedTracers.push(tracer)
-
-      // patch the span method to send start and end events
-      const _span = tracer.span.bind(tracer)
-      tracer.span = (...args) => {
-        const span = _span(...args)
-        try {
-          pushNotification(convertSpan(span))
-
-          // patch the event method to send events
-          const _event = span.event.bind(span)
-          span.event = (name, startTime, attributes, ...args) => {
-            const result = _event(name, startTime, attributes, ...args)
-            pushNotification({
-              "_tag": "SpanEvent",
-              "spanId": span.spanId,
-              "traceId": span.traceId,
-              "name": name,
-              "startTime": String(startTime),
-              "attributes": attributes || {}
-            })
-            return result
-          }
-
-          // patch the end method to send end events
-          const _end = span.end.bind(span)
-          span.end = (...args) => {
-            const result = _end(...args)
-            pushNotification(convertSpan(span))
-            return result
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (_) {
-          // silently fail
-        }
-        return span
-      }
-    })
-    // sets the value back
-    _fiber.currentTracer = previousTracer
+  // set the instrumentation
+  _globalThis[instrumentationKey] = {
+    "fibers": fibers,
+    "debugProtocolDevtoolsClient": debugProtocolDevtoolsClient,
+    "getFiberCurrentSpanStack": getFiberCurrentSpanStack,
+    "getFiberCurrentContext": getFiberCurrentContext,
+    "getAliveFibers": getAliveFibers,
+    "getAutoPauseConfig": getAutoPauseConfig,
+    "togglePauseOnDefects": togglePauseOnDefects,
+    "getAndUnsetPauseStateToReveal": getAndUnsetPauseStateToReveal
   }
 
-  // two kind of storage responses and notifications,
-  // notifications are with a sliding window
-  const responses: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
-  const notifications: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
-  const pushNotification = (notification: Schema.Schema.Encoded<typeof Domain.Request>) => {
-    notifications.push(notification)
-    if (notifications.length > 1000) {
-      notifications.shift()
-    }
-  }
+  function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot> {
+    const metrics: Array<Schema.Schema.Encoded<typeof Domain.Metric>> = []
 
-  function debugProtocolDevtoolsClient(
-    requests: Array<Schema.Schema.Encoded<typeof Domain.Response>>
-  ): string {
-    // handle first connection, add tracer interceptor to all fibers known at the moment
-    if (!hasDevtoolsConnected) {
-      hasDevtoolsConnected = true
-      fibers.forEach(addTracerInterceptorToFiber)
-    }
-
-    // handle the requests
-    const processedRequestTypes: Array<string> = []
-    for (let i = 0; i < requests.length; i++) {
-      const request = requests[i]
-      switch (request._tag) {
-        case "Pong":
-          continue
-        case "MetricsRequest": {
-          if (processedRequestTypes.indexOf(request._tag) !== -1) continue
-          processedRequestTypes.push(request._tag)
-          responses.push(metricsSnapshot())
-          continue
+    const stores = globalStores()
+    for (let i = 0; i < stores.length; i++) {
+      const store = stores[i]
+      const metricRegistry = store.get(globalMetricRegistrySymbol)
+      if (!metricRegistry) continue
+      const snapshot: Array<MetricPair.MetricPair.Untyped> = metricRegistry.snapshot()
+      for (let i = 0, len = snapshot.length; i < len; i++) {
+        const encoded = encodeMetricPair(snapshot[i])
+        if (encoded) {
+          metrics.push(encoded)
         }
       }
     }
 
-    // send the responses back
-    const responsesToSend = responses.splice(0)
-    const notificationsToSend = notifications.splice(0)
-    return JSON.stringify({ responses: responsesToSend.concat(notificationsToSend), instrumentationId })
+    return {
+      "_tag": "MetricsSnapshot",
+      "metrics": metrics
+    }
+  }
+
+  function getSpanStack(span: Tracer.AnySpan): Array<StackLocation> {
+    const stackString = globalStores().reduce((acc, store) => {
+      if (acc || !store) return acc
+      const spanToTrace = store.get("effect/Tracer/spanToTrace")
+      const stackFn = spanToTrace ? spanToTrace.get(span) : acc
+      return stackFn ? stackFn() : acc
+    }, undefined) || ""
+    const stack = stackString.split("\n").filter((_) => String(_).length > 0)
+    const out: Array<StackLocation> = []
+    for (let i = 0; i < stack.length; i++) {
+      const line = stack[i]
+      const match = line.match(/^at (.*) \((.*):(\d+):(\d+)\)$/)
+      if (match) {
+        out.push(makeStackLocation(match[2], parseInt(match[3], 10) - 1, parseInt(match[4], 10) - 1))
+      } else {
+        const matchOnlyAt = line.match(/^at (.*):(\d+):(\d+)$/)
+        if (matchOnlyAt) {
+          out.push(
+            makeStackLocation(matchOnlyAt[1], parseInt(matchOnlyAt[2], 10) - 1, parseInt(matchOnlyAt[3], 10) - 1)
+          )
+        }
+      }
+    }
+    return out
   }
 
   function getFiberCurrentSpanStack(fiber: Fiber.Runtime<any, any>, maxDepth: number) {
@@ -353,21 +147,182 @@ if (!(instrumentationKey in globalThis)) {
     }))
   }
 
-  // set the instrumentation
-  _globalThis[instrumentationKey] = {
-    "fibers": fibers,
-    "debugProtocolDevtoolsClient": debugProtocolDevtoolsClient,
-    "getFiberCurrentSpanStack": getFiberCurrentSpanStack,
-    "getFiberCurrentContext": getFiberCurrentContext,
-    "getAliveFibers": getAliveFibers
+  function getAutoPauseConfig() {
+    return {
+      "pauseOnDefects": debuggerState.pauseOnDefects
+    }
+  }
+
+  function togglePauseOnDefects() {
+    debuggerState = {
+      ...debuggerState,
+      pauseOnDefects: !debuggerState.pauseOnDefects,
+      lastDefect: optionNone()
+    }
+  }
+
+  function getAndUnsetPauseStateToReveal() {
+    const stackEntryToReveal = debuggerState.locationToReveal
+    const valuesToReveal = debuggerState.valuesToReveal
+    debuggerState = {
+      ...debuggerState,
+      locationToReveal: optionNone(),
+      valuesToReveal: []
+    }
+    return ({
+      location: encodeOption(stackEntryToReveal, encodeStackLocation),
+      values: valuesToReveal
+    })
+  }
+
+  function pauseDebugger(stackEntry: StackLocation | undefined) {
+    /**
+     * READ ME!
+     * This is a hack to pause the debugger when something happens.
+     * The VSCode extension should redirect you to the location of the span,
+     * if that does not happen, you can check the current span stack
+     * to find out where the execution paused.
+     */
+    debuggerState = {
+      ...debuggerState,
+      locationToReveal: stackEntry ? optionSome(stackEntry) : optionNone()
+    }
+    // eslint-disable-next-line no-debugger
+    debugger
+  }
+
+  // replace the current tracer in a fiber with a new tracer that sends events to the devtools
+  const addTracerInterceptorToFiber = (fiber: Fiber.Runtime<any, any>) => {
+    const _fiber = fiber as any
+    // avoid to double patch the same fiber
+    if (currentInstrumentationTracerKey in _fiber) return
+    _fiber[currentInstrumentationTracerKey] = undefined
+
+    const previousTracer = fiber.currentTracer
+    addSetInterceptor(fiber, "currentTracer", (tracer) => {
+      // avoid to double patch the same tracer
+      if (!tracer) return
+      if (tracer && currentInstrumentationTracerKey in tracer) return
+      const _tracer = tracer as any
+      _tracer[currentInstrumentationTracerKey] = true
+
+      // patch the span method to send start and end events
+      const _span = tracer.span.bind(tracer)
+      tracer.span = (...args) => {
+        const span = _span(...args)
+        pushNotification(encodeSpan(span))
+
+        // patch the event method to send events
+        const _event = span.event.bind(span)
+        span.event = (name, startTime, attributes, ...args) => {
+          const result = _event(name, startTime, attributes, ...args)
+          pushNotification({
+            "_tag": "SpanEvent",
+            "spanId": span.spanId,
+            "traceId": span.traceId,
+            "name": name,
+            "startTime": String(startTime),
+            "attributes": attributes || {}
+          })
+          return result
+        }
+
+        // patch the end method to send end events
+        const _end = span.end.bind(span)
+        span.end = (...args) => {
+          const result = _end(...args)
+          pushNotification(encodeSpan(span))
+          return result
+        }
+        return span
+      }
+
+      // patch the context method to pause on errors
+      const _context = tracer.context.bind(tracer)
+      tracer.context = (f, fiber, ...args) => {
+        const result = _context(f, fiber, ...args)
+
+        // pause on defects
+        if (debuggerState.pauseOnDefects && isExitFailure(result)) {
+          const maybeDefect = causeDieOption(result.cause)
+          if (maybeDefect._tag === "Some") {
+            // may be wrapped in a proxy for the spanSymbol
+            const currentDefect = originalInstance(maybeDefect.value)
+            // only if both the defect and the span changed since the last defect
+            const isSameAsLastDefect = debuggerState.lastDefect._tag === "Some" &&
+              currentDefect === debuggerState.lastDefect.value.value &&
+              fiber.currentSpan === debuggerState.lastDefect.value.span
+            // if they changed, update the last defect and pause the debugger
+            if (!isSameAsLastDefect) {
+              debuggerState = {
+                ...debuggerState,
+                lastDefect: optionSome({ span: fiber.currentSpan, value: currentDefect }),
+                valuesToReveal: [{ label: "Fiber Defect", value: currentDefect }]
+              }
+              const stack = fiber.currentSpan ? getSpanStack(fiber.currentSpan) : []
+              pauseDebugger(stack[0])
+            }
+          }
+        }
+
+        return result
+      }
+    })
+    _fiber.currentTracer = previousTracer
+  }
+
+  // notifications are with a sliding window
+  const notifications: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
+  const pushNotification = (notification: Schema.Schema.Encoded<typeof Domain.Request>) => {
+    notifications.push(notification)
+    if (notifications.length > 10000) {
+      notifications.shift()
+    }
+  }
+
+  function debugProtocolDevtoolsClient(
+    requests: Array<Schema.Schema.Encoded<typeof Domain.Response>>
+  ): string {
+    const responses: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
+
+    // handle the requests
+    const hasRequestedMetrics = requests.filter((_) => _._tag === "MetricsRequest").length > 0
+    if (hasRequestedMetrics) responses.push(metricsSnapshot())
+
+    // send the responses back
+    const notificationsToSend = notifications.splice(0)
+    return JSON.stringify({ responses: responses.concat(notificationsToSend), instrumentationId })
+  }
+
+  // invoked each time a fiber is running
+  function addTrackedFiber(fiber: Fiber.Runtime<any, any>) {
+    if (fibers.indexOf(fiber) === -1) {
+      // recursively track all children fibers and update the list
+      addTracerInterceptorToFiber(fiber)
+      fibers.push(fiber)
+      if ("_children" in fiber && fiber._children !== null) {
+        ;(fiber._children as Set<Fiber.Runtime<any, any>>).forEach(addTrackedFiber)
+      }
+      // add an observer to the fiber to remove it from the list when it is completed
+      fiber.addObserver(() => {
+        const index = fibers.indexOf(fiber)
+        if (index > -1) {
+          fibers.splice(index, 1)
+        }
+      })
+    }
   }
 
   // replace the effect/FiberCurrent with a getter/setter so we can detect fibers
   // starting for the first time
   const _previousFiber = _globalThis["effect/FiberCurrent"]
-  addSetInterceptor(_globalThis, "effect/FiberCurrent", (_: Fiber.Runtime<any, any> | undefined) => {
-    if (_) addTrackedFiber(_)
-  })
+  addSetInterceptor(
+    _globalThis,
+    "effect/FiberCurrent",
+    (_: Fiber.Runtime<any, any> | undefined) => {
+      if (_) addTrackedFiber(_)
+    }
+  )
   // trigger the setter by re-setting its value
   _globalThis["effect/FiberCurrent"] = _previousFiber
 }

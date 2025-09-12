@@ -4,6 +4,7 @@ import type * as vscode from "vscode"
 import { Clients } from "./Clients"
 import { ClientsProviderLive } from "./ClientsProvider"
 import { ContextProviderLive } from "./ContextProvider"
+import { DebugBreakpointsProviderLive } from "./DebugBreakpointsProvider"
 import { DebugEnv } from "./DebugEnv"
 import { DebugFibersProviderLive } from "./DebugFibersProvider"
 import { DebugSpanStackProviderLive } from "./DebugSpanStackProvider"
@@ -23,7 +24,8 @@ const MainLive = ClientsProviderLive.pipe(
     TreeCommandsLive,
     DebugFibersProviderLive,
     TracerExtendedLive,
-    LayerHoverProviderLive
+    LayerHoverProviderLive,
+    DebugBreakpointsProviderLive
   )),
   Layer.provide(Clients.Default),
   Layer.provide(DebugEnv.Live),
