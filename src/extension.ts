@@ -8,6 +8,7 @@ import { DebugBreakpointsProviderLive } from "./DebugBreakpointsProvider"
 import { DebugEnv } from "./DebugEnv"
 import { DebugFibersProviderLive } from "./DebugFibersProvider"
 import { DebugSpanStackProviderLive } from "./DebugSpanStackProvider"
+import { InjectNodeOptionsInstrumentationLive } from "./InjectNodeOptionsInstrumentationProvider"
 import { LayerHoverProviderLive } from "./LayerHoverProvider"
 import { MetricsProviderLive } from "./MetricsProvider"
 import { SpanProviderLive } from "./SpanProvider"
@@ -25,7 +26,8 @@ const MainLive = ClientsProviderLive.pipe(
     DebugFibersProviderLive,
     TracerExtendedLive,
     LayerHoverProviderLive,
-    DebugBreakpointsProviderLive
+    DebugBreakpointsProviderLive,
+    InjectNodeOptionsInstrumentationLive
   )),
   Layer.provide(Clients.Default),
   Layer.provide(DebugEnv.Live),
