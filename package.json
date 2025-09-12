@@ -50,6 +50,24 @@
           },
           "default": [],
           "description": "A list of span patterns to ignore when showing the span stack"
+        },
+        "effect.instrumentation.injectNodeOptions": {
+          "type": "boolean",
+          "default": false,
+          "description": "If enabled, the effect instrumentation code will be injected into node debug configurations by appending a NODE_OPTIONS environment variable"
+        },
+        "effect.instrumentation.injectDebugConfigurations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "default": [
+            "node",
+            "node-terminal",
+            "pwa-node"
+          ],
+          "description": "A list of debug configuration types to inject the instrumentation into when injectNodeOptions is enabled"
         }
       }
     },
@@ -256,6 +274,7 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
+    "@vscode/js-debug": "*",
     "@changesets/changelog-github": "^0.5.1",
     "@changesets/cli": "^2.29.5",
     "@effect/eslint-plugin": "^0.3.2",
