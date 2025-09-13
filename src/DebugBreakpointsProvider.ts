@@ -79,17 +79,13 @@ export const DebugBreakpointsProviderLive = treeDataProvider<TreeNode>("effect-d
         Effect.forkScoped
       )
 
-      yield* Stream.fromPubSub(debug.messages).pipe(
+      yield* Stream.fromPubSub(debug.events).pipe(
         Stream.mapEffect((event) => {
-          if (event.type !== "event") return Effect.void
-
-          switch (event.event) {
-            case "stopped": {
-              return capture(false, event.body?.threadId).pipe(
-                Effect.delay(500)
-              )
+          switch (event._tag) {
+            case "DebuggerThreadStopped": {
+              return capture(false, event.threadId)
             }
-            case "continued": {
+            case "DebuggerThreadContinued": {
               pauseValueToRevealNodes = []
               return refresh(Option.none())
             }

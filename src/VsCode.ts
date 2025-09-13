@@ -1,4 +1,3 @@
-import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -27,10 +26,6 @@ export const thenableCatch = <A, E>(f: () => Thenable<A>, onError: (error: unkno
     try: () => f(),
     catch: onError
   })
-
-export const dismissable = <A>(
-  f: () => Thenable<A | undefined>
-): Effect.Effect<A, Cause.NoSuchElementException> => thenable(f).pipe(Effect.flatMap(Effect.fromNullable))
 
 export const executeCommand = <A = unknown>(command: string, ...args: Array<any>) =>
   thenable(() => vscode.commands.executeCommand<A>(command, ...args))
@@ -122,23 +117,6 @@ export interface ConfigRef<A> {
   readonly changes: Stream.Stream<A>
 }
 
-export const config = <A>(
-  namespace: string,
-  setting: string
-): Effect.Effect<ConfigRef<Option.Option<A>>, never, Scope.Scope> =>
-  Effect.gen(function*() {
-    const get = () => vscode.workspace.getConfiguration(namespace).get<A>(setting)
-    const ref = yield* SubscriptionRef.make<Option.Option<A>>(
-      Option.fromNullable(get())
-    )
-    yield* listenFork(vscode.workspace.onDidChangeConfiguration, (_) =>
-      SubscriptionRef.set(ref, Option.fromNullable(get())))
-    return {
-      get: SubscriptionRef.get(ref),
-      changes: Stream.changes(ref.changes)
-    }
-  })
-
 export const configWithDefault = <A>(
   namespace: string,
   setting: string,
@@ -170,53 +148,6 @@ export const listen = <A, R>(
         d.dispose()
       })
     }))
-
-export const registerUriHandler = <R>(
-  f: (uri: vscode.Uri) => Effect.Effect<void, never, R>
-) =>
-  Effect.forkScoped(Effect.flatMap(Effect.runtime<R>(), (runtime) =>
-    Effect.async<never>((_resume) => {
-      const run = Runtime.runPromise(runtime)
-      const d = vscode.window.registerUriHandler({
-        handleUri: (uri: vscode.Uri) =>
-          run(
-            Effect.catchAllCause(f(uri), (_) => Effect.log("unhandled defect in event listener", _))
-          )
-      })
-      return Effect.sync(() => {
-        d.dispose()
-      })
-    })))
-
-export const registerHoverProvider = <R>(
-  selector: vscode.DocumentSelector,
-  f: (
-    document: vscode.TextDocument,
-    position: vscode.Position
-  ) => Effect.Effect<vscode.Hover | null | undefined, never, R>
-) =>
-  Effect.forkScoped(Effect.flatMap(Effect.runtime<R>(), (runtime) =>
-    Effect.async<never>((_resume) => {
-      const run = Runtime.runPromise(runtime)
-      const d = vscode.languages.registerHoverProvider(selector, {
-        provideHover: (document, position) =>
-          run(
-            Effect.catchAllCause(f(document, position), (_) =>
-              Effect.log("unhandled defect in event listener", _).pipe(Effect.as(null)))
-          )
-      })
-      return Effect.sync(() => {
-        d.dispose()
-      })
-    })))
-
-export const listenStream = <A>(event: vscode.Event<A>): Stream.Stream<A> =>
-  Stream.async<A>((emit) => {
-    const d = event((data) => emit.single(data))
-    return Effect.sync(() => {
-      d.dispose()
-    })
-  })
 
 export const listenFork = <A, R>(
   event: vscode.Event<A>,
@@ -380,12 +311,6 @@ export class VsCodeDebugSession extends Context.Tag("vscode/DebugSession")<
   vscode.DebugSession
 >() {}
 
-export const debugRequest = <A = unknown>(
-  command: string,
-  args?: any
-): Effect.Effect<A, never, VsCodeDebugSession> =>
-  Effect.flatMap(VsCodeDebugSession, (session) => thenable(() => session.customRequest(command, args)))
-
 export const vscodeUriFromPath = (path: string) => {
   const pathLowered = path.toLowerCase()
   if (
@@ -410,11 +335,6 @@ export const revealCode = (
   thenable(() => vscode.workspace.openTextDocument({ language, content })).pipe(
     Effect.flatMap((doc) => thenable(() => vscode.window.showTextDocument(doc, { selection })))
   )
-
-export const revealFileWithSelection = (
-  path: string,
-  selection: vscode.Range
-) => revealFile(path, selection)
 
 export const isExtensionInstalled = (extension: string) =>
   Effect.sync(() => {

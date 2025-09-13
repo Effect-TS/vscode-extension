@@ -27,27 +27,25 @@ export const ContextProviderLive = treeDataProvider<TreeNode>("effect-context")(
       let nodes: Array<TagNode> = []
 
       const capture = (threadId?: number) =>
-        Effect.gen(function*(_) {
-          const sessionOption = yield* _(SubscriptionRef.get(debug.session))
+        Effect.gen(function*() {
+          const sessionOption = yield* (SubscriptionRef.get(debug.session))
           if (Option.isNone(sessionOption)) {
             nodes = []
           } else {
             const session = sessionOption.value
-            const pairs = yield* _(session.context(threadId))
+            const pairs = yield* (session.context(threadId))
             nodes = pairs.map((_) => new TagNode(_))
           }
-          yield* _(refresh(Option.none()))
+          yield* (refresh(Option.none()))
         })
 
-      yield* Stream.fromPubSub(debug.messages).pipe(
+      yield* Stream.fromPubSub(debug.events).pipe(
         Stream.mapEffect((event) => {
-          if (event.type !== "event") return Effect.void
-
-          switch (event.event) {
-            case "stopped": {
-              return Effect.delay(capture(event.body?.threadId), 500)
+          switch (event._tag) {
+            case "DebuggerThreadStopped": {
+              return Effect.delay(capture(event.threadId), 500)
             }
-            case "continued": {
+            case "DebuggerThreadContinued": {
               nodes = []
               return refresh(Option.none())
             }
