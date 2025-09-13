@@ -237,12 +237,12 @@
         },
         {
           "command": "effect.enableSpanStackIgnoreList",
-          "when": "view === effect-debug-span-stack && effect:skipSpanStackIgnoreList === false",
+          "when": "view === effect-debug-span-stack && effect:spanStackIgnoreListEnabled === false",
           "group": "navigation"
         },
         {
           "command": "effect.disableSpanStackIgnoreList",
-          "when": "view === effect-debug-span-stack && effect:skipSpanStackIgnoreList === true",
+          "when": "view === effect-debug-span-stack && effect:spanStackIgnoreListEnabled === true",
           "group": "navigation"
         }
       ],

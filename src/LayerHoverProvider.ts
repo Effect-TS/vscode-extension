@@ -2,8 +2,9 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { executeCommandCatch, isExtensionInstalled, registerTextEditorCommand, revealCode } from "./VsCode"
 
-export const LayerHoverProviderLive = Effect.gen(function*() {
-  yield* registerTextEditorCommand("effect.showLayerMermaid", (textEditor) =>
+export const LayerHoverProviderLive = registerTextEditorCommand(
+  "effect.showLayerMermaid",
+  (textEditor) =>
     Effect.gen(function*() {
       // current range
       const position = textEditor.selection.active
@@ -27,5 +28,5 @@ export const LayerHoverProviderLive = Effect.gen(function*() {
           yield* executeCommandCatch("mermaidChart.preview", mermaidCode)
         }
       }
-    }))
-}).pipe(Layer.scopedDiscard)
+    })
+).pipe(Layer.scopedDiscard)

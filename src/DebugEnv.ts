@@ -12,13 +12,22 @@ import * as DebugChannel from "./DebugChannel"
 import { compiledInstrumentationString } from "./instrumentation/instrumentation.compiled"
 import { listenFork, VsCodeContext } from "./VsCode"
 
+export class DebuggerThreadStopped extends Data.TaggedClass("DebuggerThreadStopped")<{
+  threadId?: number
+}> {}
+
+export class DebuggerThreadContinued extends Data.TaggedClass("DebuggerThreadContinued")<{
+  threadId: number
+}> {}
+
+export type DebuggerEvent = DebuggerThreadStopped | DebuggerThreadContinued
+
 export interface DebugEnvImpl {
   readonly session: SubscriptionRef.SubscriptionRef<Option.Option<Session>>
-  readonly messages: PubSub.PubSub<Message>
+  readonly events: PubSub.PubSub<DebuggerEvent>
 }
 
 export interface Session {
-  readonly vscode: vscode.DebugSession
   readonly context: (threadId: number | undefined) => Effect.Effect<Array<ContextPair>>
   readonly currentSpanStack: (threadId: number | undefined) => Effect.Effect<Array<SpanStackEntry>>
   readonly currentFibers: (threadId: number | undefined) => Effect.Effect<Array<FiberEntry>>
@@ -26,23 +35,6 @@ export interface Session {
   readonly togglePauseOnDefects: (threadId: number | undefined) => Effect.Effect<void>
   readonly getAndUnsetPauseStateToReveal: (threadId: number | undefined) => Effect.Effect<PauseStateToReveal>
 }
-
-export type Message =
-  | {
-    readonly seq: number
-    readonly type: "event"
-    readonly event: string
-    readonly body?: any
-  }
-  | {
-    readonly seq: number
-    readonly type: "response"
-    readonly command: string
-    readonly success: boolean
-    readonly body?: any
-    readonly request_seq: number
-    readonly message?: string
-  }
 
 export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
   DebugEnv,
@@ -52,7 +44,7 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
     DebugEnv,
     Effect.gen(function*() {
       const sessionRef = yield* SubscriptionRef.make(Option.none<Session>())
-      const messages = yield* PubSub.sliding<Message>(100)
+      const events = yield* PubSub.sliding<DebuggerEvent>(100)
 
       yield* listenFork(
         vscode.debug.onDidChangeActiveDebugSession,
@@ -65,7 +57,6 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
           return yield* SubscriptionRef.set(
             sessionRef,
             Option.some({
-              vscode: session,
               context: (threadId) => withDebugChannel(getContext(threadId)),
               currentSpanStack: (threadId) => withDebugChannel(getCurrentSpanStack(threadId)),
               currentFibers: (threadId) => withDebugChannel(getCurrentFibers(threadId)),
@@ -83,14 +74,24 @@ export class DebugEnv extends Context.Tag("effect-vscode/DebugEnv")<
           createDebugAdapterTracker(_) {
             return {
               onDidSendMessage(message) {
-                messages.unsafeOffer(message)
+                if (message.type === "event" && message.event === "stopped") {
+                  events.unsafeOffer(
+                    new DebuggerThreadStopped({ threadId: message.body?.threadId })
+                  )
+                } else if (message.type === "event" && message.event === "continued") {
+                  events.unsafeOffer(
+                    new DebuggerThreadContinued({
+                      threadId: message.body?.threadId
+                    })
+                  )
+                }
               }
             }
           }
         })
       )
 
-      return { session: sessionRef, messages }
+      return { session: sessionRef, events }
     })
   )
 }

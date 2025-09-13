@@ -183,14 +183,17 @@ const runServer = (port: number) =>
       Effect.provideService(ClientsContext, yield* ClientsContext)
     )
 
-    yield* Stream.runForEach(clients.changes, (client) =>
-      Effect.gen(function*() {
-        yield* executeCommand("setContext", "effect:hasClients", HashSet.size(client) > 0)
-      })).pipe(Effect.forkScoped)
+    yield* Stream.runForEach(
+      clients.changes,
+      (client) => (executeCommand("setContext", "effect:hasClients", HashSet.size(client) > 0))
+    ).pipe(
+      Effect.asVoid,
+      Effect.forkScoped
+    )
 
     const serverHandle = yield* FiberHandle.make()
     yield* Stream.runForEach(running.changes, ({ running }) =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         yield* running
           ? FiberHandle.run(serverHandle, run, { onlyIfMissing: true })
           : FiberHandle.clear(serverHandle)

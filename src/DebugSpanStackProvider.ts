@@ -50,19 +50,20 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
         "ignoreList",
         []
       )
-      let skipIgnoreList = false
       yield* ignoreList.changes.pipe(Stream.mapEffect(() => refresh(Option.none())), Stream.runDrain, Effect.forkScoped)
 
-      const setSkipIgnoreList = (skip: boolean) => {
-        skipIgnoreList = skip
+      let ignoreListEnabled = true
+      const setIgnoreListEnabled = (enabled: boolean) => {
+        ignoreListEnabled = enabled
         return refresh(Option.none()).pipe(
-          Effect.zipRight(executeCommand("setContext", "effect:skipSpanStackIgnoreList", skip))
+          Effect.zipRight(executeCommand("setContext", "effect:spanStackIgnoreListEnabled", enabled))
         )
       }
+      yield* setIgnoreListEnabled(true)
 
       const visibleNodes = Effect.gen(function*() {
         const ignoreListValue = yield* ignoreList.get
-        if (skipIgnoreList || ignoreListValue.length === 0) return nodes
+        if (!ignoreListEnabled || ignoreListValue.length === 0) return nodes
         const result = []
         for (const node of nodes) {
           if (node._tag === "SpanNode") {
@@ -80,8 +81,8 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
       }).pipe(Effect.asSome)
 
       // allows to toggle ignore list
-      yield* registerCommand("effect.enableSpanStackIgnoreList", () => setSkipIgnoreList(true))
-      yield* registerCommand("effect.disableSpanStackIgnoreList", () => setSkipIgnoreList(false))
+      yield* registerCommand("effect.enableSpanStackIgnoreList", () => setIgnoreListEnabled(true))
+      yield* registerCommand("effect.disableSpanStackIgnoreList", () => setIgnoreListEnabled(false))
 
       // jump to span location
       yield* registerCommand("effect.revealSpanLocation", (node: TreeNode) => {
@@ -95,27 +96,25 @@ export const DebugSpanStackProviderLive = treeDataProvider<TreeNode>("effect-deb
       })
 
       const capture = (threadId?: number) =>
-        Effect.gen(function*(_) {
-          const sessionOption = yield* _(SubscriptionRef.get(debug.session))
+        Effect.gen(function*() {
+          const sessionOption = yield* (SubscriptionRef.get(debug.session))
           if (Option.isNone(sessionOption)) {
             nodes = []
           } else {
             const session = sessionOption.value
-            const pairs = yield* _(session.currentSpanStack(threadId))
+            const pairs = yield* (session.currentSpanStack(threadId))
             nodes = pairs.map((_) => new SpanNode(_))
           }
-          yield* _(refresh(Option.none()))
+          yield* (refresh(Option.none()))
         })
 
-      yield* Stream.fromPubSub(debug.messages).pipe(
+      yield* Stream.fromPubSub(debug.events).pipe(
         Stream.mapEffect((event) => {
-          if (event.type !== "event") return Effect.void
-
-          switch (event.event) {
-            case "stopped": {
-              return Effect.delay(capture(event.body?.threadId), 500)
+          switch (event._tag) {
+            case "DebuggerThreadStopped": {
+              return Effect.delay(capture(event.threadId), 500)
             }
-            case "continued": {
+            case "DebuggerThreadContinued": {
               nodes = []
               return refresh(Option.none())
             }
