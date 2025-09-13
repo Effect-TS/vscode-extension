@@ -1,5 +1,19 @@
 # effect-vscode
 
+## 0.7.0
+
+### Minor Changes
+
+- [#77](https://github.com/Effect-TS/vscode-extension/pull/77) [`b289c88`](https://github.com/Effect-TS/vscode-extension/commit/b289c885c05a06f75b71d6571c82752468a6565c) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Removed some unused internals, cleaned up and decoupled from some vscode/dap specifics
+
+- [#73](https://github.com/Effect-TS/vscode-extension/pull/73) [`e54018f`](https://github.com/Effect-TS/vscode-extension/commit/e54018f1416157998ed900c967bc0f5dcbbed42f) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Add pause on defect
+
+### Patch Changes
+
+- [#72](https://github.com/Effect-TS/vscode-extension/pull/72) [`bcafdcd`](https://github.com/Effect-TS/vscode-extension/commit/bcafdcda1d6821bc044ff33c19df8835a64b9a4b) Thanks [@nikelborm](https://github.com/nikelborm)! - Fixed pieces of formatting, spelling, and typos in README.md
+
+- [#75](https://github.com/Effect-TS/vscode-extension/pull/75) [`d8a4f13`](https://github.com/Effect-TS/vscode-extension/commit/d8a4f13cab6c09b5b7b73eef63828a2e58364c52) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Adds a mechanism to preload the effect's debugger instrumentation before node begins executing userlands scripts.
+
 ## 0.6.0
 
 ### Minor Changes
