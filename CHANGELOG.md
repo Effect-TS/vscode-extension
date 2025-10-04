@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.7.1
+
+### Patch Changes
+
+- [#78](https://github.com/Effect-TS/vscode-extension/pull/78) [`7f03c74`](https://github.com/Effect-TS/vscode-extension/commit/7f03c74bda5692446a8c014b36f184fe709ab37e) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Fix release
+
 ## 0.7.0
 
 ### Minor Changes
