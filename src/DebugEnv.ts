@@ -267,13 +267,22 @@ export class FiberEntry extends Data.Class<{
   readonly stack: Array<SpanStackEntry>
   readonly isCurrent: boolean
   readonly isInterruptible: boolean
+  readonly isInterrupted: boolean
+  readonly children: ReadonlyArray<string>
+  readonly startTimeMillis: number
+  readonly lifeTimeMillis: number
+  readonly interrupt: Effect.Effect<void>
 }> {
 }
 
 const CurrentFiberSchema = Schema.Array(Schema.Struct({
   id: Schema.String,
   isCurrent: Schema.Boolean,
-  isInterruptible: Schema.Boolean
+  isInterrupted: Schema.Boolean,
+  isInterruptible: Schema.Boolean,
+  children: Schema.Array(Schema.String),
+  startTimeMillis: Schema.Number,
+  lifeTimeMillis: Schema.Number
 }))
 
 const getCurrentFibers = (threadId: number | undefined) =>
@@ -291,9 +300,27 @@ const getCurrentFibers = (threadId: number | undefined) =>
     Effect.flatMap((fibers) =>
       Effect.all(
         fibers.map((fiber, idx) =>
-          Effect.map(
+          Effect.flatMap(
             getFiberCurrentSpan(`(globalThis["effect/devtools/instrumentation"].fibers || [])[${idx}]`, 1, threadId),
-            (stack) => new FiberEntry({ ...fiber, stack })
+            (stack) =>
+              Effect.gen(function*() {
+                const runtime = yield* Effect.runtime<DebugChannel.DebugChannel>()
+
+                return new FiberEntry({
+                  ...fiber,
+                  stack,
+                  interrupt: Effect.provide(
+                    DebugChannel.DebugChannel.evaluate({
+                      expression: `globalThis["effect/devtools/instrumentation"].interruptFiber(${
+                        JSON.stringify(fiber.id)
+                      })`,
+                      guessFrameId: true,
+                      threadId
+                    }),
+                    runtime
+                  ).pipe(Effect.ignoreLogged)
+                })
+              })
           )
         ),
         { concurrency: "unbounded" }
