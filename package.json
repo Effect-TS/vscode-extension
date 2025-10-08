@@ -113,6 +113,11 @@
         "icon": "$(go-to-file)"
       },
       {
+        "command": "effect.interruptDebugFiber",
+        "title": "Effect Dev Tools: Interrupt Fiber",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "effect.resetTracerExtended",
         "title": "Effect Dev Tools: Reset Tracer Extended",
         "icon": "$(refresh)"
@@ -258,7 +263,12 @@
         },
         {
           "command": "effect.revealFiberCurrentSpan",
-          "when": "inDebugMode && view === effect-debug-fibers",
+          "when": "inDebugMode && view === effect-debug-fibers && (viewItem === fiber || viewItem === fiber-interrupting)",
+          "group": "inline"
+        },
+        {
+          "command": "effect.interruptDebugFiber",
+          "when": "inDebugMode && view === effect-debug-fibers && viewItem === fiber",
           "group": "inline"
         }
       ]

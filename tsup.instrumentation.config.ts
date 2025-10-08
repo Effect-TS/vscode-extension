@@ -20,7 +20,7 @@ export default defineConfig({
       const path = yield* Path.Path
       const compiled = yield* fs.readFileString("out/instrumentation.global.js")
       const code =
-        `(function(){ var Array = globalThis.Array; var Object = globalThis.Object; var String = globalThis.String; \n${compiled}} )()`
+        `(function(){ var Array = globalThis.Array; var Object = globalThis.Object; var String = globalThis.String; var Date = globalThis.Date; \n${compiled}} )()`
       yield* fs.writeFileString(
         path.join(__dirname, "src", "instrumentation", "instrumentation.compiled.ts"),
         `/* eslint-disable @effect/dprint */\nexport const compiledInstrumentationString = ${JSON.stringify(code)}`

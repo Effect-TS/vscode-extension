@@ -52,6 +52,7 @@ if (!(instrumentationKey in globalThis)) {
     "getFiberCurrentSpanStack": getFiberCurrentSpanStack,
     "getFiberCurrentContext": getFiberCurrentContext,
     "getAliveFibers": getAliveFibers,
+    "interruptFiber": interruptFiber,
     "getAutoPauseConfig": getAutoPauseConfig,
     "togglePauseOnDefects": togglePauseOnDefects,
     "getAndUnsetPauseStateToReveal": getAndUnsetPauseStateToReveal
@@ -139,12 +140,27 @@ if (!(instrumentationKey in globalThis)) {
       .flatMap((context) => [...context.unsafeMap.entries()])
   }
 
+  function encodeFiberId(fiber: Fiber.Runtime<any, any>) {
+    return fiber.id().id.toString()
+  }
+
   function getAliveFibers() {
     return fibers.map((fiber) => ({
-      "id": fiber.id().id.toString(),
+      "id": encodeFiberId(fiber),
       "isCurrent": fiber === (globalThis as any)["effect/FiberCurrent"],
-      "isInterruptible": fiber && "currentRuntimeFlags" in fiber && interruptible(fiber.currentRuntimeFlags as any)
+      "isInterruptible": fiber && "currentRuntimeFlags" in fiber && interruptible(fiber.currentRuntimeFlags as any),
+      "isInterrupted": fiber && "isInterrupted" in fiber && typeof fiber.isInterrupted === "function" &&
+        fiber.isInterrupted(),
+      "children": "getChildren" in fiber && typeof fiber.getChildren === "function"
+        ? [...fiber.getChildren()].map(encodeFiberId)
+        : [],
+      "startTimeMillis": fiber.id().startTimeMillis,
+      "lifeTimeMillis": Date.now() - fiber.id().startTimeMillis
     }))
+  }
+
+  function interruptFiber(fiberId: string) {
+    fibers.forEach((fiber) => encodeFiberId(fiber) === fiberId && fiber.unsafeInterruptAsFork(fiber.id()))
   }
 
   function getAutoPauseConfig() {
