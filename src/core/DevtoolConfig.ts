@@ -32,13 +32,13 @@ export const isDevtoolConfig = (u: unknown): u is DevtoolConfig<any, any> => Pre
  * @category models
  */
 export interface DevtoolConfig<
-  in out Name extends string,
+  in out Id extends string,
   out Type extends Schema.Schema.Any = typeof Schema.Void
 > extends Pipeable {
   new(_: never): {}
 
   readonly [TypeId]: TypeId
-  readonly _name: Name
+  readonly _id: Id
   readonly key: string
   readonly description: string
   readonly schema: Type
@@ -48,27 +48,27 @@ export interface DevtoolConfig<
   /**
    * Get the current value of the configuration.
    */
-  readonly get: Effect.Effect<Schema.Schema.Type<Type>, never, DevtoolConfigProvider<Name>>
+  readonly get: Effect.Effect<Schema.Schema.Type<Type>, never, DevtoolConfigProvider<Id>>
 
   /**
    * Get the changes of the configuration.
    */
-  readonly changes: Effect.Effect<Schema.Schema.Type<Type>, never, DevtoolConfigProvider<Name>>
+  readonly changes: Effect.Effect<Schema.Schema.Type<Type>, never, DevtoolConfigProvider<Id>>
 
   /**
    * Set the schema for the configuration value.
    */
-  setSchema<S extends Schema.Schema.Any>(schema: S, defaultValue: Schema.Schema.Type<S>): DevtoolConfig<Name, S>
+  setSchema<S extends Schema.Schema.Any>(schema: S, defaultValue: Schema.Schema.Type<S>): DevtoolConfig<Id, S>
 
   /**
    * Add an annotation on the configuration.
    */
-  annotate<I, S>(tag: Context_.Tag<I, S>, value: S): DevtoolConfig<Name, Type>
+  annotate<I, S>(tag: Context_.Tag<I, S>, value: S): DevtoolConfig<Id, Type>
 
   /**
    * Merge the annotations of the configuration with the provided context.
    */
-  annotateContext<I>(context: Context_.Context<I>): DevtoolConfig<Name, Type>
+  annotateContext<I>(context: Context_.Context<I>): DevtoolConfig<Id, Type>
 }
 
 /**
@@ -77,7 +77,7 @@ export interface DevtoolConfig<
  */
 export interface Any extends Pipeable {
   readonly [TypeId]: TypeId
-  readonly _name: string
+  readonly _id: string
   readonly key: string
 }
 
@@ -87,7 +87,7 @@ export interface Any extends Pipeable {
  */
 export interface AnyWithProps {
   readonly [TypeId]: TypeId
-  readonly _name: string
+  readonly _id: string
   readonly key: string
   readonly description: string
   readonly schema: Schema.Schema.Any
@@ -99,29 +99,29 @@ export interface AnyWithProps {
  * @since 1.0.0
  * @category models
  */
-export type Name<R> = R extends DevtoolConfig<infer _Name, infer _Type> ? _Name : never
+export type Id<R> = R extends DevtoolConfig<infer _Id, infer _Type> ? _Id : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Type<R> = R extends DevtoolConfig<infer _Name, infer _Type> ? _Type["Type"] : never
+export type Type<R> = R extends DevtoolConfig<infer _Id, infer _Type> ? _Type["Type"] : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Encoded<R> = R extends DevtoolConfig<infer _Name, infer _Type> ? _Type["Encoded"] : never
+export type Encoded<R> = R extends DevtoolConfig<infer _Id, infer _Type> ? _Type["Encoded"] : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Context<R> = R extends DevtoolConfig<infer _Name, infer _Type> ? _Type["Context"] : never
+export type Context<R> = R extends DevtoolConfig<infer _Id, infer _Type> ? _Type["Context"] : never
 
-export interface DevtoolConfigProvider<_Name extends string> {
+export interface DevtoolConfigProvider<_Id extends string> {
   readonly _: unique symbol
-  readonly name: _Name
+  readonly id: _Id
 }
 
 const Proto = {
@@ -131,7 +131,7 @@ const Proto = {
   },
   setSchema(this: AnyWithProps, schema: Schema.Schema.Any, defaultValue: any) {
     return makeProto({
-      _name: this._name,
+      _id: this._id,
       description: this.description,
       schema,
       defaultValue,
@@ -140,7 +140,7 @@ const Proto = {
   },
   annotate(this: AnyWithProps, tag: Context_.Tag<any, any>, value: any) {
     return makeProto({
-      _name: this._name,
+      _id: this._id,
       description: this.description,
       schema: this.schema,
       defaultValue: this.defaultValue,
@@ -149,7 +149,7 @@ const Proto = {
   },
   annotateContext(this: AnyWithProps, context: Context_.Context<any>) {
     return makeProto({
-      _name: this._name,
+      _id: this._id,
       description: this.description,
       schema: this.schema,
       defaultValue: this.defaultValue,
@@ -158,17 +158,17 @@ const Proto = {
   }
 }
 
-const makeProto = <const Name extends string, Type extends Schema.Schema.Any>(options: {
-  readonly _name: Name
+const makeProto = <const Id extends string, Type extends Schema.Schema.Any>(options: {
+  readonly _id: Id
   readonly description: string
   readonly schema: Type
   readonly defaultValue: Schema.Schema.Type<Type>
   readonly annotations: Context_.Context<never>
-}): DevtoolConfig<Name, Type> => {
+}): DevtoolConfig<Id, Type> => {
   function DevtoolConfig() {}
   Object.setPrototypeOf(DevtoolConfig, Proto)
   Object.assign(DevtoolConfig, options)
-  DevtoolConfig.key = `@effect/devtools/DevtoolConfig/${options._name}`
+  DevtoolConfig.key = `@effect/devtools/DevtoolConfig/${options._id}`
   return DevtoolConfig as any
 }
 
@@ -176,20 +176,20 @@ const makeProto = <const Name extends string, Type extends Schema.Schema.Any>(op
  * @since 1.0.0
  * @category constructors
  */
-export const make = <const Name extends string, Type extends Schema.Schema.Any = typeof Schema.Void>(
-  name: Name,
+export const make = <const Id extends string, Type extends Schema.Schema.Any = typeof Schema.Void>(
+  id: Id,
   options: {
     readonly description?: string
     readonly schema?: Type
     readonly defaultValue?: Schema.Schema.Type<Type>
   }
-): DevtoolConfig<Name, Type> => {
+): DevtoolConfig<Id, Type> => {
   const schema = options?.schema ?? Schema.Void
-  const description = options?.description ?? name
+  const description = options?.description ?? id
   const defaultValue = options?.defaultValue ?? undefined
 
   return makeProto({
-    _name: name,
+    _id: id,
     description,
     schema: schema as Type,
     defaultValue: defaultValue as Schema.Schema.Type<Type>,

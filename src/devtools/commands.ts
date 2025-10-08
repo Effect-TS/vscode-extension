@@ -5,6 +5,7 @@ import * as DevtoolIcon from "../core/DevtoolIcon.js"
 export const StartServer = DevtoolCommand.make("effect.startServer", {
   title: "Effect Dev Tools: Start Server",
   icon: DevtoolIcon.play,
+  payload: Schema.Struct({}),
   success: Schema.Void,
   error: Schema.Never
 })

@@ -2,10 +2,12 @@
  * @since 1.0.0
  */
 import * as Context_ from "effect/Context"
-import type { Effect } from "effect/Effect"
+import * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import type { DevtoolIcon } from "./DevtoolIcon.js"
 
 /**
@@ -51,6 +53,10 @@ export interface DevtoolCommand<
   readonly errorSchema: Error
   readonly annotations: Context_.Context<never>
 
+  execute(
+    ...args: PayloadConstructor<this> extends void ? [] : [PayloadConstructor<this>]
+  ): Effect.Effect<Schema.Schema.Type<Success>, Schema.Schema.Type<Error>, DevtoolCommandProvider<Id>>
+
   /**
    * Set the schema for the success response of the command.
    */
@@ -82,6 +88,30 @@ export interface DevtoolCommand<
    * Merge the annotations of the command with the provided context.
    */
   annotateContext<I>(context: Context_.Context<I>): DevtoolCommand<Id, Payload, Success, Error>
+
+  /**
+   * Converts a toolkit into an Effect Context containing handlers for each tool
+   * in the toolkit.
+   */
+  toContext<EX = never, RX = never>(
+    build: Effect.Effect<
+      (args: Schema.Schema.Type<Payload>) => Effect.Effect<Schema.Schema.Type<Success>, Schema.Schema.Type<Error>>,
+      EX,
+      RX
+    >
+  ): Effect.Effect<Context_.Context<DevtoolCommandProvider<Id>>, EX, RX>
+
+  /**
+   * Converts a toolkit into a Layer containing handlers for each tool in the
+   * toolkit.
+   */
+  toLayer<EX = never, RX = never>(
+    build: Effect.Effect<
+      (args: Schema.Schema.Type<Payload>) => Effect.Effect<Schema.Schema.Type<Success>, Schema.Schema.Type<Error>>,
+      EX,
+      RX
+    >
+  ): Layer.Layer<DevtoolCommandProvider<Id>, EX, Exclude<RX, Scope.Scope>>
 }
 
 /**
@@ -193,7 +223,7 @@ export type AddError<R extends Any, Error extends Schema.Schema.All> = R extends
  * @since 1.0.0
  * @category models
  */
-export type Handler<_Id extends string> = (payload: any) => Effect<any, any, any>
+export type Handler<_Id extends string> = (payload: any) => Effect.Effect<any, any, any>
 
 /**
  * @since 1.0.0
@@ -206,6 +236,11 @@ export type ToHandler<R extends Any> = R extends DevtoolCommand<
   infer _Error
 > ? Handler<_Id>
   : never
+
+export interface DevtoolCommandProvider<_Id extends string> {
+  readonly _: unique symbol
+  readonly id: _Id
+}
 
 /**
  * @since 1.0.0
@@ -222,7 +257,7 @@ export type ResultFrom<R extends Any, Context> = R extends DevtoolCommand<
   infer _Payload,
   infer _Success,
   infer _Error
-> ? Effect<_Success["Type"], _Error["Type"], Context>
+> ? Effect.Effect<_Success["Type"], _Error["Type"], Context>
   : never
 
 const Proto = {
@@ -283,6 +318,18 @@ const Proto = {
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
       annotations: Context_.merge(this.annotations, context)
+    })
+  },
+  toContext(
+    this: AnyWithProps,
+    build: Effect.Effect<Handler<string>>
+  ) {
+    return Effect.gen(this, function*() {
+      const context = yield* Effect.context<never>()
+      const handler = Effect.isEffect(build) ? yield* build : build
+      const contextMap = new Map<string, unknown>()
+      contextMap.set(this.key, { handler, context })
+      return Context_.unsafeMake(contextMap)
     })
   }
 }
