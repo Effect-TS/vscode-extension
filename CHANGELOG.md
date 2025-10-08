@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.8.0
+
+### Minor Changes
+
+- [#80](https://github.com/Effect-TS/vscode-extension/pull/80) [`46d59f1`](https://github.com/Effect-TS/vscode-extension/commit/46d59f16caaa386f106ceaf9b34f93ab804b131f) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Allow to interrupt fibers in debugger UI
+
 ## 0.7.1
 
 ### Patch Changes
