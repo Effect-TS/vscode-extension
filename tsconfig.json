@@ -1,27 +1,11 @@
 {
-  "compilerOptions": {
-    "module": "NodeNext",
-    "target": "ES2022",
-    "noEmit": true,
-    "lib": [
-      "ES2022"
-    ],
-    "sourceMap": true,
-    "skipLibCheck": true,
-    "rootDir": "src",
-    "baseUrl": ".",
-    "strict": true,
-    "plugins": [
-      {
-        "name": "@effect/language-service",
-        "namespaceImportPackages": [
-          "effect",
-          "@effect/*"
-        ]
-      }
-    ]
-  },
-  "include": [
-    "src/**/*"
+  "$schema": "http://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.jsonc",
+  "include": [],
+  "references": [
+    { "path": "packages/devtools/shared-instrumentation" },
+    { "path": "packages/devtools/shared-ui" },
+    { "path": "packages/devtools/shared" },
+    { "path": "packages/devtools/vscode" }
   ]
 }

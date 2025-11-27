@@ -4,11 +4,12 @@ import * as tsResolver from "eslint-import-resolver-typescript"
 import importPlugin from "eslint-plugin-import-x"
 import simpleImportSort from "eslint-plugin-simple-import-sort"
 import sortDestructureKeys from "eslint-plugin-sort-destructure-keys"
+import unusedImports from "eslint-plugin-unused-imports"
 import tseslint from "typescript-eslint"
 
 export default tseslint.config(
   {
-    ignores: ["**/dist", "**/out", "**/build", "**/docs", "**/*.md"]
+    ignores: ["**/dist", "**/docs", "**/.tsbuildinfo", "**/*.md"]
   },
   eslint.configs.recommended,
   tseslint.configs.strict,
@@ -119,24 +120,30 @@ export default tseslint.config(
     }
   },
   {
-    files: ["packages/*/src/**/*", "packages/*/test/**/*"],
+    files: ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts"],
     rules: {
       "no-console": "error"
     }
   },
   {
-    files: ["src/instrumentation/**/*"],
+    files: ["scratchpad/eslint/**/*"],
+    plugins: {
+      "unused-imports": unusedImports
+    },
     rules: {
-      "@typescript-eslint/no-restricted-imports": [
+      "unused-imports/no-unused-imports": "error",
+      "@effect/dprint": [
         "error",
         {
-          "patterns": [
-            {
-              "group": ["effect", "effect/*"],
-              "message": "Importing the effect module is not allowed; only type imports are allowed.",
-              "allowTypeImports": true
-            }
-          ]
+          config: {
+            indentWidth: 2,
+            lineWidth: 80,
+            semiColons: "asi",
+            quoteStyle: "alwaysDouble",
+            trailingCommas: "never",
+            operatorPosition: "maintain",
+            "arrowFunction.useParentheses": "force"
+          }
         }
       ]
     }
