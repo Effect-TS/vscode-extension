@@ -174,7 +174,7 @@ const drawTraces = (
     // Calculate position based on the visible time range
     const x = Number(trace.startTime - viewState.startTime) * pixelsPerNano
     const y = offsetY + trace.depth * (barHeight + barPadding) + viewState.offsetY
-    const width = Number(trace.endTime - trace.startTime) * pixelsPerNano
+    const width = Math.max(1, Number(trace.endTime - trace.startTime) * pixelsPerNano)
 
     // Skip if completely outside viewport horizontally
     if (x + width < 0 || x > canvasWidth) {

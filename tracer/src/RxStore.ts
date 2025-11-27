@@ -53,11 +53,22 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
       column: number
     }>()
 
-    function layoutTraceEvents(now: bigint, expandedSpanIds: ReadonlyArray<string>) {
+    function layoutTraceEvents(origin: bigint, now: bigint, expandedSpanIds: ReadonlyArray<string>) {
       const toProcess: Array<string> = ["<root>"]
       const layoutedEvents: Array<TraceEvent> = []
       const parentDepth = new Map<string, number>()
       let currentDepth = 0
+      // collect min and max time
+      let minTime: null | bigint = null
+      let maxTime: null | bigint = null
+      for (const span of spanById.values()) {
+        if (span._tag === "Span") {
+          if (minTime === null || span.status.startTime < minTime) minTime = span.status.startTime
+          if (span.status._tag === "Ended" && (maxTime === null || span.status.endTime > maxTime)) {
+            maxTime = span.status.endTime
+          }
+        }
+      }
       while (toProcess.length > 0) {
         const spanId = toProcess.shift()
         if (!spanId) break
@@ -71,17 +82,24 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
           continue
         }
 
+        // skip the root
+        if (spanId === "<root>") continue
+
         // layout the span
         const span = spanById.get(spanId)
-        const name = span ? span._tag === "ExternalSpan" ? "<external>" : span.name : "<" + spanId + ">"
+        const name = span
+          ? span._tag === "ExternalSpan" ? "<external " + span.spanId + ">" : span.name
+          : "<" + spanId + ">"
         const expandCollapseChevron = childIds && expandedSpanIds.includes(spanId) ? "⌄ " : childIds ? "› " : ""
         layoutedEvents.push({
           id: spanId,
           name: expandCollapseChevron + name,
-          startTime: span && span._tag === "Span" ? span.status.startTime : now,
-          endTime: span && span._tag === "Span" && span.status._tag === "Ended" ? span.status.endTime : now,
-          color: span
-            ? span._tag === "ExternalSpan" ? "#8e44ad" : span.status._tag === "Started" ? "#95a5a6" : "#2980b9"
+          startTime: span && span._tag === "Span" ? span.status.startTime : (minTime ?? origin),
+          endTime: span && span._tag === "Span" && span.status._tag === "Ended"
+            ? span.status.endTime
+            : (maxTime ?? now),
+          color: span ?
+            span._tag === "ExternalSpan" ? "#8e44ad" : (span.status._tag === "Started" ? "#95a5a6" : "#2980b9")
             : "#000000",
           depth: (forcedDepth || currentDepth++) - 1
         })
@@ -90,9 +108,10 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
     }
 
     const layoutNow = Effect.gen(function*() {
+      const origin = yield* SubscriptionRef.get(timeOrigin)
       const now = yield* Clock.currentTimeNanos
       const currentExpandedSpanIds = yield* SubscriptionRef.get(expandedSpanIds)
-      return yield* SubscriptionRef.update(traceEvents, () => layoutTraceEvents(now, currentExpandedSpanIds))
+      return yield* SubscriptionRef.update(traceEvents, () => layoutTraceEvents(origin, now, currentExpandedSpanIds))
     })
 
     const reset = SubscriptionRef.set(traceEvents, []).pipe(
@@ -163,6 +182,9 @@ export class RxStore extends Effect.Service<RxStore>()("RxStore", {
     yield* vscode.messages.take.pipe(
       Effect.tap((message) => {
         switch (message._tag) {
+          case "ExternalSpan": {
+            return registerSpan(message)
+          }
           case "Span": {
             return registerSpan(message)
           }

@@ -1,4 +1,4 @@
-import { Span, SpanEvent } from "@effect/experimental/DevTools/Domain"
+import { ParentSpan, SpanEvent } from "@effect/experimental/DevTools/Domain"
 import * as Effect from "effect/Effect"
 import * as Mailbox from "effect/Mailbox"
 import * as Schema from "effect/Schema"
@@ -12,7 +12,7 @@ export class GoToLocation extends Schema.TaggedClass<GoToLocation>()("GoToLocati
   column: Schema.Int
 }) {}
 
-export const HostMessage = Schema.Union(ResetTracer, Span, SpanEvent)
+export const HostMessage = Schema.Union(ResetTracer, ParentSpan, SpanEvent)
 
 const decode = Schema.decodeUnknownSync(HostMessage)
 const encode = Schema.encodeUnknownSync(Schema.Union(GoToLocation))
