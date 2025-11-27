@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.9.0
+
+### Minor Changes
+
+- [#82](https://github.com/Effect-TS/vscode-extension/pull/82) [`9ed7691`](https://github.com/Effect-TS/vscode-extension/commit/9ed769112799f09f448fb04481afa4cb588c4abd) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Fixed handling of external spans timing
+
 ## 0.8.0
 
 ### Minor Changes
