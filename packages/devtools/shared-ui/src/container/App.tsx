@@ -72,13 +72,14 @@ class ContainerApp extends Effect.Service<ContainerApp>()("ContainerApp", {
           const panelData = yield* Schema.decodeUnknown(InitializePanel)(
             event.data
           )
-          yield* SubscriptionRef.update(panels, (panels) => [
-            ...panels.filter((p) => p.id !== panelData.id),
-            {
-              ...panelData,
-              port: event.ports[0]
+          yield* SubscriptionRef.update(panels, (panels) => {
+            const existingPanel = panels.find((p) => p.id === panelData.id)
+            if (existingPanel) {
+              return panels.map((p) => p.id === panelData.id ? { ...p, port: event.ports[0] } : p)
+            } else {
+              return [...panels, { ...panelData, port: event.ports[0] }]
             }
-          ])
+          })
         }
       }).pipe(Effect.ignoreLogged, Runtime.runPromise(runtime))
     }
@@ -101,7 +102,7 @@ function WebViewFrame(props: Panels & { style?: React.CSSProperties }) {
   const [hasLoaded, setHasLoaded] = React.useState(false)
   const onLoad = React.useCallback(() => {
     setHasLoaded(true)
-  }, [props.port])
+  }, [setHasLoaded])
   React.useEffect(() => {
     if (hasLoaded && ref.current) {
       ref.current?.contentWindow?.postMessage("", "*", [props.port])
@@ -138,8 +139,11 @@ function SidePanel(props: Panels) {
 export function App() {
   const panels = useAtomSuspense(panelsAtom)
   const [selectedIndex, setSelectedIndex] = React.useState(0)
+  const [openedPanels, setOpenedPanels] = React.useState<Array<number>>([0])
   const onTabsSelect = React.useCallback((event: VscTabsSelectEvent) => {
-    setSelectedIndex(event.detail.selectedIndex)
+    const panelIndex = event.detail.selectedIndex
+    setSelectedIndex(panelIndex)
+    setOpenedPanels((previously) => [...previously.filter((id) => id !== panelIndex), panelIndex])
   }, [])
 
   return (
@@ -172,11 +176,15 @@ export function App() {
                   {panel.title}
                 </vscode-tab-header>
                 <vscode-tab-panel style={index === selectedIndex ? styles.tabPanelActive : styles.tabPanelInactive}>
-                  <WebViewFrame
-                    key={panel.id}
-                    {...panel}
-                    style={styles.iframeWithFlex}
-                  />
+                  {openedPanels.includes(index) ?
+                    (
+                      <WebViewFrame
+                        key={panel.id}
+                        {...panel}
+                        style={styles.iframeWithFlex}
+                      />
+                    ) :
+                    null}
                 </vscode-tab-panel>
               </>
             ))

@@ -104,17 +104,6 @@ export const e = Effect.gen(function*() {
     })
   )
 }).pipe(
-  Effect.onInterrupt(() => {
-    console.log("evaluateOnEveryExecutionContext interrupt")
-    return Effect.void
-  }),
-  Effect.catchAllCause((cause) => {
-    console.log("evaluateOnEveryExecutionContext error", cause)
-    return Effect.void
-  }),
-  Effect.map(() => {
-    console.log("evaluateOnEveryExecutionContext success")
-  }),
   Effect.uninterruptible,
   Effect.scoped
 )

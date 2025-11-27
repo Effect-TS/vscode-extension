@@ -1,5 +1,4 @@
 import "@vscode-elements/elements/dist/bundled"
-import * as React from "react"
 
 const styles = {
   splitLayout: {

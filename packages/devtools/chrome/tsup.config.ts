@@ -84,7 +84,8 @@ export default defineConfig({
         permissions: [
           "debugger",
           "tabs",
-          "activeTab"
+          "activeTab",
+          "storage"
         ]
       }
       const manifestPath = path.join(__dirname, "dist", "manifest.json")

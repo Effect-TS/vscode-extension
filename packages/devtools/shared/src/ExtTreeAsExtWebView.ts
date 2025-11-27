@@ -1,9 +1,3 @@
-import type * as ExtCommand from "@effect/devtools-shared/core/ExtCommand"
-import * as ExtHost from "@effect/devtools-shared/core/ExtHost"
-import type * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
-import * as ExtWebView from "@effect/devtools-shared/core/ExtWebView"
-import * as ExtWhenEvaluator from "@effect/devtools-shared/core/ExtWhenEvaluator"
-import * as TreeWebView from "@effect/devtools-shared/webviews/tree.generated"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -14,6 +8,12 @@ import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
+import type * as ExtCommand from "./core/ExtCommand.ts"
+import * as ExtHost from "./core/ExtHost.ts"
+import type * as ExtTreeView from "./core/ExtTreeView.ts"
+import * as ExtWebView from "./core/ExtWebView.ts"
+import * as ExtWhenEvaluator from "./core/ExtWhenEvaluator.ts"
+import * as TreeWebView from "./webviews/tree.generated.ts"
 
 export type Keys<V extends ExtTreeView.AnyWithProps, C extends ExtCommand.AnyWithProps> = ExtTreeView.Item<V> extends
   { _tag: infer K } ?
@@ -158,10 +158,10 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
           )
 
           // register handler
-          yield* Mailbox.toStream(queue).pipe(
-            Stream.filterMap(Schema.decodeUnknownOption(TreeWebView.OutMessage)),
-            Stream.mapEffect((_) =>
+          yield* queue.take.pipe(
+            Effect.flatMap((encoded) =>
               Effect.gen(function*() {
+                const _ = yield* Schema.decodeUnknown(TreeWebView.OutMessage)(encoded)
                 switch (_._tag) {
                   case "Initialized": {
                     yield* request(new TreeWebView.InvalidatedIds({ itemIds: Option.none() }))
@@ -180,8 +180,10 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
                         new TreeWebView.TreeItemChildrenInfo({ itemPath: _.itemPath, children: [] })
                       )
                     } else {
-                      const ids = yield* Effect.forEach(children.value, (child) =>
-                        source.treeItem(child).pipe(Effect.map((_) => _.id)))
+                      const ids = yield* Effect.forEach(
+                        children.value,
+                        (child) => source.treeItem(child).pipe(Effect.map((_) => _.id))
+                      )
                       return yield* request(
                         new TreeWebView.TreeItemChildrenInfo({ itemPath: _.itemPath, children: ids })
                       )
@@ -217,8 +219,7 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
                   }
                   case "ExecuteTitleAction": {
                     return yield* pipe(
-                      Array.findFirst(extActions, (c) =>
-                        c._id === _.id),
+                      Array.findFirst(extActions, (c) => c._id === _.id),
                       Effect.flatMap((command) => extHost.executeCommand(command, undefined))
                     )
                   }
@@ -253,7 +254,7 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
                 }
               }).pipe(withLoading, Effect.ignoreLogged)
             ),
-            Stream.runDrain,
+            Effect.forever,
             Effect.forkScoped
           )
         })

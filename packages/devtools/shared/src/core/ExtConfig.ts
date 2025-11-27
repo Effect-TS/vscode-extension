@@ -36,7 +36,7 @@ export const isExtConfig = (u: unknown): u is ExtConfig<any, any> => Predicate.h
  */
 export class ExtConfig<
   in out Id extends string,
-  out Type extends Schema.Schema.Any = typeof Schema.Void
+  out Type extends Schema.Schema.AnyNoContext = typeof Schema.Void
 > extends Effectable.Class<
   ConfigRef<Schema.Schema.Type<Type>>,
   never,
@@ -91,7 +91,7 @@ export interface AnyWithProps {
   readonly _id: string
   readonly title: string
   readonly description: string
-  readonly schema: Schema.Schema.Any
+  readonly schema: Schema.Schema.AnyNoContext
   readonly defaultValue: any
 }
 
@@ -141,7 +141,7 @@ export interface ConfigRef<A> {
  * @since 1.0.0
  * @category constructors
  */
-export const make = <const Id extends string, Type extends Schema.Schema.Any = typeof Schema.Void>(
+export const make = <const Id extends string, Type extends Schema.Schema.AnyNoContext = typeof Schema.Void>(
   id: Id,
   options: {
     readonly title?: string

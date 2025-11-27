@@ -1,11 +1,11 @@
+import * as ConfigAsExtWebView from "@effect/devtools-shared/ConfigAsExtWebView"
 import * as ExtWhenEvaluator from "@effect/devtools-shared/core/ExtWhenEvaluator"
 import { Commands, LiveCommonCapabilities, TreeViews, WebViews } from "@effect/devtools-shared/extension"
+import * as ExtTreeAsExtWebView from "@effect/devtools-shared/ExtTreeAsExtWebView"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Contribs from "./ChromeExtHost.ts"
 import * as ChromeExtHostDebugger from "./ChromeExtHostDebugger.ts"
-import * as ConfigAsExtWebView from "./ConfigAsExtWebView.ts"
-import * as ExtTreeAsExtWebView from "./ExtTreeAsExtWebView.ts"
 
 const ActivateDebugClientDefault = Layer.effectDiscard(Effect.gen(function*() {
   yield* Commands.AttachDebugSessionClient.execute()
@@ -47,7 +47,6 @@ const ChromeExtension = Layer.mergeAll(
 ).pipe(
   Layer.provideMerge(LiveCommonCapabilities),
   Layer.provide(ExtTreeAsExtWebView.layer),
-  Layer.provide(ConfigAsExtWebView.layer),
   Layer.provide(Contribs.ChromeExtHost),
   Layer.provideMerge(ChromeExtHostDebugger.ChromeExtHostDebugger),
   Layer.provide(ExtWhenEvaluator.ExtWhenEvaluator.Default),

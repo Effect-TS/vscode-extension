@@ -108,6 +108,7 @@ const infoAtom = Atom.family((configId: string) =>
 function ConfigControl({ configId }: { configId: string }) {
   const { value: info } = useAtomSuspense(infoAtom(configId))
   const id = React.useId()
+
   return (
     <vscode-form-group variant="vertical">
       <vscode-label htmlFor={id}>
