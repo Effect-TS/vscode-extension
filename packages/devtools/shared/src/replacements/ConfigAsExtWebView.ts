@@ -3,10 +3,10 @@ import * as JSONSchema from "effect/JSONSchema"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
-import type * as ExtConfig from "./core/ExtConfig.ts"
-import * as ExtHost from "./core/ExtHost.ts"
-import * as ExtWebView from "./core/ExtWebView.ts"
-import * as ConfigWebView from "./webviews/config.generated.ts"
+import type * as ExtConfig from "../core/ExtConfig.ts"
+import * as ExtHost from "../core/ExtHost.ts"
+import * as ExtWebView from "../core/ExtWebView.ts"
+import * as ConfigWebView from "../webviews/config.generated.ts"
 
 export const WebView = ExtWebView.make("effect-config", {
   title: "Config",

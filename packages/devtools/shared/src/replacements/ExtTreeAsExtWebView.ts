@@ -8,12 +8,12 @@ import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
-import type * as ExtCommand from "./core/ExtCommand.ts"
-import * as ExtHost from "./core/ExtHost.ts"
-import type * as ExtTreeView from "./core/ExtTreeView.ts"
-import * as ExtWebView from "./core/ExtWebView.ts"
-import * as ExtWhenEvaluator from "./core/ExtWhenEvaluator.ts"
-import * as TreeWebView from "./webviews/tree.generated.ts"
+import type * as ExtCommand from "../core/ExtCommand.ts"
+import * as ExtHost from "../core/ExtHost.ts"
+import type * as ExtTreeView from "../core/ExtTreeView.ts"
+import * as ExtWebView from "../core/ExtWebView.ts"
+import * as ExtWhenEvaluator from "../core/ExtWhenEvaluator.ts"
+import * as TreeWebView from "../webviews/tree.generated.ts"
 
 export type Keys<V extends ExtTreeView.AnyWithProps, C extends ExtCommand.AnyWithProps> = ExtTreeView.Item<V> extends
   { _tag: infer K } ?
