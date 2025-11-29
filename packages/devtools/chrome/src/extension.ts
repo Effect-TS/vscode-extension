@@ -30,15 +30,15 @@ const ChromeExtension = Layer.mergeAll(
   Contribs.treeView(TreeViews.DebugBreakpointsTree, "debug"),
   // context
   Contribs.treeView(TreeViews.DebugContextTree, "debug"),
-  Contribs.treeViewNavigationAction(TreeViews.DebugContextTree, Commands.RefreshDebugContext),
+  Contribs.treeViewNavigationAction(TreeViews.DebugContextTree, Commands.DebugContextRefresh),
   // fibers
   Contribs.treeView(TreeViews.DebugFibersTree, "debug"),
-  Contribs.treeViewNavigationAction(TreeViews.DebugFibersTree, Commands.RefreshDebugFibers),
+  Contribs.treeViewNavigationAction(TreeViews.DebugFibersTree, Commands.DebugFibersRefresh),
   Contribs.treeViewInlineAction(TreeViews.DebugFibersTree, Commands.InterruptDebugFiber)("FiberId"),
   Contribs.treeViewInlineAction(TreeViews.DebugFibersTree, Commands.RevealFiberCurrentSpan)("FiberId"),
   // span stack
   Contribs.treeView(TreeViews.DebugSpanStackTree, "debug"),
-  Contribs.treeViewNavigationAction(TreeViews.DebugSpanStackTree, Commands.RefreshDebugSpanStack),
+  Contribs.treeViewNavigationAction(TreeViews.DebugSpanStackTree, Commands.DebugSpanStackRefresh),
   Contribs.treeViewNavigationAction(TreeViews.DebugSpanStackTree, Commands.EnableSpanStackIgnoreList),
   Contribs.treeViewNavigationAction(TreeViews.DebugSpanStackTree, Commands.DisableSpanStackIgnoreList),
   Contribs.treeViewInlineAction(TreeViews.DebugSpanStackTree, Commands.RevealSpanLocation)("SpanNode"),

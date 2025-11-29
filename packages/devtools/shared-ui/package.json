@@ -28,6 +28,8 @@
     "@vscode/codicons": "^0.0.42",
     "@types/chrome": "^0.1.29",
     "babel-plugin-react-compiler": "^1.0.0",
-    "@tanstack/react-virtual": "^3.13.12"
+    "@tanstack/react-virtual": "^3.13.12",
+    "react-aria": "^3.44.0",
+    "react-stately": "^3.42.0"
   }
 }

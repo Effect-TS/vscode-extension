@@ -95,7 +95,7 @@ export const DebugContextTreeViewLive = Layer.unwrapScoped(Effect.gen(function*(
     )
 
   const refreshSignalRef = yield* SubscriptionRef.make(0)
-  const refreshContextCommand = DevtoolCommands.RefreshDebugContext.toLayer(Effect.gen(function*() {
+  const refreshContextCommand = DevtoolCommands.DebugContextRefresh.toLayer(Effect.gen(function*() {
     return () => SubscriptionRef.update(refreshSignalRef, (_) => _ + 1)
   }))
 

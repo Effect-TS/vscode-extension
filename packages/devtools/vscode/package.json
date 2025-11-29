@@ -79,7 +79,7 @@
     },
     "commands": [
       {
-        "command": "effect.refreshDebugFibers",
+        "command": "effect.debugFibersRefresh",
         "title": "Effect Dev Tools: Refresh Debug Fibers",
         "icon": "$(refresh)",
         "enablement": "true"
@@ -97,13 +97,13 @@
         "enablement": "true"
       },
       {
-        "command": "effect.refreshDebugContext",
+        "command": "effect.debugContextRefresh",
         "title": "Effect Dev Tools: Refresh Debug Context",
         "icon": "$(refresh)",
         "enablement": "true"
       },
       {
-        "command": "effect.refreshDebugSpanStack",
+        "command": "effect.debugSpanStackRefresh",
         "title": "Effect Dev Tools: Refresh Debug Span Stack",
         "icon": "$(refresh)",
         "enablement": "true"
@@ -274,6 +274,21 @@
         {
           "command": "effect.resetTracerExtended",
           "when": "view === effect-tracer-extended && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.debugContextRefresh",
+          "when": "view === effect-context && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.debugFibersRefresh",
+          "when": "view === effect-debug-fibers && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.debugSpanStackRefresh",
+          "when": "view === effect-debug-span-stack && true",
           "group": "navigation"
         },
         {

@@ -170,7 +170,7 @@ export const DebugSpanStackTreeViewLive = Layer.unwrapScoped(Effect.gen(function
 
   // refresh
   const refreshSignalRef = yield* SubscriptionRef.make(0)
-  const refreshSpanStackCommand = DevtoolCommands.RefreshDebugSpanStack.toLayer(Effect.gen(function*() {
+  const refreshSpanStackCommand = DevtoolCommands.DebugSpanStackRefresh.toLayer(Effect.gen(function*() {
     return () => SubscriptionRef.update(refreshSignalRef, (_) => _ + 1)
   }))
 

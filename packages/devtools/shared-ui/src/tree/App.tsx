@@ -9,6 +9,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
+import * as React from "react"
 import { useInView } from "react-intersection-observer"
 import * as WebviewMessaging from "../WebviewMessaging.ts"
 import type { TitleAction } from "./messages.ts"
@@ -310,7 +311,7 @@ function TitleActionButton({ action }: { action: TitleAction }) {
     <vscode-toolbar-button
       onClick={onClick}
       key={action.id}
-      label={action.label}
+      title={action.label}
       icon={Option.getOrElse(action.icon, () => "")}
     />
   )

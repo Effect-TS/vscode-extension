@@ -79,7 +79,7 @@ class FiberId extends Data.TaggedClass("FiberId")<{
     )
     return Effect.succeed({
       id: this.fiberId,
-      label: "Fiber#" + this.fiberEntry.id + (this.fiberEntry.isInterrupted ? " (interrupting)" : "") +
+      label: "#" + this.fiberEntry.id + (this.fiberEntry.isInterrupted ? " (interrupting)" : "") +
         (this.fiberEntry.isInterruptible ? "" : " (uninterruptible)") +
         (interruptionRequested ? " (interruption requested)" : ""),
       description,
@@ -253,7 +253,7 @@ export const DebugFibersTreeViewLive = Layer.unwrapScoped(Effect.gen(function*()
 
   // refresh
   const refreshSignalRef = yield* SubscriptionRef.make(0)
-  const refreshFibersCommand = DevtoolCommands.RefreshDebugFibers.toLayer(Effect.gen(function*() {
+  const refreshFibersCommand = DevtoolCommands.DebugFibersRefresh.toLayer(Effect.gen(function*() {
     return () => SubscriptionRef.update(refreshSignalRef, (_) => _ + 1)
   }))
 
