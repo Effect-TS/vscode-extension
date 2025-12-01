@@ -144,7 +144,8 @@ export const DebugContextTreeViewLive = Layer.unwrapScoped(Effect.gen(function*(
     })
   )
 
-  return treeViewProvider.pipe(
+  return ExtTreeView.treeViewNavigationAction(DebugContextTree, DevtoolCommands.DebugContextRefresh).pipe(
+    Layer.provideMerge(treeViewProvider),
     Layer.provideMerge(refreshContextCommand)
   )
 }))

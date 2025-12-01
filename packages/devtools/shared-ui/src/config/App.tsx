@@ -14,6 +14,7 @@ import {
   RequestConfigInfo,
   RequestConfigList
 } from "./messages.ts"
+import "../components/index.ts"
 
 const styles = {
   scrollable: {

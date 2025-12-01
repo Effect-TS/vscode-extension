@@ -25,3 +25,4 @@ scratchpad/**/*.ts
 # VsCode test and extension files
 .vscode-test/
 *.vsix
+opencode.jsonc

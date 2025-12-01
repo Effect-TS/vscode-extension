@@ -247,18 +247,8 @@
     "menus": {
       "view/title": [
         {
-          "command": "effect.startServer",
-          "when": "view === effect-clients && effect:running === false",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.stopServer",
-          "when": "view === effect-clients && effect:running === true",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.attachDebugSessionClient",
-          "when": "view === effect-clients && effect:hasDebugTargets",
+          "command": "effect.debugContextRefresh",
+          "when": "view === effect-context && true",
           "group": "navigation"
         },
         {
@@ -269,16 +259,6 @@
         {
           "command": "effect.resetTracer",
           "when": "view === effect-tracer && true",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.resetTracerExtended",
-          "when": "view === effect-tracer-extended && true",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.debugContextRefresh",
-          "when": "view === effect-context && true",
           "group": "navigation"
         },
         {
@@ -299,6 +279,26 @@
         {
           "command": "effect.disableSpanStackIgnoreList",
           "when": "view === effect-debug-span-stack && effect:spanStackIgnoreListEnabled === true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.startServer",
+          "when": "view === effect-clients && effect:running === false",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.stopServer",
+          "when": "view === effect-clients && effect:running === true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.attachDebugSessionClient",
+          "when": "view === effect-clients && effect:hasDebugTargets",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.resetTracerExtended",
+          "when": "view === effect-tracer-extended && true",
           "group": "navigation"
         }
       ],

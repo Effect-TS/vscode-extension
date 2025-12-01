@@ -244,7 +244,8 @@ export const ClientMetricsTreeViewLive = Layer.unwrapScoped(Effect.gen(function*
     Effect.succeed(() => reset.pipe(Effect.ignoreLogged))
   )
 
-  return treeViewProvider.pipe(
+  return ExtTreeView.treeViewNavigationAction(ClientMetricsTree, Commands.ResetMetrics).pipe(
+    Layer.provideMerge(treeViewProvider),
     Layer.provideMerge(resetMetrics)
   )
 }))

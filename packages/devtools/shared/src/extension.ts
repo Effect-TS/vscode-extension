@@ -8,6 +8,7 @@ import { ClientsTree, ClientsTreeViewLive } from "./ClientsTreeView.ts"
 import { ClientTracerWebView, ClientTracerWebViewLive } from "./ClientTracerWebView.ts"
 import * as ExtHost from "./core/ExtHost.ts"
 import * as ExtHostDebugger from "./core/ExtHostDebugger.ts"
+import * as ExtTreeView from "./core/ExtTreeView.ts"
 import { DebugBreakpointsTree, DebugBreakpointsTreeViewLive } from "./DebugBreakpointsTreeView.ts"
 import { DebugContextTree, DebugContextTreeViewLive } from "./DebugContextTreeView.ts"
 import { DebugFibersTree, DebugFibersTreeViewLive } from "./DebugFibersTreeView.ts"
@@ -31,7 +32,10 @@ const SetHasDebugTargets = Layer.scopedDiscard(Effect.gen(function*() {
 }))
 
 export const LiveServerCapabilities = Layer.mergeAll(
-  ServerCommandsLive
+  ExtTreeView.treeViewNavigationAction(ClientsTree, DevtoolCommands.StartServer),
+  ExtTreeView.treeViewNavigationAction(ClientsTree, DevtoolCommands.StopServer)
+).pipe(
+  Layer.provideMerge(ServerCommandsLive)
 )
 
 export const LiveCommonCapabilities = Layer.mergeAll(

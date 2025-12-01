@@ -139,10 +139,6 @@ export const VscodeExtHost = Layer.scoped(
       return VsCode_.executeCommand("setContext", id, value).pipe(Effect.provide(context))
     }
 
-    const registerConfig = (_config: ExtConfig.AnyWithProps) => {
-      return Effect.void
-    }
-
     const readConfig = (config: ExtConfig.AnyWithProps) => {
       const [name, ...namespace] = Array.reverse(config._id.split("."))
       return VsCode_.configWithDefault(Array.reverse(namespace).join("."), name, config.defaultValue).pipe(
@@ -151,11 +147,14 @@ export const VscodeExtHost = Layer.scoped(
     }
 
     return {
-      registerConfig,
+      registerConfig: () => Effect.void,
       registerCommand,
       executeCommand,
       registerTreeView,
       registerWebView,
+      registerTreeViewInlineAction: () => () => Effect.void,
+      registerTreeViewNavigationAction: () => Effect.void,
+      registerTreeViewTitleAction: () => Effect.void,
       readConfig,
       revealFileLineColumnRange,
       asWorkspaceRelativePath,

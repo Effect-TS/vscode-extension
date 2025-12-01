@@ -1,4 +1,3 @@
-import "@vscode-elements/elements/dist/bundled"
 import { Atom, useAtomSuspense } from "@effect-atom/atom-react"
 import type { VscTabsSelectEvent } from "@vscode-elements/elements/dist/vscode-tabs/vscode-tabs"
 import * as Array from "effect/Array"
@@ -10,6 +9,7 @@ import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as React from "react"
 import { Initialized, InitializePanel } from "./messages.ts"
+import "../components/index.ts"
 
 const styles = {
   iframe: {

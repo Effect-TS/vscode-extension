@@ -290,7 +290,13 @@ export const DebugSpanStackTreeViewLive = Layer.unwrapScoped(Effect.gen(function
       }).pipe(Effect.ignoreLogged)
   }))
 
-  return treeViewProvider.pipe(
+  return Layer.mergeAll(
+    ExtTreeView.treeViewNavigationAction(DebugSpanStackTree, DevtoolCommands.DebugSpanStackRefresh),
+    ExtTreeView.treeViewNavigationAction(DebugSpanStackTree, DevtoolCommands.EnableSpanStackIgnoreList),
+    ExtTreeView.treeViewNavigationAction(DebugSpanStackTree, DevtoolCommands.DisableSpanStackIgnoreList),
+    ExtTreeView.treeViewInlineAction(DebugSpanStackTree, DevtoolCommands.RevealSpanLocation)("SpanNode")
+  ).pipe(
+    Layer.provideMerge(treeViewProvider),
     Layer.provideMerge(enableSpanStackIgnoreList),
     Layer.provideMerge(disableSpanStackIgnoreList),
     Layer.provideMerge(revealSpanLocation),

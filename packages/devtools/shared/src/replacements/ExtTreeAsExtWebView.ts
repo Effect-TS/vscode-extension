@@ -15,38 +15,39 @@ import * as ExtWebView from "../core/ExtWebView.ts"
 import * as ExtWhenEvaluator from "../core/ExtWhenEvaluator.ts"
 import * as TreeWebView from "../webviews/tree.generated.ts"
 
-export type Keys<V extends ExtTreeView.AnyWithProps, C extends ExtCommand.AnyWithProps> = ExtTreeView.Item<V> extends
-  { _tag: infer K } ?
-  (K extends infer X ? (Extract<ExtTreeView.Item<V>, { _tag: X }> extends ExtCommand.PayloadEncoded<C> ? X
-      : never) :
-    never)
-  : never
-
 export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("effect-chrome/ExtTreeAsExtWebView", {
   scoped: Effect.gen(function*() {
+    const navigationActions = new Map<string, Array<ExtCommand.AnyWithProps>>()
     const titleActions = new Map<string, Array<ExtCommand.AnyWithProps>>()
     const inlineActions = new Map<string, Array<{ command: ExtCommand.AnyWithProps; keys: Array<string> }>>()
     const whenEvaluator = yield* ExtWhenEvaluator.ExtWhenEvaluator
     const scope = yield* Effect.scope
     const extHost = yield* ExtHost.ExtHost
 
-    function treeViewNavigationAction<
+    function registerTreeViewNavigationAction<
       V extends ExtTreeView.AnyWithProps,
       C extends ExtCommand.AnyWithProps
     >(
       treeView: V,
       command: C
-    ): Layer.Layer<
-      never,
-      never,
-      ExtTreeView.UnknownTreeView<ExtTreeView.Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
-    > {
-      return Layer.effectDiscard(
-        Effect.sync(() => titleActions.set(treeView._id, [...titleActions.get(treeView._id) || [], command]))
+    ) {
+      console.log("treeViewNavigationAction", treeView._id, command)
+      return Effect.sync(() =>
+        navigationActions.set(treeView._id, [...navigationActions.get(treeView._id) || [], command])
       )
     }
 
-    function treeViewInlineAction<
+    function registerTreeViewTitleAction<
+      V extends ExtTreeView.AnyWithProps,
+      C extends ExtCommand.AnyWithProps
+    >(
+      treeView: V,
+      command: C
+    ) {
+      return Effect.sync(() => titleActions.set(treeView._id, [...titleActions.get(treeView._id) || [], command]))
+    }
+
+    function registerTreeViewInlineAction<
       V extends ExtTreeView.AnyWithProps,
       C extends ExtCommand.AnyWithProps
     >(
@@ -54,22 +55,15 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
       _command: C
     ) {
       return <
-        K extends Array<Keys<V, C>>
+        K extends Array<ExtTreeView.Keys<V, C>>
       >(
         ..._keys: K
-      ): Layer.Layer<
-        never,
-        never,
-        | ExtTreeView.UnknownTreeView<ExtTreeView.Id<V>>
-        | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
-      > =>
-        Layer.effectDiscard(
-          Effect.sync(() =>
-            inlineActions.set(treeView._id, [...inlineActions.get(treeView._id) || [], {
-              command: _command,
-              keys: _keys as Array<string>
-            }])
-          )
+      ): Effect.Effect<void, never, never> =>
+        Effect.sync(() =>
+          inlineActions.set(treeView._id, [...inlineActions.get(treeView._id) || [], {
+            command: _command,
+            keys: _keys as Array<string>
+          }])
         )
     }
 
@@ -116,8 +110,8 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
           }
 
           // register the handlers
-          const extActions = titleActions.get(webView._id) || []
-          const streams = extActions.map((action) =>
+          const extNavigationActions = navigationActions.get(webView._id) || []
+          const navigationActionsStream = extNavigationActions.map((action) =>
             whenEvaluator.evaluate(action.enablement).pipe(
               Effect.map((_) => _.changes),
               Stream.unwrap,
@@ -126,7 +120,24 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
                   id: action._id,
                   enabled,
                   label: action.title,
-                  icon: Option.fromNullable(action.icon?.name)
+                  icon: Option.fromNullable(action.icon?.name),
+                  group: "navigation"
+                })
+              )
+            )
+          )
+          const extTitleActions = titleActions.get(webView._id) || []
+          const titleActionsStream = extTitleActions.map((action) =>
+            whenEvaluator.evaluate(action.enablement).pipe(
+              Effect.map((_) => _.changes),
+              Stream.unwrap,
+              Stream.map((enabled) =>
+                new TreeWebView.TitleAction({
+                  id: action._id,
+                  enabled,
+                  label: action.title,
+                  icon: Option.fromNullable(action.icon?.name),
+                  group: ""
                 })
               )
             )
@@ -134,7 +145,11 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
 
           const requestActions = yield* Mailbox.make<void>()
           yield* requestActions.offer(undefined)
-          yield* Stream.zipLatestAll(Mailbox.toStream(requestActions), ...streams).pipe(
+          yield* Stream.zipLatestAll(
+            Mailbox.toStream(requestActions),
+            ...navigationActionsStream,
+            ...titleActionsStream
+          ).pipe(
             Stream.mapEffect(([_, ...actions]) => request(new TreeWebView.TitleActionsInfo({ actions }))),
             Stream.runDrain,
             Effect.tapErrorCause(Effect.logError),
@@ -219,7 +234,7 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
                   }
                   case "ExecuteTitleAction": {
                     return yield* pipe(
-                      Array.findFirst(extActions, (c) => c._id === _.id),
+                      Array.findFirst(extNavigationActions.concat(extTitleActions), (c) => c._id === _.id),
                       Effect.flatMap((command) => extHost.executeCommand(command, undefined))
                     )
                   }
@@ -264,8 +279,9 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
     }
     return {
       toWebview,
-      treeViewNavigationAction,
-      treeViewInlineAction
+      registerTreeViewNavigationAction,
+      registerTreeViewTitleAction,
+      registerTreeViewInlineAction
     }
   })
 }) {}
@@ -276,6 +292,9 @@ export const layer = Layer.unwrapEffect(Effect.gen(function*() {
 
   return Layer.succeed(ExtHost.ExtHost, {
     ...extHost,
+    registerTreeViewNavigationAction: treeWebView.registerTreeViewNavigationAction,
+    registerTreeViewTitleAction: treeWebView.registerTreeViewTitleAction,
+    registerTreeViewInlineAction: treeWebView.registerTreeViewInlineAction,
     registerTreeView(treeView, builder) {
       const [webView, webBuilder] = treeWebView.toWebview(treeView, builder)
 

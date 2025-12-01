@@ -374,7 +374,8 @@ export const ClientSpanTreeViewLive = Layer.unwrapScoped(Effect.gen(function*() 
     Effect.succeed(() => reset.pipe(Effect.ignoreLogged))
   )
 
-  return treeViewProvider.pipe(
+  return ExtTreeView.treeViewNavigationAction(ClientSpanTree, Commands.ResetTracer).pipe(
+    Layer.provideMerge(treeViewProvider),
     Layer.provideMerge(resetTracer)
   )
 }))

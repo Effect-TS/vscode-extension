@@ -5,7 +5,6 @@ import type * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import type * as ExtWebView from "@effect/devtools-shared/core/ExtWebView"
 import * as ExtWhenEvaluator from "@effect/devtools-shared/core/ExtWhenEvaluator"
 import * as ConfigAsExtWebView from "@effect/devtools-shared/replacements/ConfigAsExtWebView"
-import * as ExtTreeAsExtWebView from "@effect/devtools-shared/replacements/ExtTreeAsExtWebView"
 import * as ContainerWebViewHtml from "@effect/devtools-shared/webviews/container.generated"
 import { PubSub, Stream } from "effect"
 import * as Context from "effect/Context"
@@ -162,13 +161,6 @@ export const ChromeExtHost = Layer.unwrapEffect(Effect.gen(function*() {
         return handler(_arg)
       }
 
-      const registerTreeView = (
-        _treeView: ExtTreeView.AnyWithProps,
-        _builder: ExtTreeView.ExtTreeViewBuilder<any, never>
-      ): Effect.Effect<void, never, never> => {
-        return Effect.die("registerTreeView is not supported in chrome")
-      }
-
       const registerWebView = (
         _webView: ExtWebView.AnyWithProps,
         _builder: ExtWebView.ExtWebViewBuilder<Scope.Scope>
@@ -245,8 +237,12 @@ export const ChromeExtHost = Layer.unwrapEffect(Effect.gen(function*() {
         registerCommand,
         executeCommand,
         revealFileLineColumnRange,
-        registerTreeView,
         registerWebView,
+        registerTreeView: () => Effect.die("not supported"),
+        registerTreeViewNavigationAction: () => Effect.die("not supported"),
+        registerTreeViewTitleAction: () => Effect.die("not supported"),
+        registerTreeViewInlineAction: () => () => Effect.die("not supported"),
+        treeViewInlineAction: () => () => Effect.die("not supported"),
         setVariable,
         registerConfig,
         readConfig
@@ -277,47 +273,6 @@ export function webView<V extends ExtWebView.Any>(
     const contributes = yield* CurrentContributes
     contributes.viewToContainer.set(webView._id, section)
   }))
-}
-
-export function treeViewInlineAction<
-  V extends ExtTreeView.AnyWithProps,
-  C extends ExtCommand.AnyWithProps
->(
-  _view: V,
-  _command: C
-) {
-  return <
-    K extends Array<ExtTreeAsExtWebView.Keys<V, C>>
-  >(
-    ..._keys: K
-  ): Layer.Layer<
-    never,
-    never,
-    | ExtTreeAsExtWebView.ExtTreeAsExtWebView
-    | ExtTreeView.UnknownTreeView<ExtTreeView.Id<V>>
-    | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
-  > =>
-    Layer.unwrapEffect(
-      Effect.map(ExtTreeAsExtWebView.ExtTreeAsExtWebView, (_) => _.treeViewInlineAction(_view, _command)(..._keys))
-    )
-}
-
-export function treeViewNavigationAction<
-  V extends ExtTreeView.AnyWithProps,
-  C extends ExtCommand.AnyWithProps
->(
-  _view: V,
-  _command: C
-): Layer.Layer<
-  never,
-  never,
-  | ExtTreeAsExtWebView.ExtTreeAsExtWebView
-  | ExtTreeView.UnknownTreeView<ExtTreeView.Id<V>>
-  | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
-> {
-  return Layer.unwrapEffect(
-    Effect.map(ExtTreeAsExtWebView.ExtTreeAsExtWebView, (_) => _.treeViewNavigationAction(_view, _command))
-  )
 }
 
 // TODO: no more actions on webviews, they should be inside the webview itself

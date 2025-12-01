@@ -1,5 +1,6 @@
 import * as ExtHost from "@effect/devtools-shared/core/ExtHost"
 import * as ExtHostDebugger from "@effect/devtools-shared/core/ExtHostDebugger"
+import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import {
   Commands,
   Configs,
@@ -15,15 +16,11 @@ import * as Contribs from "./VscodeContributesExtHost.ts"
 export const VscodeExtension = Layer.mergeAll(
   // clients
   Contribs.treeView(TreeViews.ClientsTree, "effect"),
-  Contribs.treeViewNavigationAction(TreeViews.ClientsTree, Commands.StartServer),
-  Contribs.treeViewNavigationAction(TreeViews.ClientsTree, Commands.StopServer),
-  Contribs.treeViewNavigationAction(TreeViews.ClientsTree, Commands.AttachDebugSessionClient),
+  ExtTreeView.treeViewNavigationAction(TreeViews.ClientsTree, Commands.AttachDebugSessionClient),
   // metrics
   Contribs.treeView(TreeViews.ClientMetricsTree, "effect"),
-  Contribs.treeViewNavigationAction(TreeViews.ClientMetricsTree, Commands.ResetMetrics),
   // tracer
   Contribs.treeView(TreeViews.ClientSpanTree, "effect"),
-  Contribs.treeViewNavigationAction(TreeViews.ClientSpanTree, Commands.ResetTracer),
   // extended tracer
   Contribs.webView(WebViews.ClientTracer, "effect-tracer-panel"),
   Contribs.webViewNavigationAction(WebViews.ClientTracer, Commands.ResetTracerExtended),
@@ -31,18 +28,10 @@ export const VscodeExtension = Layer.mergeAll(
   Contribs.treeView(TreeViews.DebugBreakpointsTree, "debug"),
   // context
   Contribs.treeView(TreeViews.DebugContextTree, "debug"),
-  Contribs.treeViewNavigationAction(TreeViews.DebugContextTree, Commands.DebugContextRefresh),
   // fibers
   Contribs.treeView(TreeViews.DebugFibersTree, "debug"),
-  Contribs.treeViewNavigationAction(TreeViews.DebugFibersTree, Commands.DebugFibersRefresh),
-  Contribs.treeViewInlineAction(TreeViews.DebugFibersTree, Commands.InterruptDebugFiber)("FiberId"),
-  Contribs.treeViewInlineAction(TreeViews.DebugFibersTree, Commands.RevealFiberCurrentSpan)("FiberId"),
   // span stack
-  Contribs.treeView(TreeViews.DebugSpanStackTree, "debug"),
-  Contribs.treeViewNavigationAction(TreeViews.DebugSpanStackTree, Commands.DebugSpanStackRefresh),
-  Contribs.treeViewNavigationAction(TreeViews.DebugSpanStackTree, Commands.EnableSpanStackIgnoreList),
-  Contribs.treeViewNavigationAction(TreeViews.DebugSpanStackTree, Commands.DisableSpanStackIgnoreList),
-  Contribs.treeViewInlineAction(TreeViews.DebugSpanStackTree, Commands.RevealSpanLocation)("SpanNode")
+  Contribs.treeView(TreeViews.DebugSpanStackTree, "debug")
 ).pipe(
   Layer.provideMerge(LiveServerCapabilities),
   Layer.provideMerge(LiveCommonCapabilities),

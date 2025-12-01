@@ -12,6 +12,12 @@ import * as ExtHost from "./ExtHost.ts"
 import type * as ExtIcon from "./ExtIcon.ts"
 import * as ExtWhenClause from "./ExtWhenClause.ts"
 
+export type Keys<V extends AnyWithProps, C extends ExtCommand.AnyWithProps> = Item<V> extends { _tag: infer K } ?
+  (K extends infer X ? (Extract<Item<V>, { _tag: X }> extends ExtCommand.PayloadEncoded<C> ? X
+      : never) :
+    never)
+  : never
+
 export interface ExtTreeViewItem {
   readonly id: string
   readonly label: string
@@ -202,4 +208,57 @@ export const make = <Item extends { readonly _tag: string }>() =>
     when,
     title: options.title
   }) as any
+}
+
+export function treeViewNavigationAction<
+  V extends AnyWithProps,
+  C extends ExtCommand.AnyWithProps
+>(
+  treeView: V,
+  command: C
+): Layer.Layer<
+  never,
+  never,
+  ExtHost.ExtHost | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
+> {
+  return Layer.effectDiscard(
+    Effect.flatMap(ExtHost.ExtHost, (_) => _.registerTreeViewNavigationAction(treeView, command))
+  )
+}
+
+export function treeViewTitleAction<
+  V extends AnyWithProps,
+  C extends ExtCommand.AnyWithProps
+>(
+  treeView: V,
+  command: C
+): Layer.Layer<
+  never,
+  never,
+  ExtHost.ExtHost | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
+> {
+  return Layer.effectDiscard(
+    Effect.flatMap(ExtHost.ExtHost, (_) => _.registerTreeViewTitleAction(treeView, command))
+  )
+}
+
+export function treeViewInlineAction<
+  V extends AnyWithProps,
+  C extends ExtCommand.AnyWithProps
+>(
+  treeView: V,
+  _command: C
+) {
+  return <
+    K extends Array<Keys<V, C>>
+  >(
+    ..._keys: K
+  ): Layer.Layer<
+    never,
+    never,
+    ExtHost.ExtHost | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
+  > =>
+    Layer.effectDiscard(
+      Effect.flatMap(ExtHost.ExtHost, (_) => _.registerTreeViewInlineAction(treeView, _command)(..._keys))
+    )
 }

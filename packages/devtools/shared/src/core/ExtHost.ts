@@ -20,6 +20,31 @@ export class ExtHost extends Context.Tag("ExtHost")<ExtHost, {
     treeView: ExtTreeView.AnyWithProps,
     builder: ExtTreeView.ExtTreeViewBuilder<any, never>
   ): Effect.Effect<void, never, never>
+  registerTreeViewNavigationAction<
+    V extends ExtTreeView.AnyWithProps,
+    C extends ExtCommand.AnyWithProps
+  >(
+    treeView: V,
+    command: C
+  ): Effect.Effect<void, never, never>
+  registerTreeViewTitleAction<
+    V extends ExtTreeView.AnyWithProps,
+    C extends ExtCommand.AnyWithProps
+  >(
+    treeView: V,
+    command: C
+  ): Effect.Effect<void, never, never>
+  registerTreeViewInlineAction<
+    V extends ExtTreeView.AnyWithProps,
+    C extends ExtCommand.AnyWithProps
+  >(
+    treeView: V,
+    _command: C
+  ): <
+    K extends Array<ExtTreeView.Keys<V, C>>
+  >(
+    ..._keys: K
+  ) => Effect.Effect<void, never, never>
   registerWebView(
     webView: ExtWebView.AnyWithProps,
     builder: ExtWebView.ExtWebViewBuilder<Scope.Scope>

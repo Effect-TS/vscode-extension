@@ -60,7 +60,8 @@ export class TitleAction extends Schema.TaggedClass<TitleAction>("TitleAction")(
   id: Schema.NonEmptyString,
   enabled: Schema.Boolean,
   icon: Schema.Option(Schema.String),
-  label: Schema.String
+  label: Schema.String,
+  group: Schema.Literal("navigation", "")
 }) {}
 
 export class TitleActionsInfo extends Schema.TaggedClass<TitleActionsInfo>("TitleActionsInfo")("TitleActionsInfo", {

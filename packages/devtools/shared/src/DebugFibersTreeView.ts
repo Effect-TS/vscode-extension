@@ -342,7 +342,12 @@ export const DebugFibersTreeViewLive = Layer.unwrapScoped(Effect.gen(function*()
       })
   }))
 
-  return treeViewProvider.pipe(
+  return Layer.mergeAll(
+    ExtTreeView.treeViewNavigationAction(DebugFibersTree, DevtoolCommands.DebugFibersRefresh),
+    ExtTreeView.treeViewInlineAction(DebugFibersTree, DevtoolCommands.InterruptDebugFiber)("FiberId"),
+    ExtTreeView.treeViewInlineAction(DebugFibersTree, DevtoolCommands.RevealFiberCurrentSpan)("FiberId")
+  ).pipe(
+    Layer.provideMerge(treeViewProvider),
     Layer.provideMerge(revealFiberCurrentSpan),
     Layer.provideMerge(interruptFiber),
     Layer.provideMerge(refreshFibersCommand)
