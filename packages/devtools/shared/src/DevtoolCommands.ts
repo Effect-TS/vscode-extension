@@ -14,6 +14,18 @@ export const DebugFibersRefresh = ExtCommand.make("effect.debugFibersRefresh", {
   icon: ExtIcon.refresh
 })
 
+export const DebugFibersSortBySpanName = ExtCommand.make("effect.debugFibersSortBySpanName", {
+  title: "Sort by Span Name"
+})
+
+export const DebugFibersSortByStartTimeMillis = ExtCommand.make("effect.debugFibersSortByStartTimeMillis", {
+  title: "Sort by Start Time"
+})
+
+export const DebugFibersSortByLifeTimeMillis = ExtCommand.make("effect.debugFibersSortByLifeTimeMillis", {
+  title: "Sort by Longest Life Time"
+})
+
 export const DebugSpanStackRefresh = ExtCommand.make("effect.debugSpanStackRefresh", {
   title: "Refresh Debug Span Stack",
   icon: ExtIcon.refresh

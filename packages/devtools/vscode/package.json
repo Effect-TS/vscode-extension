@@ -79,6 +79,21 @@
     },
     "commands": [
       {
+        "command": "effect.debugFibersSortBySpanName",
+        "title": "Effect Dev Tools: Sort by Span Name",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.debugFibersSortByLifeTimeMillis",
+        "title": "Effect Dev Tools: Sort by Longest Life Time",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.debugFibersSortByStartTimeMillis",
+        "title": "Effect Dev Tools: Sort by Start Time",
+        "enablement": "true"
+      },
+      {
         "command": "effect.debugFibersRefresh",
         "title": "Effect Dev Tools: Refresh Debug Fibers",
         "icon": "$(refresh)",
@@ -88,7 +103,7 @@
         "command": "effect.interruptDebugFiber",
         "title": "Effect Dev Tools: Interrupt Fiber",
         "icon": "$(debug-stop)",
-        "enablement": "inDebugMode"
+        "enablement": "effect:inDebugMode"
       },
       {
         "command": "effect.revealFiberCurrentSpan",
@@ -129,7 +144,7 @@
       {
         "command": "effect.togglePauseOnDefects",
         "title": "Effect Dev Tools: Toggle Pause on Defects",
-        "enablement": "inDebugMode"
+        "enablement": "effect:inDebugMode"
       },
       {
         "command": "effect.selectClient",
@@ -194,22 +209,22 @@
         {
           "id": "effect-debug-fibers",
           "name": "Effect Fibers",
-          "when": "inDebugMode"
+          "when": "effect:inDebugMode"
         },
         {
           "id": "effect-context",
           "name": "Effect Context",
-          "when": "inDebugMode"
+          "when": "effect:inDebugMode"
         },
         {
           "id": "effect-debug-span-stack",
           "name": "Effect Span Stack",
-          "when": "inDebugMode"
+          "when": "effect:inDebugMode"
         },
         {
           "id": "effect-debug-breakpoints",
           "name": "Effect Breakpoints",
-          "when": "inDebugMode"
+          "when": "effect:inDebugMode"
         }
       ],
       "effect": [
@@ -267,6 +282,18 @@
           "group": "navigation"
         },
         {
+          "command": "effect.debugFibersSortByStartTimeMillis",
+          "when": "view === effect-debug-fibers && true"
+        },
+        {
+          "command": "effect.debugFibersSortByLifeTimeMillis",
+          "when": "view === effect-debug-fibers && true"
+        },
+        {
+          "command": "effect.debugFibersSortBySpanName",
+          "when": "view === effect-debug-fibers && true"
+        },
+        {
           "command": "effect.debugSpanStackRefresh",
           "when": "view === effect-debug-span-stack && true",
           "group": "navigation"
@@ -305,7 +332,7 @@
       "view/item/context": [
         {
           "command": "effect.interruptDebugFiber",
-          "when": "view === effect-debug-fibers && inDebugMode && (viewItem === FiberId)",
+          "when": "view === effect-debug-fibers && effect:inDebugMode && (viewItem === FiberId)",
           "group": "inline"
         },
         {

@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { ClientMetricsTree, ClientMetricsTreeViewLive } from "./ClientMetricsTreeView.ts"
 import { ClientsCommandsLive } from "./ClientsCommands.ts"
@@ -31,6 +32,17 @@ const SetHasDebugTargets = Layer.scopedDiscard(Effect.gen(function*() {
   )
 }))
 
+const SetInDebugMode = Layer.scopedDiscard(Effect.gen(function*() {
+  const hostDebugger = yield* ExtHostDebugger.ExtHostDebugger
+  const inDebugMode = yield* DevtoolInputs.inDebugMode
+
+  yield* hostDebugger.activeConnection.changes.pipe(
+    Stream.mapEffect((connection) => inDebugMode(Option.isSome(connection))),
+    Stream.runDrain,
+    Effect.forkScoped
+  )
+}))
+
 export const LiveServerCapabilities = Layer.mergeAll(
   ExtTreeView.treeViewNavigationAction(ClientsTree, DevtoolCommands.StartServer),
   ExtTreeView.treeViewNavigationAction(ClientsTree, DevtoolCommands.StopServer)
@@ -48,7 +60,8 @@ export const LiveCommonCapabilities = Layer.mergeAll(
   ClientMetricsTreeViewLive,
   ClientSpanTreeViewLive,
   ClientTracerWebViewLive,
-  SetHasDebugTargets
+  SetHasDebugTargets,
+  SetInDebugMode
 ).pipe(
   Layer.provideMerge(Clients.DevtoolClients.Default),
   Layer.provideMerge(DevtoolDebugBridge.DevtoolDebugBridge.Default),

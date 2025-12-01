@@ -19,8 +19,6 @@ import * as DevtoolDebugBridge from "./DevtoolDebugBridge.ts"
 import * as Inputs from "./DevtoolInputs.ts"
 import * as DurationUtils from "./utils/Duration.ts"
 
-const SortByStartTimeMillis = Order.mapInput(Order.number, (a: DevtoolDebugBridge.FiberEntry) => a.startTimeMillis)
-
 class FiberId extends Data.TaggedClass("FiberId")<{
   fiberId: string
   fiberEntry: DevtoolDebugBridge.FiberEntry
@@ -227,12 +225,28 @@ export const DebugFibersTree = ExtTreeView.make<TreeNode>()("effect-debug-fibers
   when: Inputs.inDebugMode
 })
 
+const SortByStartTimeMillis = Order.mapInput(Order.number, (a: FiberId) => a.fiberEntry.startTimeMillis)
+const SortByLifeTimeMillis = Order.reverse(Order.mapInput(Order.number, (a: FiberId) => a.fiberEntry.lifeTimeMillis))
+const SortBySpanName = Order.mapInput(
+  Order.string,
+  (a: FiberId) =>
+    a.fiberEntry.currentSpan.pipe(
+      Option.map((_) => _._tag === "Span" ? _.name : "<" + _.spanId + ">"),
+      Option.getOrElse(() => "")
+    )
+)
+
 export const DebugFibersTreeViewLive = Layer.unwrapScoped(Effect.gen(function*() {
   const debugBridge = yield* DevtoolDebugBridge.DevtoolDebugBridge
 
   // state
   const fibersRef = yield* SubscriptionRef.make<Array<FiberId>>([])
+  const sortByRef = yield* SubscriptionRef.make<Order.Order<FiberId>>(SortByStartTimeMillis)
   const pendingInterruptionsRef = yield* SubscriptionRef.make<Array<string>>([])
+
+  const refreshSorting = SubscriptionRef.get(sortByRef).pipe(
+    Effect.flatMap((sortBy) => SubscriptionRef.update(fibersRef, Array.sort(sortBy)))
+  )
 
   // capture the fibers
   const captureFibersRef = yield* ScopedRef.make<void>(() => void 0)
@@ -241,10 +255,11 @@ export const DebugFibersTreeViewLive = Layer.unwrapScoped(Effect.gen(function*()
     ScopedRef.set(
       captureFibersRef,
       Effect.gen(function*() {
+        const currentSortBy = yield* SubscriptionRef.get(sortByRef)
         const fiberNodes = pipe(
           yield* session.currentFibers(threadId),
-          Array.sort(SortByStartTimeMillis),
-          Array.map((_) => new FiberId({ fiberId: _.id, threadId, fiberEntry: _ }))
+          Array.map((_) => new FiberId({ fiberId: _.id, threadId, fiberEntry: _ })),
+          Array.sort(currentSortBy)
         )
         yield* SubscriptionRef.set(fibersRef, fiberNodes)
         yield* Effect.addFinalizer(() => SubscriptionRef.set(fibersRef, []))
@@ -288,6 +303,7 @@ export const DebugFibersTreeViewLive = Layer.unwrapScoped(Effect.gen(function*()
     Effect.gen(function*() {
       // refresh the tree view when the fibers change
       yield* Stream.merge(fibersRef.changes, pendingInterruptionsRef.changes).pipe(
+        Stream.merge(sortByRef.changes),
         Stream.runForEach(() => refresh(Option.none())),
         Effect.forkScoped
       )
@@ -342,14 +358,30 @@ export const DebugFibersTreeViewLive = Layer.unwrapScoped(Effect.gen(function*()
       })
   }))
 
+  const sortByStartTimeMillis = DevtoolCommands.DebugFibersSortByStartTimeMillis.toLayer(Effect.gen(function*() {
+    return () => SubscriptionRef.set(sortByRef, SortByStartTimeMillis).pipe(Effect.zipRight(refreshSorting))
+  }))
+  const sortByLifeTimeMillis = DevtoolCommands.DebugFibersSortByLifeTimeMillis.toLayer(Effect.gen(function*() {
+    return () => SubscriptionRef.set(sortByRef, SortByLifeTimeMillis).pipe(Effect.zipRight(refreshSorting))
+  }))
+  const sortById = DevtoolCommands.DebugFibersSortBySpanName.toLayer(Effect.gen(function*() {
+    return () => SubscriptionRef.set(sortByRef, SortBySpanName).pipe(Effect.zipRight(refreshSorting))
+  }))
+
   return Layer.mergeAll(
     ExtTreeView.treeViewNavigationAction(DebugFibersTree, DevtoolCommands.DebugFibersRefresh),
     ExtTreeView.treeViewInlineAction(DebugFibersTree, DevtoolCommands.InterruptDebugFiber)("FiberId"),
-    ExtTreeView.treeViewInlineAction(DebugFibersTree, DevtoolCommands.RevealFiberCurrentSpan)("FiberId")
+    ExtTreeView.treeViewInlineAction(DebugFibersTree, DevtoolCommands.RevealFiberCurrentSpan)("FiberId"),
+    ExtTreeView.treeViewTitleAction(DebugFibersTree, DevtoolCommands.DebugFibersSortByStartTimeMillis),
+    ExtTreeView.treeViewTitleAction(DebugFibersTree, DevtoolCommands.DebugFibersSortByLifeTimeMillis),
+    ExtTreeView.treeViewTitleAction(DebugFibersTree, DevtoolCommands.DebugFibersSortBySpanName)
   ).pipe(
     Layer.provideMerge(treeViewProvider),
     Layer.provideMerge(revealFiberCurrentSpan),
     Layer.provideMerge(interruptFiber),
-    Layer.provideMerge(refreshFibersCommand)
+    Layer.provideMerge(refreshFibersCommand),
+    Layer.provideMerge(sortByStartTimeMillis),
+    Layer.provideMerge(sortByLifeTimeMillis),
+    Layer.provideMerge(sortById)
   )
 }))
