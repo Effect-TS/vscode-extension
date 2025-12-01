@@ -31,6 +31,7 @@ export const ClientsCommandsLive = Layer.unwrapScoped(Effect.gen(function*() {
   const attachedDebugSessions = new WeakSet<ExtHostDebuggerConnection.ExtHostDebuggerConnection>()
   const attachDebugSessionClient = (debugConnection: ExtHostDebuggerConnection.ExtHostDebuggerConnection) =>
     Effect.gen(function*() {
+      let instrumentationId: string | undefined
       // do not double attach
       if (attachedDebugSessions.has(debugConnection)) return
 
@@ -64,17 +65,25 @@ export const ClientsCommandsLive = Layer.unwrapScoped(Effect.gen(function*() {
             )
 
             const result = yield* debugResponses.parse(DebugInstrumentationResponseSchema)
+
+            // once we received an instrumentation id, we ensure it is always the same
+            if (!instrumentationId) instrumentationId = result.instrumentationId
+            if (instrumentationId !== result.instrumentationId) {
+              return yield* Effect.interrupt
+            }
+
             return yield* queue.offerAll(result.responses)
           }).pipe(Effect.scoped)
         ),
-        Effect.ignoreLogged,
+        Effect.tapErrorCause(Effect.logError),
         Effect.forever,
+        Effect.ensuring(queue.shutdown),
+        Effect.ensuring(Effect.sync(() => attachedDebugSessions.delete(debugConnection))),
         Effect.forkIn(scope)
       )
 
       // kill the client upon session termination
       yield* debugConnection.events.awaitShutdown.pipe(
-        Effect.ensuring(queue.shutdown),
         Effect.ensuring(Fiber.interrupt(sendReceiveFiber)),
         Effect.forkIn(scope)
       )
