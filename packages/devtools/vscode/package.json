@@ -80,52 +80,52 @@
     "commands": [
       {
         "command": "effect.debugFibersSortBySpanName",
-        "title": "Effect Dev Tools: Sort by Span Name",
+        "title": "Sort by Span Name",
         "enablement": "true"
       },
       {
         "command": "effect.debugFibersSortByLifeTimeMillis",
-        "title": "Effect Dev Tools: Sort by Longest Life Time",
+        "title": "Sort by Longest Life Time",
         "enablement": "true"
       },
       {
         "command": "effect.debugFibersSortByStartTimeMillis",
-        "title": "Effect Dev Tools: Sort by Start Time",
+        "title": "Sort by Start Time",
         "enablement": "true"
       },
       {
         "command": "effect.debugFibersRefresh",
-        "title": "Effect Dev Tools: Refresh Debug Fibers",
+        "title": "Refresh Debug Fibers",
         "icon": "$(refresh)",
         "enablement": "true"
       },
       {
         "command": "effect.interruptDebugFiber",
-        "title": "Effect Dev Tools: Interrupt Fiber",
+        "title": "Interrupt Fiber",
         "icon": "$(debug-stop)",
         "enablement": "effect:inDebugMode"
       },
       {
         "command": "effect.revealFiberCurrentSpan",
-        "title": "Effect Dev Tools: Reveal Fiber Current Span Location",
+        "title": "Reveal Fiber Current Span Location",
         "icon": "$(go-to-file)",
         "enablement": "true"
       },
       {
         "command": "effect.debugContextRefresh",
-        "title": "Effect Dev Tools: Refresh Debug Context",
+        "title": "Refresh Debug Context",
         "icon": "$(refresh)",
         "enablement": "true"
       },
       {
         "command": "effect.debugSpanStackRefresh",
-        "title": "Effect Dev Tools: Refresh Debug Span Stack",
+        "title": "Refresh Debug Span Stack",
         "icon": "$(refresh)",
         "enablement": "true"
       },
       {
         "command": "effect.revealSpanLocation",
-        "title": "Effect Dev Tools: Reveal Span Location",
+        "title": "Reveal Span Location",
         "icon": "$(go-to-file)",
         "enablement": "true"
       },
@@ -143,12 +143,12 @@
       },
       {
         "command": "effect.togglePauseOnDefects",
-        "title": "Effect Dev Tools: Toggle Pause on Defects",
+        "title": "Toggle Pause on Defects",
         "enablement": "effect:inDebugMode"
       },
       {
         "command": "effect.selectClient",
-        "title": "Effect Dev Tools: Select Client",
+        "title": "Select Client",
         "enablement": "effect:hasClients"
       },
       {
@@ -159,19 +159,19 @@
       },
       {
         "command": "effect.resetMetrics",
-        "title": "Effect Dev Tools: Reset Metrics",
+        "title": "Reset Metrics",
         "icon": "$(refresh)",
         "enablement": "true"
       },
       {
         "command": "effect.resetTracer",
-        "title": "Effect Dev Tools: Reset Tracer",
+        "title": "Reset Tracer",
         "icon": "$(refresh)",
         "enablement": "true"
       },
       {
         "command": "effect.resetTracerExtended",
-        "title": "Effect Dev Tools: Reset Tracer Extended",
+        "title": "Reset Tracer Extended",
         "icon": "$(refresh)",
         "enablement": "true"
       },
@@ -344,6 +344,84 @@
           "command": "effect.revealSpanLocation",
           "when": "view === effect-debug-span-stack && true && (viewItem === SpanNode)",
           "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "effect.debugFibersSortBySpanName",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugFibersSortByLifeTimeMillis",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugFibersSortByStartTimeMillis",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugFibersRefresh",
+          "when": "false"
+        },
+        {
+          "command": "effect.interruptDebugFiber",
+          "when": "false"
+        },
+        {
+          "command": "effect.revealFiberCurrentSpan",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugContextRefresh",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugSpanStackRefresh",
+          "when": "false"
+        },
+        {
+          "command": "effect.revealSpanLocation",
+          "when": "false"
+        },
+        {
+          "command": "effect.disableSpanStackIgnoreList",
+          "when": "effect:spanStackIgnoreListEnabled === true"
+        },
+        {
+          "command": "effect.enableSpanStackIgnoreList",
+          "when": "effect:spanStackIgnoreListEnabled === false"
+        },
+        {
+          "command": "effect.togglePauseOnDefects",
+          "when": "false"
+        },
+        {
+          "command": "effect.selectClient",
+          "when": "false"
+        },
+        {
+          "command": "effect.attachDebugSessionClient",
+          "when": "effect:hasDebugTargets"
+        },
+        {
+          "command": "effect.resetMetrics",
+          "when": "false"
+        },
+        {
+          "command": "effect.resetTracer",
+          "when": "false"
+        },
+        {
+          "command": "effect.resetTracerExtended",
+          "when": "false"
+        },
+        {
+          "command": "effect.startServer",
+          "when": "effect:running === false"
+        },
+        {
+          "command": "effect.stopServer",
+          "when": "effect:running === true"
         }
       ]
     }

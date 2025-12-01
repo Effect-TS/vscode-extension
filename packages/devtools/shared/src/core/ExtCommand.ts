@@ -27,7 +27,9 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category guards
  */
-export const isExtCommand = (u: unknown): u is ExtCommand<any, any, any, any, any> => Predicate.hasProperty(u, TypeId)
+export const isExtCommand = (
+  u: unknown
+): u is ExtCommand<any, any, any, any, any> => Predicate.hasProperty(u, TypeId)
 
 /**
  * Represents a devtool command that can be executed in a devtool application.
@@ -48,17 +50,24 @@ export interface ExtCommand<
   readonly _id: Id
   readonly title: string
   readonly icon: ExtIcon | undefined
+  readonly palette: boolean
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
   readonly enablement: ExtWhenClause.ExtWhenClause<boolean, R>
 
   execute(
-    ...args: PayloadConstructor<this> extends void ? [] : [PayloadConstructor<this>]
-  ): Effect.Effect<Schema.Schema.Type<Success>, Schema.Schema.Type<Error>, UnknownCommand<Id> | ExtHost.ExtHost>
+    ...args: PayloadConstructor<this> extends void ? []
+      : [PayloadConstructor<this>]
+  ): Effect.Effect<
+    Schema.Schema.Type<Success>,
+    Schema.Schema.Type<Error>,
+    UnknownCommand<Id> | ExtHost.ExtHost
+  >
 
   withArgs(
-    ...args: PayloadConstructor<this> extends void ? [] : [PayloadConstructor<this>]
+    ...args: PayloadConstructor<this> extends void ? []
+      : [PayloadConstructor<this>]
   ): Effect.Effect<CommandWithArgs<this>>
 
   /**
@@ -67,11 +76,20 @@ export interface ExtCommand<
    */
   toLayer<EX = never, RX = never>(
     build: Effect.Effect<
-      (args: Schema.Schema.Type<Payload>) => Effect.Effect<Schema.Schema.Type<Success>, Schema.Schema.Type<Error>>,
+      (
+        args: Schema.Schema.Type<Payload>
+      ) => Effect.Effect<
+        Schema.Schema.Type<Success>,
+        Schema.Schema.Type<Error>
+      >,
       EX,
       RX
     >
-  ): Layer.Layer<UnknownCommand<Id>, EX, Exclude<RX, Scope.Scope> | ExtHost.ExtHost>
+  ): Layer.Layer<
+    UnknownCommand<Id>,
+    EX,
+    Exclude<RX, Scope.Scope> | ExtHost.ExtHost
+  >
 }
 
 /**
@@ -92,6 +110,7 @@ export interface AnyWithProps {
   readonly _id: string
   readonly title: string
   readonly icon: ExtIcon | undefined
+  readonly palette: boolean
   readonly payloadSchema: Schema.Schema.AnyNoContext
   readonly successSchema: Schema.Schema.AnyNoContext
   readonly errorSchema: Schema.Schema.All
@@ -102,31 +121,52 @@ export interface AnyWithProps {
  * @since 1.0.0
  * @category models
  */
-export type Id<R> = R extends ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ? _Id
+export type Id<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+> ? _Id
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Success<R> = R extends ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ?
-  _Success["Type"]
+export type Success<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+> ? _Success["Type"]
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type SuccessEncoded<R> = R extends
-  ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ? _Success["Encoded"]
+export type SuccessEncoded<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+> ? _Success["Encoded"]
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type ErrorSchema<R> = R extends ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ?
-  _Error
+export type ErrorSchema<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+> ? _Error
   : never
 
 /**
@@ -145,10 +185,15 @@ export type ErrorEncoded<R> = Schema.Schema.Encoded<ErrorSchema<R>>
  * @since 1.0.0
  * @category models
  */
-export type PayloadConstructor<R> = R extends
-  ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ?
-  _Payload extends { readonly fields: Schema.Struct.Fields } ?
-    Schema.Simplify<Schema.Struct.Constructor<_Payload["fields"]>>
+export type PayloadConstructor<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+>
+  ? _Payload extends { readonly fields: Schema.Struct.Fields }
+    ? Schema.Simplify<Schema.Struct.Constructor<_Payload["fields"]>>
   : _Payload["Type"]
   : never
 
@@ -156,37 +201,56 @@ export type PayloadConstructor<R> = R extends
  * @since 1.0.0
  * @category models
  */
-export type Payload<R> = R extends ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ?
-  _Payload["Type"]
+export type Payload<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+> ? _Payload["Type"]
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type PayloadEncoded<R> = R extends
-  ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ? _Payload["Encoded"]
+export type PayloadEncoded<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+> ? _Payload["Encoded"]
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Context<R> = R extends ExtCommand<infer _Id, infer _Payload, infer _Success, infer _Error, infer _R> ?
-  _Payload["Context"] | _Success["Context"] | _Error["Context"] | _R
+export type Context<R> = R extends ExtCommand<
+  infer _Id,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _R
+> ? _Payload["Context"] | _Success["Context"] | _Error["Context"] | _R
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Handler<_Id extends string> = (payload: any) => Effect.Effect<any, any, any>
+export type Handler<_Id extends string> = (
+  payload: any
+) => Effect.Effect<any, any, any>
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type HandlerNoContext<_Id extends string> = (payload: any) => Effect.Effect<any, any, never>
+export type HandlerNoContext<_Id extends string> = (
+  payload: any
+) => Effect.Effect<any, any, never>
 
 /**
  * @since 1.0.0
@@ -215,7 +279,9 @@ export interface CommandWithArgs<R extends AnyWithProps> {
  * @since 1.0.0
  * @category models
  */
-export type ToHandlerFn<Current extends Any, R = any> = (payload: Payload<Current>) => ResultFrom<Current, R>
+export type ToHandlerFn<Current extends Any, R = any> = (
+  payload: Payload<Current>
+) => ResultFrom<Current, R>
 
 /**
  * @since 1.0.0
@@ -235,16 +301,15 @@ const Proto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
-  toLayer(
-    this: AnyWithProps,
-    build: Effect.Effect<Handler<string>>
-  ) {
-    return Layer.effectDiscard(Effect.gen(this, function*() {
-      const host = yield* ExtHost.ExtHost
-      const context = yield* Effect.context<any>()
-      const handler = yield* build
-      yield* host.registerCommand(this, (arg) => handler(arg).pipe(Effect.provide(context)))
-    }))
+  toLayer(this: AnyWithProps, build: Effect.Effect<Handler<string>>) {
+    return Layer.effectDiscard(
+      Effect.gen(this, function*() {
+        const host = yield* ExtHost.ExtHost
+        const context = yield* Effect.context<any>()
+        const handler = yield* build
+        yield* host.registerCommand(this, (arg) => handler(arg).pipe(Effect.provide(context)))
+      })
+    )
   },
   execute(this: AnyWithProps, arg: any) {
     return Effect.gen(this, function*() {
@@ -272,6 +337,7 @@ const makeProto = <
   readonly _id: Id
   readonly title: string
   readonly icon: ExtIcon | undefined
+  readonly palette: boolean
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
@@ -298,6 +364,7 @@ export const make = <
   options?: {
     readonly title?: string
     readonly icon?: ExtIcon
+    readonly palette?: boolean
     readonly payload?: Payload
     readonly success?: Success
     readonly error?: Error
@@ -313,16 +380,18 @@ export const make = <
   const successSchema = options?.success ?? Schema.Void
   const errorSchema = options?.error ?? Schema.Never
   const enablement = options?.enablement ?? ExtWhenClause.trueLiteral
-  const payloadSchema: any = Schema.isSchema(options?.payload) ?
-    options?.payload as any
-    : options?.payload ?
-    Schema.Struct(options?.payload as any)
+  const payloadSchema: any = Schema.isSchema(options?.payload)
+    ? (options?.payload as any)
+    : options?.payload
+    ? Schema.Struct(options?.payload as any)
     : Schema.Void
+  const palette = options?.palette ?? false
 
   return makeProto({
     _id: id,
     title: options?.title ?? id,
     icon: options?.icon,
+    palette,
     payloadSchema,
     successSchema,
     errorSchema,

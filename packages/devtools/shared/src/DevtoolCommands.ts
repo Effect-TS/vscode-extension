@@ -32,18 +32,21 @@ export const DebugSpanStackRefresh = ExtCommand.make("effect.debugSpanStackRefre
 })
 
 export const StartServer = ExtCommand.make("effect.startServer", {
+  palette: true,
   title: "Start Server",
   icon: ExtIcon.play,
   enablement: ExtWhenClause.equals(Inputs.running, ExtWhenClause.falseLiteral)
 })
 
 export const StopServer = ExtCommand.make("effect.stopServer", {
+  palette: true,
   title: "Stop Server",
   icon: ExtIcon.debugStop,
   enablement: ExtWhenClause.equals(Inputs.running, ExtWhenClause.trueLiteral)
 })
 
 export const AttachDebugSessionClient = ExtCommand.make("effect.attachDebugSessionClient", {
+  palette: true,
   title: "Attach Debug Session Client",
   icon: ExtIcon.debug,
   enablement: Inputs.hasDebugTargets
@@ -97,18 +100,21 @@ export const ResetTracerExtended = ExtCommand.make("effect.resetTracerExtended",
 })
 
 export const EnableSpanStackIgnoreList = ExtCommand.make("effect.enableSpanStackIgnoreList", {
+  palette: true,
   title: "Enable Span Stack Ignore List",
   icon: ExtIcon.eyeClosed,
   enablement: ExtWhenClause.equals(Inputs.spanStackIgnoreListEnabled, ExtWhenClause.falseLiteral)
 })
 
 export const DisableSpanStackIgnoreList = ExtCommand.make("effect.disableSpanStackIgnoreList", {
+  palette: true,
   title: "Disable Span Stack Ignore List",
   icon: ExtIcon.eye,
   enablement: ExtWhenClause.equals(Inputs.spanStackIgnoreListEnabled, ExtWhenClause.trueLiteral)
 })
 
 export const ShowLayerMermaid = ExtCommand.make("effect.showLayerMermaid", {
+  palette: true,
   title: "Show Layer Mermaid Graph (locally)"
 })
 

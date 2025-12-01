@@ -113,7 +113,11 @@ export class CurrentContributes
     viewsWelcome: Array<ContributedViewsWelcome>
     views: Record<string, ContributedViewSection>
     viewToContainer: Map<string, string>
-    menus: { "view/title": Array<ContributedMenu>; "view/item/context": Array<ContributedMenu> }
+    menus: {
+      "view/title": Array<ContributedMenu>
+      "view/item/context": Array<ContributedMenu>
+      "commandPalette": Array<ContributedMenu>
+    }
   }>()
 {}
 
@@ -169,7 +173,7 @@ export const initial = (opts: {
     },
     views: {},
     viewToContainer: new Map(),
-    menus: { "view/title": [], "view/item/context": [] }
+    menus: { "view/title": [], "view/item/context": [], "commandPalette": [] }
   })
 
 export const VscodeContributesExtHost = Layer.scoped(
@@ -190,7 +194,7 @@ export const VscodeContributesExtHost = Layer.scoped(
       return Effect.sync(() => {
         const base: ContributedCommand = {
           command: command._id,
-          title: contributes.extensionTitle + ": " + command.title
+          title: !command.palette ? command.title : contributes.extensionTitle + ": " + command.title
         }
         if (command.icon) {
           base.icon = iconToVsCode(command.icon)
@@ -199,6 +203,10 @@ export const VscodeContributesExtHost = Layer.scoped(
           base.enablement = whenToVsCode(command.enablement as any)
         }
         contributes.commands.push(base)
+        contributes.menus["commandPalette"].push({
+          command: command._id,
+          when: command.palette ? (base.enablement || "true") : "false"
+        })
       })
     }
 
