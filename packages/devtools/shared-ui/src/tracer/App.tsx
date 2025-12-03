@@ -1,7 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
 import "../components/index.ts";
-import { useContextMenu, VscodeScrollable } from "../components/index.ts";
+import { VscodeScrollable } from "../components/index.ts";
 
 const styles = {
   splitLayout: {
@@ -29,24 +29,37 @@ const styles = {
   },
 };
 
-function AppContent() {
-  const parentRef = React.useRef<null | VscodeScrollable>(null);
+function SpanBar(props: { containerWidth: number, start: number, length: number }){
+  return <div style={{ display: "flex", overflow: "hidden", flexDirection: "row", width: props.containerWidth, padding: "6px", boxSizing: "border-box" }}>
+    <div style={{ width: props.start + "%" }} />
+    <div style={{ width: Math.min(props.length, 100 - props.start) + "%", backgroundColor: "var(--vscode-list-focusOutline)" }}></div>
+  </div>
+}
 
-  const contextMenu = useContextMenu(
-    [
-      {
-        label: "Option 1",
-        value: "option1",
-      },
-      {
-        label: "Option 2",
-        value: "option2",
-      },
-    ],
-    (value) => {
-      console.log(`Selected option: ${value}`);
-    },
-  );
+function MainSpanList() {
+  const parentRef = React.useRef<null | VscodeScrollable>(null);
+  const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+  const observedElementRef = React.useRef(null);
+
+  React.useEffect(() => {
+      if (observedElementRef.current) {
+          const observer = new ResizeObserver((entries) => {
+              for (let entry of entries) {
+                  setDimensions({
+                      width: Math.max(0, entry.contentRect.width - 10), // account for scrollbar width
+                      height: entry.contentRect.height,
+                  });
+              }
+          });
+
+          observer.observe(observedElementRef.current);
+
+          // Cleanup function
+          return () => {
+              observer.disconnect();
+          };
+      }
+  }, []);
 
   const virtualizer = useVirtualizer({
     count: 1000,
@@ -68,26 +81,19 @@ function AppContent() {
 
   const items = virtualizer.getVirtualItems();
 
-  const handleMenuClick = () => {
-    contextMenu.open();
-  };
-
-  return (
-    <vscode-split-layout
-      style={styles.splitLayout}
-      initial-handle-position="75%"
-      split="horizontal"
-    >
-      <div slot="start" style={styles.spanContainer}>
-        <div style={styles.toolbar}>
-          <div style={{ flex: 1 }}></div>
-          <div style={{ position: "relative" }}>
-            <vscode-button onClick={handleMenuClick}  ref={contextMenu.ref} aria-label="More options">
-              <span className="codicon codicon-more"></span>
-            </vscode-button>
-          </div>
-        </div>
-        <vscode-scrollable
+  return (<>
+  <vscode-textfield placeholder="Search" style={{ width: "100%" }}>
+    <vscode-icon
+      slot="content-before"
+      name="search"
+      title="search"
+    ></vscode-icon>
+  </vscode-textfield>
+    <vscode-split-layout>
+      <vscode-label slot="start">Name</vscode-label>
+      <vscode-label slot="end" ref={observedElementRef}>Graph</vscode-label>
+    </vscode-split-layout>
+<vscode-scrollable
           ref={parentRef}
           className="List"
           style={{
@@ -117,12 +123,28 @@ function AppContent() {
                   data-index={virtualRow.index}
                   ref={virtualizer.measureElement}
                 >
-                  {virtualRow.index}
+                  <div style={{ display: "flex", flexDirection: "row" }}>
+                    <div style={{ flex: 1, overflow: "hidden"}}>Span {virtualRow.index}</div>
+                    <SpanBar containerWidth={dimensions.width} start={virtualRow.index % 20 / 20 *100} length={12} />
+                  </div>
                 </vscode-tree-item>
               ))}
             </vscode-tree>
           </div>
-        </vscode-scrollable>
+        </vscode-scrollable></>
+  )
+}
+
+function AppContent() {
+
+  return (
+    <vscode-split-layout
+      style={styles.splitLayout}
+      initial-handle-position="75%"
+      split="horizontal"
+    >
+      <div slot="start" style={styles.spanContainer}>
+        <MainSpanList />
       </div>
       <div slot="end" style={styles.tabsContainer}>
         <vscode-scrollable slot="end" style={styles.scrollable}>
