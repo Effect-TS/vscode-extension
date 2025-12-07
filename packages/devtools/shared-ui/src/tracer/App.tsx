@@ -2,6 +2,9 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
 import "../components/index.ts";
 import { VscodeScrollable } from "../components/index.ts";
+import {currentSpanIdsAtom} from "./atom.ts"
+import { useAtomSuspense } from "@effect-atom/atom-react";
+
 
 const styles = {
   splitLayout: {
@@ -39,22 +42,20 @@ function SpanBar(props: { containerWidth: number, start: number, length: number 
 function MainSpanList() {
   const parentRef = React.useRef<null | VscodeScrollable>(null);
   const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
-  const observedElementRef = React.useRef(null);
+  const spanGraphColumnRef = React.useRef(null);
+  const { value: spanIds } = useAtomSuspense(currentSpanIdsAtom)
 
   React.useEffect(() => {
-      if (observedElementRef.current) {
+      if (spanGraphColumnRef.current) {
           const observer = new ResizeObserver((entries) => {
               for (let entry of entries) {
                   setDimensions({
-                      width: Math.max(0, entry.contentRect.width - 10), // account for scrollbar width
+                      width: Math.max(0, entry.contentRect.width - 10),
                       height: entry.contentRect.height,
                   });
               }
           });
-
-          observer.observe(observedElementRef.current);
-
-          // Cleanup function
+          observer.observe(spanGraphColumnRef.current);
           return () => {
               observer.disconnect();
           };
@@ -62,7 +63,7 @@ function MainSpanList() {
   }, []);
 
   const virtualizer = useVirtualizer({
-    count: 1000,
+    count: spanIds.length,
     getScrollElement: () => {
       const root = parentRef.current;
       if (root && root.shadowRoot)
@@ -91,7 +92,7 @@ function MainSpanList() {
   </vscode-textfield>
     <vscode-split-layout>
       <vscode-label slot="start">Name</vscode-label>
-      <vscode-label slot="end" ref={observedElementRef}>Graph</vscode-label>
+      <vscode-label slot="end" ref={spanGraphColumnRef}>Graph</vscode-label>
     </vscode-split-layout>
 <vscode-scrollable
           ref={parentRef}
