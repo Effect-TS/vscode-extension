@@ -31,7 +31,6 @@ export class ExtTreeAsExtWebView extends Effect.Service<ExtTreeAsExtWebView>()("
       treeView: V,
       command: C
     ) {
-      console.log("treeViewNavigationAction", treeView._id, command)
       return Effect.sync(() =>
         navigationActions.set(treeView._id, [...navigationActions.get(treeView._id) || [], command])
       )

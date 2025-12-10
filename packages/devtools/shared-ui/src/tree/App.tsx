@@ -9,6 +9,7 @@ import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as React from "react"
 import { useInView } from "react-intersection-observer"
+import { useContextMenu, type VscodeTreeItem } from "../components/index.ts"
 import * as WebviewMessaging from "../WebviewMessaging.ts"
 import type { TitleAction } from "./messages.ts"
 import {
@@ -25,7 +26,6 @@ import {
   TreeItemChildrenInfo,
   TreeItemInfo
 } from "./messages.ts"
-import { useContextMenu, type VscodeTreeItem } from "../components/index.ts"
 
 const styles = {
   toolbarContainer: {},
@@ -175,11 +175,11 @@ const executeTitleActionAtom = Atom.family((action: TitleAction) =>
   )
 )
 const executeTitleActionByIdAtom = atomRuntime.fn((actionId: string) =>
-    Effect.gen(function*() {
-      const treeApp = yield* TreeApp
-      return yield* treeApp.request(new ExecuteTitleAction({ id: actionId }))
-    })
-  )
+  Effect.gen(function*() {
+    const treeApp = yield* TreeApp
+    return yield* treeApp.request(new ExecuteTitleAction({ id: actionId }))
+  })
+)
 
 const isBranchOpenAtom = Atom.family((itemPath: ItemPath) =>
   atomRuntime
@@ -324,16 +324,16 @@ function NavigationActionButton({ action }: { action: TitleAction }) {
 
 function TitleActionButton() {
   const onClick = useAtomSet(executeTitleActionByIdAtom)
-  const actions = useAtomSuspense(actionsAtom).value.filter(_ => _.group === "")
-  const {open, ref} = useContextMenu(
-    actions.map(_ => ({
+  const actions = useAtomSuspense(actionsAtom).value.filter((_) => _.group === "")
+  const { open, ref } = useContextMenu(
+    actions.map((_) => ({
       value: _.id,
       label: _.label
     })),
     onClick
   )
 
-  if(actions.length === 0 ) return null
+  if (actions.length === 0) return null
 
   return (
     <vscode-toolbar-button
