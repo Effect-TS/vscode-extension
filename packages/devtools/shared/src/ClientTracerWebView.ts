@@ -4,6 +4,8 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Graph from "effect/Graph"
+import * as HashSet from "effect/HashSet"
+import * as Iterable from "effect/Iterable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
@@ -12,6 +14,7 @@ import * as Stream from "effect/Stream"
 import * as ExtWebView from "./core/ExtWebView.ts"
 import * as Clients from "./DevtoolClients.ts"
 import * as DevtoolCommands from "./DevtoolCommands.ts"
+import * as GraphUtils from "./utils/Graph.ts"
 import * as WebViewMessage from "./webviews/tracer.generated.ts"
 
 interface GraphNodeInfo {
@@ -86,7 +89,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
         const parentNodeId = addNode(latestInfo.parent.value)
         Graph.addEdge(mutableGraph, parentNodeId, nodeId, undefined)
       }
-      if (latestInfo._tag === "Span") {
+      if (latestInfo !== previousInfo.span && latestInfo._tag === "Span") {
         const lowestStart = pipe(
           usedRange,
           Option.map(([startTime]) => startTime),
@@ -185,6 +188,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
                 const graphs = Array.fromIterable(graphByTraceId.entries()).filter(([traceId]) =>
                   Option.isNone(message.traceId) || Equal.equals(message.traceId, Option.some(traceId))
                 )
+                const explodedSet = HashSet.fromIterable(message.expandedSpanIds)
                 const spanIds = pipe(
                   Array.fromIterable(graphs),
                   Array.map(([traceId, info]) => {
@@ -195,9 +199,14 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
                       Array.fromIterable
                     )
                     for (
-                      const [_o, _] of Graph.dfs(info.graph, {
+                      const [_o, _] of GraphUtils.dfsChooseContinue(info.graph, {
                         start: rootIds,
-                        direction: "outgoing"
+                        direction: "outgoing",
+                        chooseContinue: (data) =>
+                          HashSet.has(
+                            explodedSet,
+                            new WebViewMessage.SpanId({ traceId: data.span.traceId, spanId: data.span.spanId })
+                          )
                       })
                     ) {
                       spanIds.push(new WebViewMessage.SpanId({ traceId, spanId: _.span.spanId }))
@@ -218,21 +227,25 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
                   Option.fromNullable(graphByTraceId.get(message.spanId.traceId)),
                   Option.flatMap((graph) =>
                     Option.fromNullable(graph.nodeIdBySpanId.get(message.spanId.spanId)).pipe(
-                      Option.flatMap((nodeId) => Graph.getNode(graph.graph, nodeId)),
-                      Option.map((info) =>
-                        new WebViewMessage.SpanDataForListInfo({
-                          spanId: message.spanId,
-                          name: Option.fromNullable(info.span._tag === "Span" ? info.span.name : undefined),
-                          depth: countParentSpans(info.span),
-                          startTime: Option.fromNullable(
-                            info.span._tag === "Span" ? info.span.status.startTime : undefined
-                          ),
-                          endTime: Option.fromNullable(
-                            info.span._tag === "Span" && info.span.status._tag === "Ended"
-                              ? info.span.status.endTime
-                              : undefined
+                      Option.flatMap((nodeId) =>
+                        Graph.getNode(graph.graph, nodeId).pipe(
+                          Option.map((info) =>
+                            new WebViewMessage.SpanDataForListInfo({
+                              spanId: message.spanId,
+                              name: Option.fromNullable(info.span._tag === "Span" ? info.span.name : undefined),
+                              depth: countParentSpans(info.span),
+                              hasChildren: !Iterable.isEmpty(Graph.neighborsDirected(graph.graph, nodeId, "outgoing")),
+                              startTime: Option.fromNullable(
+                                info.span._tag === "Span" ? info.span.status.startTime : undefined
+                              ),
+                              endTime: Option.fromNullable(
+                                info.span._tag === "Span" && info.span.status._tag === "Ended"
+                                  ? info.span.status.endTime
+                                  : undefined
+                              )
+                            })
                           )
-                        })
+                        )
                       )
                     )
                   )
@@ -241,10 +254,32 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
                   new WebViewMessage.SpanDataForListInfo({
                     spanId: message.spanId,
                     depth: 0,
+                    hasChildren: false,
                     name: Option.none(),
                     startTime: Option.none(),
                     endTime: Option.none()
                   })))
+              }
+              case "SpanDataForDetailsRequest": {
+                const info = pipe(
+                  Option.fromNullable(graphByTraceId.get(message.spanId.traceId)),
+                  Option.flatMap((graph) =>
+                    Option.fromNullable(graph.nodeIdBySpanId.get(message.spanId.spanId)).pipe(
+                      Option.flatMap((nodeId) => Graph.getNode(graph.graph, nodeId)),
+                      Option.map((info) => info)
+                    )
+                  )
+                )
+                if (Option.isSome(info)) {
+                  return yield* request(
+                    new WebViewMessage.SpanDataForDetailsInfo({
+                      spanId: message.spanId,
+                      data: info.value.span,
+                      events: info.value.events
+                    })
+                  )
+                }
+                return yield* Effect.void
               }
             }
           })

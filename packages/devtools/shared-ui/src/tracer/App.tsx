@@ -4,8 +4,11 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as React from "react"
 import type { VscodeScrollable } from "../components/index.ts"
-import { currentSpanIdsAtom, refreshApp, spanDataForListAtom, usedRangeAtom } from "./atom.ts"
-import type { SpanId } from "./messages.ts"
+import { currentSpanIdsAtom, isSpanIdExpandedAtom, refreshApp, selectedSpanDetailsAtom, setSelectedSpanIdAtom, spanDataForListAtom, toggleSpanIdAtom, usedRangeAtom } from "./atom.ts"
+import  { SpanId } from "./messages.ts"
+import type { VscTabsSelectEvent } from "@vscode-elements/elements/dist/vscode-tabs/vscode-tabs"
+import type * as Domain from "@effect/experimental/DevTools/Domain"
+import * as Inspectable from "effect/Inspectable"
 
 const styles = {
   splitLayout: {
@@ -37,6 +40,28 @@ const styles = {
     flexDirection: "row" as const,
     padding: "6px",
     boxSizing: "border-box" as const
+  },
+  tabPanelActive: {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    flex: 1
+  },
+  tabPanelInactive: {
+    display: "none" as const
+  },
+  treeItem: {
+    display: "flex",
+    flexDirection: "row" as const
+  },
+  treeItemNameLabel: {},
+  treeItemDescription: {
+    marginLeft: "6px",
+    opacity: 0.7
+  },
+  sidebarSpanInfoTabs: {
+    display: "flex",
+    flexDirection: "column" as const,
+    flex: 1
   }
 }
 
@@ -59,7 +84,13 @@ function SpanBar(props: { containerWidth: number; startTime: Option.Option<bigin
   return (
     <div style={{ ...styles.spanBarContainer, width: props.containerWidth }}>
       <div style={{ width: start + "%" }} />
-      <div style={{ width: Math.max(0.001, end - start) + "%", backgroundColor: "var(--vscode-list-focusOutline)" }}>
+      <div
+        style={{
+          width: Math.max(0.001, end - start) + "%",
+          minWidth: "1px",
+          backgroundColor: "var(--vscode-list-focusOutline)"
+        }}
+      >
       </div>
     </div>
   )
@@ -67,7 +98,10 @@ function SpanBar(props: { containerWidth: number; startTime: Option.Option<bigin
 
 function SpanRow(props: { spanId: SpanId; index: number; barWidth: number; measureElement: (element: any) => void }) {
   const { value: spanInfo } = useAtomSuspense(spanDataForListAtom(props.spanId))
+  const toggleExpanded = useAtomSet(toggleSpanIdAtom(props.spanId))
+  const {value: isExpanded} = useAtomSuspense(isSpanIdExpandedAtom(props.spanId))
   const name = Option.getOrElse(spanInfo.name, () => props.spanId.spanId)
+
   return (
     <vscode-tree-item
       key={props.spanId.key}
@@ -76,8 +110,12 @@ function SpanRow(props: { spanId: SpanId; index: number; barWidth: number; measu
       data-trace-id={props.spanId.traceId}
       ref={props.measureElement}
     >
-      <div style={{ display: "flex", flexDirection: "row" }}>
-        <div style={{ flex: 1, overflow: "hidden", paddingLeft: `${spanInfo.depth * 10}px` }}>{name}</div>
+      
+      <div style={{ display: "flex", flexDirection: "row", paddingLeft: `calc(${spanInfo.depth} * var(--vscode-font-size))` }}>
+      {spanInfo.hasChildren && <vscode-icon action-icon name={isExpanded ? "chevron-down" : "chevron-right"} title={isExpanded ? "Collapse" : "Expand"} onvsc-click={toggleExpanded} />}
+        <div style={{ flex: 1, overflow: "hidden"}}>          
+          {name}
+        </div>
         <SpanBar containerWidth={props.barWidth} startTime={spanInfo.startTime} endTime={spanInfo.endTime} />
       </div>
     </vscode-tree-item>
@@ -89,7 +127,10 @@ function MainSpanList() {
   const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 })
   const spanGraphColumnRef = React.useRef(null)
   const { value: spanIds } = useAtomSuspense(currentSpanIdsAtom)
+  const setSelectedSpanId = useAtomSet(setSelectedSpanIdAtom)
   const maxSize = React.useRef(10)
+
+  console.log("MainSpanList", spanIds.length)
 
   React.useEffect(() => {
     if (spanGraphColumnRef.current) {
@@ -132,14 +173,6 @@ function MainSpanList() {
 
   return (
     <>
-      <vscode-textfield placeholder="Search" style={{ width: "100%" }}>
-        <vscode-icon
-          slot="content-before"
-          name="search"
-          title="search"
-        >
-        </vscode-icon>
-      </vscode-textfield>
       <vscode-split-layout>
         <vscode-label slot="start">Name</vscode-label>
         <vscode-label slot="end" ref={spanGraphColumnRef}>Graph</vscode-label>
@@ -167,6 +200,7 @@ function MainSpanList() {
               width: "100%",
               transform: `translateY(${items[0]?.start ?? 0}px)`
             }}
+            onvsc-tree-select={setSelectedSpanId}
           >
             {items.map((virtualRow) => (
               <SpanRow
@@ -180,6 +214,85 @@ function MainSpanList() {
         </div>
       </vscode-scrollable>
     </>
+  )
+}
+
+function SidebarSpanInfo() {
+  const [selectedTab, setSelectedTab] = React.useState(0)
+  const onTabsSelect = React.useCallback((event: VscTabsSelectEvent) => {
+    setSelectedTab(event.detail.selectedIndex)
+  }, [])
+  return (
+    <vscode-tabs panel selected-index={selectedTab} onvsc-tabs-select={onTabsSelect} style={styles.sidebarSpanInfoTabs}>
+      <vscode-tab-header slot="header">Info</vscode-tab-header>
+      <vscode-tab-panel style={selectedTab === 0 ? styles.tabPanelActive : styles.tabPanelInactive}>
+        <SelectedSpanInfo />
+      </vscode-tab-panel>
+      <vscode-tab-header slot="header">Events</vscode-tab-header>
+      <vscode-tab-panel style={selectedTab === 1 ? styles.tabPanelActive : styles.tabPanelInactive}>
+        <SelectedSpanEvents />
+      </vscode-tab-panel>
+    </vscode-tabs>
+  )
+}
+
+function SpanInfoTreeItem(props: { name: string; description: string }) {
+  return (
+    <vscode-tree-item>
+      <div style={styles.treeItem}>
+        <div style={styles.treeItemNameLabel}>{props.name}</div>
+        <div style={styles.treeItemDescription}>{props.description}</div>
+      </div>
+    </vscode-tree-item>
+  )
+}
+function SelectedSpanInfo() {
+  const { value: spanDetails } = useAtomSuspense(selectedSpanDetailsAtom)
+  const content = Option.match(spanDetails, {
+    onSome: (span) => {
+      return <vscode-tree>
+        <SpanInfoTreeItem name="Trace ID" description={span.spanId.traceId} />
+        <SpanInfoTreeItem name="Span ID" description={span.spanId.spanId} />
+      </vscode-tree>
+    },
+    onNone: () => <div>No span selected</div>
+  })
+  return (
+    <vscode-scrollable style={styles.scrollable}>
+      {content}
+    </vscode-scrollable>
+  )
+}
+function SpanInfoEventItem(props: Domain.SpanEvent ) {
+  return (
+    <vscode-tree-item>
+      <div style={styles.treeItem}>
+        <div style={styles.treeItemNameLabel}>{props.name}</div>
+        <div style={styles.treeItemDescription}>{props.startTime}</div>
+      </div>
+        {
+          Object.entries(props.attributes).map(([key, value]) => <vscode-tree-item key={key}>
+            <div style={styles.treeItem}>
+              <div style={styles.treeItemNameLabel}>{key}</div>
+              <div style={styles.treeItemDescription}>{Inspectable.toStringUnknown(value)}</div>
+            </div>
+          </vscode-tree-item>)
+        }
+    </vscode-tree-item>
+  )
+}
+function SelectedSpanEvents() {
+  const { value: spanDetails } = useAtomSuspense(selectedSpanDetailsAtom)
+  const content = Option.match(spanDetails, {
+    onSome: (info) => <vscode-tree>
+      {info.events.map((_, i) => <SpanInfoEventItem key={i} {..._} />)}
+    </vscode-tree>,
+    onNone: () => null
+  })
+  return (
+    <vscode-scrollable style={styles.scrollable}>
+      {content}
+    </vscode-scrollable>
   )
 }
 
@@ -200,9 +313,7 @@ function AppContent() {
           <MainSpanList />
         </div>
         <div slot="end" style={styles.tabsContainer}>
-          <vscode-scrollable slot="end" style={styles.scrollable}>
-            Infos
-          </vscode-scrollable>
+          <SidebarSpanInfo />
         </div>
       </vscode-split-layout>
     </>

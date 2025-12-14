@@ -1,3 +1,4 @@
+import * as Domain from "@effect/experimental/DevTools/Domain"
 import * as Schema from "effect/Schema"
 
 export class Initialized extends Schema.TaggedClass<Initialized>("Initialized")("Initialized", {}) {}
@@ -21,7 +22,7 @@ export class TraceListInfo extends Schema.TaggedClass<TraceListInfo>("TraceListI
 
 export class SpanListRequest extends Schema.TaggedClass<SpanListRequest>("SpanListRequest")("SpanListRequest", {
   traceId: Schema.Option(Schema.NonEmptyTrimmedString),
-  expandedSpanIds: Schema.Array(SpanId)
+  expandedSpanIds: Schema.HashSet(SpanId)
 }) {}
 
 export class SpanListInfo extends Schema.TaggedClass<SpanListInfo>("SpanListInfo")("SpanListInfo", {
@@ -40,8 +41,23 @@ export class SpanDataForListInfo
     spanId: SpanId,
     name: Schema.Option(Schema.String),
     depth: Schema.Int,
+    hasChildren: Schema.Boolean,
     startTime: Schema.Option(Schema.BigInt),
     endTime: Schema.Option(Schema.BigInt)
+  })
+{}
+
+export class SpanDataForDetailsRequest
+  extends Schema.TaggedClass<SpanDataForDetailsRequest>("SpanDataForDetailsRequest")("SpanDataForDetailsRequest", {
+    spanId: SpanId
+  })
+{}
+
+export class SpanDataForDetailsInfo
+  extends Schema.TaggedClass<SpanDataForDetailsInfo>("SpanDataForDetailsInfo")("SpanDataForDetailsInfo", {
+    spanId: SpanId,
+    data: Domain.ParentSpan,
+    events: Schema.Array(Domain.SpanEvent)
   })
 {}
 
@@ -54,7 +70,13 @@ export class UsedRangeInfo extends Schema.TaggedClass<UsedRangeInfo>("UsedRangeI
   endTime: (Schema.BigInt)
 }) {}
 
-export const InMessage = Schema.Union(TraceListInfo, SpanListInfo, SpanDataForListInfo, UsedRangeInfo)
+export const InMessage = Schema.Union(
+  TraceListInfo,
+  SpanListInfo,
+  SpanDataForListInfo,
+  UsedRangeInfo,
+  SpanDataForDetailsInfo
+)
 export type InMessage = Schema.Schema.Type<typeof InMessage>
 
 export const OutMessage = Schema.Union(
@@ -62,6 +84,7 @@ export const OutMessage = Schema.Union(
   TraceListRequest,
   SpanListRequest,
   SpanDataForListRequest,
-  UsedRangeRequest
+  UsedRangeRequest,
+  SpanDataForDetailsRequest
 )
 export type OutMessage = Schema.Schema.Type<typeof OutMessage>
