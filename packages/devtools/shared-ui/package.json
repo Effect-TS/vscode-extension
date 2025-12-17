@@ -7,8 +7,7 @@
     "check": "tsc -b tsconfig.json",
     "test": "vitest"
   },
-  "dependencies": {},
-  "devDependencies": {
+  "dependencies": {
     "effect": "catalog:",
     "@effect-atom/atom": "catalog:",
     "@effect-atom/atom-react": "catalog:",
@@ -16,6 +15,13 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-intersection-observer": "^10.0.0",
+    "react-aria": "^3.44.0",
+    "react-aria-components": "^1.5.3",
+    "react-stately": "^3.42.0",
+    "@vscode-elements/elements": "^2.3.1",
+    "@vscode/codicons": "^0.0.42"
+  },
+  "devDependencies": {
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/vscode-webview": "^1.57.5",
@@ -24,13 +30,8 @@
     "vite": "^7.0.4",
     "vite-plugin-singlefile": "^2.3.0",
     "@vitejs/plugin-react": "^4.6.0",
-    "@vscode-elements/elements": "^2.3.1",
-    "@vscode/codicons": "^0.0.42",
     "@types/chrome": "^0.1.29",
     "babel-plugin-react-compiler": "^1.0.0",
-    "@tanstack/react-virtual": "^3.13.12",
-    "react-aria": "^3.44.0",
-    "react-aria-components": "^1.5.3",
-    "react-stately": "^3.42.0"
+    "@tanstack/react-virtual": "^3.13.12"
   }
 }

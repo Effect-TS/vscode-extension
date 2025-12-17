@@ -120,16 +120,6 @@ export class FiberEntry extends Schema.TaggedClass<FiberEntry>("FiberEntry")("Fi
   currentSpan: Schema.Option(AnySpanSchema)
 }) {}
 
-export const CurrentFiberSchema = Schema.Array(Schema.Struct({
-  id: Schema.String,
-  isCurrent: Schema.Boolean,
-  isInterrupted: Schema.Boolean,
-  isInterruptible: Schema.Boolean,
-  children: Schema.Array(Schema.String),
-  startTimeMillis: Schema.Number,
-  lifeTimeMillis: Schema.Number
-}))
-
 export const AutoPauseConfigSchema = Schema.Struct({ pauseOnDefects: Schema.Boolean })
 export type AutoPauseConfigSchema = Schema.Schema.Type<typeof AutoPauseConfigSchema>
 

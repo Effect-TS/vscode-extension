@@ -1,5 +1,6 @@
 import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import * as ExtWhenEvaluator from "@effect/devtools-shared/core/ExtWhenEvaluator"
+import * as DevtoolClients from "@effect/devtools-shared/DevtoolClients"
 import { Commands, LiveCommonCapabilities, TreeViews, WebViews } from "@effect/devtools-shared/extension"
 import * as ConfigAsExtWebView from "@effect/devtools-shared/replacements/ConfigAsExtWebView"
 import * as ExtTreeAsExtWebView from "@effect/devtools-shared/replacements/ExtTreeAsExtWebView"
@@ -37,6 +38,8 @@ const ChromeExtension = Layer.mergeAll(
   Contribs.webView(ConfigAsExtWebView.WebView, "effect-config")
 ).pipe(
   Layer.provideMerge(LiveCommonCapabilities),
+  Layer.provide(DevtoolClients.layerSpanCollector),
+  Layer.provideMerge(DevtoolClients.DevtoolClients.Default),
   Layer.provide(ExtTreeAsExtWebView.layer),
   Layer.provide(Contribs.ChromeExtHost),
   Layer.provideMerge(ChromeExtHostDebugger.ChromeExtHostDebugger),

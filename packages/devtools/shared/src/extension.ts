@@ -14,7 +14,6 @@ import { DebugBreakpointsTree, DebugBreakpointsTreeViewLive } from "./DebugBreak
 import { DebugContextTree, DebugContextTreeViewLive } from "./DebugContextTreeView.ts"
 import { DebugFibersTree, DebugFibersTreeViewLive } from "./DebugFibersTreeView.ts"
 import { DebugSpanStackTree, DebugSpanStackTreeViewLive } from "./DebugSpanStackTreeView.ts"
-import * as Clients from "./DevtoolClients.ts"
 import * as DevtoolCommands from "./DevtoolCommands.ts"
 import * as DevtoolConfigs from "./DevtoolConfigs.ts"
 import * as DevtoolDebugBridge from "./DevtoolDebugBridge.ts"
@@ -63,7 +62,6 @@ export const LiveCommonCapabilities = Layer.mergeAll(
   SetHasDebugTargets,
   SetInDebugMode
 ).pipe(
-  Layer.provideMerge(Clients.DevtoolClients.Default),
   Layer.provideMerge(DevtoolDebugBridge.DevtoolDebugBridge.Default),
   Layer.provideMerge(Layer.mergeAll(
     ExtHost.registerConfig(DevtoolConfigs.MetricsPollInterval),
