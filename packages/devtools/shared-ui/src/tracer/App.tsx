@@ -1,14 +1,26 @@
 import { useAtomSet, useAtomSuspense } from "@effect-atom/atom-react"
+import type * as Domain from "@effect/experimental/DevTools/Domain"
 import { useVirtualizer } from "@tanstack/react-virtual"
+import type { VscTabsSelectEvent } from "@vscode-elements/elements/dist/vscode-tabs/vscode-tabs"
 import { pipe } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import * as React from "react"
 import type { VscodeScrollable } from "../components/index.ts"
-import { currentSpanIdsAtom, isSpanIdExpandedAtom, refreshApp, selectedSpanDetailsAtom, setSelectedSpanIdAtom, spanDataForListAtom, toggleSpanIdAtom, usedRangeAtom } from "./atom.ts"
-import  { SpanId } from "./messages.ts"
-import type { VscTabsSelectEvent } from "@vscode-elements/elements/dist/vscode-tabs/vscode-tabs"
-import type * as Domain from "@effect/experimental/DevTools/Domain"
-import * as Inspectable from "effect/Inspectable"
+import {
+  currentSpanIdsAtom,
+  isSpanIdExpandedAtom,
+  minimapDataAtom,
+  refreshApp,
+  selectedSpanDetailsAtom,
+  setSelectedSpanIdAtom,
+  spanDataForListAtom,
+  toggleSpanIdAtom,
+  usedRangeAtom,
+  type ViewState
+} from "./atom.ts"
+import type { SpanId } from "./messages.ts"
+import TraceMinimap from "./TraceMinimap.tsx"
 
 const styles = {
   splitLayout: {
@@ -65,19 +77,31 @@ const styles = {
   }
 }
 
-function SpanBar(props: { containerWidth: number; startTime: Option.Option<bigint>; endTime: Option.Option<bigint> }) {
+function SpanBar(props: {
+  containerWidth: number
+  startTime: Option.Option<bigint>
+  endTime: Option.Option<bigint>
+}) {
   const { value: usedRange } = useAtomSuspense(usedRangeAtom)
   const start = pipe(
     props.startTime,
     Option.map((startTime) =>
-      startTime < usedRange[0] ? 0 : (Number(startTime - usedRange[0]) / Number(usedRange[1] - usedRange[0])) * 100
+      startTime < usedRange[0]
+        ? 0
+        : (Number(startTime - usedRange[0]) /
+          Number(usedRange[1] - usedRange[0])) *
+          100
     ),
     Option.getOrElse(() => 0)
   )
   const end = pipe(
     props.endTime,
     Option.map((endTime) =>
-      endTime > usedRange[1] ? 100 : (Number(endTime - usedRange[0]) / Number(usedRange[1] - usedRange[0])) * 100
+      endTime > usedRange[1]
+        ? 100
+        : (Number(endTime - usedRange[0]) /
+          Number(usedRange[1] - usedRange[0])) *
+          100
     ),
     Option.getOrElse(() => 100)
   )
@@ -96,10 +120,19 @@ function SpanBar(props: { containerWidth: number; startTime: Option.Option<bigin
   )
 }
 
-function SpanRow(props: { spanId: SpanId; index: number; barWidth: number; measureElement: (element: any) => void }) {
-  const { value: spanInfo } = useAtomSuspense(spanDataForListAtom(props.spanId))
+function SpanRow(props: {
+  spanId: SpanId
+  index: number
+  barWidth: number
+  measureElement: (element: any) => void
+}) {
+  const { value: spanInfo } = useAtomSuspense(
+    spanDataForListAtom(props.spanId)
+  )
   const toggleExpanded = useAtomSet(toggleSpanIdAtom(props.spanId))
-  const {value: isExpanded} = useAtomSuspense(isSpanIdExpandedAtom(props.spanId))
+  const { value: isExpanded } = useAtomSuspense(
+    isSpanIdExpandedAtom(props.spanId)
+  )
   const name = Option.getOrElse(spanInfo.name, () => props.spanId.spanId)
 
   return (
@@ -110,15 +143,57 @@ function SpanRow(props: { spanId: SpanId; index: number; barWidth: number; measu
       data-trace-id={props.spanId.traceId}
       ref={props.measureElement}
     >
-      
-      <div style={{ display: "flex", flexDirection: "row", paddingLeft: `calc(${spanInfo.depth} * var(--vscode-font-size))` }}>
-      {spanInfo.hasChildren && <vscode-icon action-icon name={isExpanded ? "chevron-down" : "chevron-right"} title={isExpanded ? "Collapse" : "Expand"} onvsc-click={toggleExpanded} />}
-        <div style={{ flex: 1, overflow: "hidden"}}>          
-          {name}
-        </div>
-        <SpanBar containerWidth={props.barWidth} startTime={spanInfo.startTime} endTime={spanInfo.endTime} />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          paddingLeft: `calc(${spanInfo.depth} * var(--vscode-font-size))`
+        }}
+      >
+        {spanInfo.hasChildren && (
+          <vscode-icon
+            action-icon
+            name={isExpanded ? "chevron-down" : "chevron-right"}
+            title={isExpanded ? "Collapse" : "Expand"}
+            onvsc-click={toggleExpanded}
+          />
+        )}
+        <div style={{ flex: 1, overflow: "hidden" }}>{name}</div>
+        <SpanBar
+          containerWidth={props.barWidth}
+          startTime={spanInfo.startTime}
+          endTime={spanInfo.endTime}
+        />
       </div>
     </vscode-tree-item>
+  )
+}
+
+function Minimap() {
+  const { value: minimapData } = useAtomSuspense(minimapDataAtom)
+  const { value: usedRange } = useAtomSuspense(usedRangeAtom)
+  const [viewState, setViewState] = React.useState<ViewState>({
+    startTime: usedRange[0],
+    endTime: usedRange[1]
+  })
+
+  // Update view state when used range changes
+  React.useEffect(() => {
+    setViewState({
+      startTime: usedRange[0],
+      endTime: usedRange[1]
+    })
+  }, [usedRange])
+
+  return (
+    <TraceMinimap
+      bars={minimapData.bars}
+      startTime={usedRange[0]}
+      endTime={usedRange[1]}
+      viewState={viewState}
+      onViewStateChange={setViewState}
+      options={{ minimapHeight: 90 }}
+    />
   )
 }
 
@@ -173,9 +248,12 @@ function MainSpanList() {
 
   return (
     <>
+      <Minimap />
       <vscode-split-layout>
         <vscode-label slot="start">Name</vscode-label>
-        <vscode-label slot="end" ref={spanGraphColumnRef}>Graph</vscode-label>
+        <vscode-label slot="end" ref={spanGraphColumnRef}>
+          Graph
+        </vscode-label>
       </vscode-split-layout>
       <vscode-scrollable
         ref={parentRef}
@@ -223,13 +301,22 @@ function SidebarSpanInfo() {
     setSelectedTab(event.detail.selectedIndex)
   }, [])
   return (
-    <vscode-tabs panel selected-index={selectedTab} onvsc-tabs-select={onTabsSelect} style={styles.sidebarSpanInfoTabs}>
+    <vscode-tabs
+      panel
+      selected-index={selectedTab}
+      onvsc-tabs-select={onTabsSelect}
+      style={styles.sidebarSpanInfoTabs}
+    >
       <vscode-tab-header slot="header">Info</vscode-tab-header>
-      <vscode-tab-panel style={selectedTab === 0 ? styles.tabPanelActive : styles.tabPanelInactive}>
+      <vscode-tab-panel
+        style={selectedTab === 0 ? styles.tabPanelActive : styles.tabPanelInactive}
+      >
         <SelectedSpanInfo />
       </vscode-tab-panel>
       <vscode-tab-header slot="header">Events</vscode-tab-header>
-      <vscode-tab-panel style={selectedTab === 1 ? styles.tabPanelActive : styles.tabPanelInactive}>
+      <vscode-tab-panel
+        style={selectedTab === 1 ? styles.tabPanelActive : styles.tabPanelInactive}
+      >
         <SelectedSpanEvents />
       </vscode-tab-panel>
     </vscode-tabs>
@@ -250,50 +337,48 @@ function SelectedSpanInfo() {
   const { value: spanDetails } = useAtomSuspense(selectedSpanDetailsAtom)
   const content = Option.match(spanDetails, {
     onSome: (span) => {
-      return <vscode-tree>
-        <SpanInfoTreeItem name="Trace ID" description={span.spanId.traceId} />
-        <SpanInfoTreeItem name="Span ID" description={span.spanId.spanId} />
-      </vscode-tree>
+      return (
+        <vscode-tree>
+          <SpanInfoTreeItem name="Trace ID" description={span.spanId.traceId} />
+          <SpanInfoTreeItem name="Span ID" description={span.spanId.spanId} />
+        </vscode-tree>
+      )
     },
     onNone: () => <div>No span selected</div>
   })
-  return (
-    <vscode-scrollable style={styles.scrollable}>
-      {content}
-    </vscode-scrollable>
-  )
+  return <vscode-scrollable style={styles.scrollable}>{content}</vscode-scrollable>
 }
-function SpanInfoEventItem(props: Domain.SpanEvent ) {
+function SpanInfoEventItem(props: Domain.SpanEvent) {
   return (
     <vscode-tree-item>
       <div style={styles.treeItem}>
         <div style={styles.treeItemNameLabel}>{props.name}</div>
         <div style={styles.treeItemDescription}>{props.startTime}</div>
       </div>
-        {
-          Object.entries(props.attributes).map(([key, value]) => <vscode-tree-item key={key}>
-            <div style={styles.treeItem}>
-              <div style={styles.treeItemNameLabel}>{key}</div>
-              <div style={styles.treeItemDescription}>{Inspectable.toStringUnknown(value)}</div>
+      {Object.entries(props.attributes).map(([key, value]) => (
+        <vscode-tree-item key={key}>
+          <div style={styles.treeItem}>
+            <div style={styles.treeItemNameLabel}>{key}</div>
+            <div style={styles.treeItemDescription}>
+              {Inspectable.toStringUnknown(value)}
             </div>
-          </vscode-tree-item>)
-        }
+          </div>
+        </vscode-tree-item>
+      ))}
     </vscode-tree-item>
   )
 }
 function SelectedSpanEvents() {
   const { value: spanDetails } = useAtomSuspense(selectedSpanDetailsAtom)
   const content = Option.match(spanDetails, {
-    onSome: (info) => <vscode-tree>
-      {info.events.map((_, i) => <SpanInfoEventItem key={i} {..._} />)}
-    </vscode-tree>,
+    onSome: (info) => (
+      <vscode-tree>
+        {info.events.map((_, i) => <SpanInfoEventItem key={i} {..._} />)}
+      </vscode-tree>
+    ),
     onNone: () => null
   })
-  return (
-    <vscode-scrollable style={styles.scrollable}>
-      {content}
-    </vscode-scrollable>
-  )
+  return <vscode-scrollable style={styles.scrollable}>{content}</vscode-scrollable>
 }
 
 function AppContent() {
@@ -302,7 +387,11 @@ function AppContent() {
   return (
     <>
       <vscode-toolbar-container>
-        <vscode-toolbar-button icon="refresh" title="Refresh" onClick={refresh} />
+        <vscode-toolbar-button
+          icon="refresh"
+          title="Refresh"
+          onClick={refresh}
+        />
       </vscode-toolbar-container>
       <vscode-split-layout
         style={styles.splitLayout}

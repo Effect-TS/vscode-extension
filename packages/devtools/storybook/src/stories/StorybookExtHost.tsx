@@ -1,33 +1,33 @@
-import * as ExtConfig from "@effect/devtools/shared/core/ExtConfig";
-import * as ExtHost from "@effect/devtools/shared/core/ExtHost";
-import * as ExtWebView from "@effect/devtools/shared/core/ExtWebView";
-import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
-import * as ManagedRuntime from "effect/ManagedRuntime";
-import * as SubscriptionRef from "effect/SubscriptionRef";
-import React from "react";
-import  * as Scope from "effect/Scope";
-import * as Deferred from "effect/Deferred";
-import * as Mailbox from "effect/Mailbox";
-import * as Runtime from "effect/Runtime";
+import type * as ExtConfig from "@effect/devtools/shared/core/ExtConfig"
+import * as ExtHost from "@effect/devtools/shared/core/ExtHost"
+import type * as ExtWebView from "@effect/devtools/shared/core/ExtWebView"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Mailbox from "effect/Mailbox"
+import * as ManagedRuntime from "effect/ManagedRuntime"
+import * as Runtime from "effect/Runtime"
+import * as Scope from "effect/Scope"
+import * as SubscriptionRef from "effect/SubscriptionRef"
+import React from "react"
 
 export function RenderToComponent<ROut>(props: { layer: Layer.Layer<ROut, never, ExtHost.ExtHost> }) {
-  const rootRef = React.useRef<HTMLIFrameElement>(null);
+  const rootRef = React.useRef<HTMLIFrameElement>(null)
 
   React.useEffect(() => {
-    if(rootRef.current) {
-    const runtime = ManagedRuntime.make(props.layer.pipe(
-      Layer.provide(StorybookExtHost(rootRef.current))
-    ));
+    if (rootRef.current) {
+      const runtime = ManagedRuntime.make(props.layer.pipe(
+        Layer.provide(StorybookExtHost(rootRef.current))
+      ))
 
-    return () => {
-      runtime.dispose();
-    };
-  }
-  }, [props.layer]);
+      return () => {
+        runtime.dispose()
+      }
+    }
+  }, [props.layer])
 
-  return React.createElement("iframe", { ref: rootRef });
-};
+  return React.createElement("iframe", { ref: rootRef })
+}
 
 const createWebViewBooter = (
   _webView: ExtWebView.AnyWithProps,
@@ -73,57 +73,62 @@ const createWebViewBooter = (
   })
 }
 
-const StorybookExtHost = (iframe: HTMLIFrameElement) =>  Layer.scoped(
-  ExtHost.ExtHost,
-  Effect.gen(function*() {
-    const appScope = yield* Effect.scope
+const StorybookExtHost = (iframe: HTMLIFrameElement) =>
+  Layer.scoped(
+    ExtHost.ExtHost,
+    Effect.gen(function*() {
+      const appScope = yield* Effect.scope
 
-    const asWorkspaceRelativePath = (uri: string): string => {
-      return uri;
-    };
+      const asWorkspaceRelativePath = (uri: string): string => {
+        return uri
+      }
 
+      const registerWebView = (
+        _webView: ExtWebView.AnyWithProps,
+        _builder: ExtWebView.ExtWebViewBuilder<never>
+      ): Effect.Effect<void, never, never> =>
+        Effect.gen(function*() {
+          iframe.src = _webView.type
+          const { onHidden, onShown } = yield* createWebViewBooter(_webView, _builder, (w, port2) =>
+            Effect.sync(() => w.postMessage("", "*", [port2]))).pipe(
+              Scope.extend(appScope)
+            )
 
-    const registerWebView = (
-      _webView: ExtWebView.AnyWithProps,
-      _builder: ExtWebView.ExtWebViewBuilder<never>,
-    ): Effect.Effect<void, never, never> => Effect.gen(function*() {
-      iframe.src = _webView.type
-      const { onShown, onHidden } = yield* createWebViewBooter(_webView, _builder, (w, port2) => Effect.sync(() => w.postMessage("", "*", [port2]))).pipe(
-        Scope.extend(appScope)
-      )
+          iframe.addEventListener("load", () => {
+            if (iframe.contentWindow) {
+              onShown(iframe.contentWindow)
+            }
+          })
+          iframe.addEventListener("unload", () => {
+            onHidden()
+          })
+          return Effect.void
+        })
 
-      iframe.addEventListener("load", () => {
-        if(iframe.contentWindow) onShown(iframe.contentWindow)
-      })
-      iframe.addEventListener("unload", () => {
-        onHidden()
-      })
-      return Effect.void
-    });
+      const readConfig = (config: ExtConfig.AnyWithProps) => {
+        return Effect.gen(function*() {
+          const ref = yield* SubscriptionRef.make(config.defaultValue)
+          return {
+            get: SubscriptionRef.get(ref),
+            changes: ref.changes
+          }
+        })
+      }
 
-    const readConfig = (config: ExtConfig.AnyWithProps) => {
-      return Effect.gen(function*() {
-        const ref = yield* SubscriptionRef.make(config.defaultValue);
-        return {
-          get: SubscriptionRef.get(ref),
-          changes: ref.changes,
-        };
-      });
-    };
-
-    return {
-      asWorkspaceRelativePath,
-      registerCommand: () => Effect.void,
-      executeCommand: () => Effect.void,
-      revealFileLineColumnRange: () => Effect.void,
-      registerWebView,
-      registerTreeView: () => Effect.void,
-      registerTreeViewInlineAction: () => () => Effect.void,
-      registerTreeViewNavigationAction: () => Effect.void,
-      registerTreeViewTitleAction: () => Effect.void,
-      setVariable: () => Effect.void,
-      registerConfig: () => Effect.void,
-      readConfig,
-    };
-  }),
-);
+      return {
+        asWorkspaceRelativePath,
+        registerCommand: () =>
+          Effect.void,
+        executeCommand: () => Effect.void,
+        revealFileLineColumnRange: () => Effect.void,
+        registerWebView,
+        registerTreeView: () => Effect.void,
+        registerTreeViewInlineAction: () => () => Effect.void,
+        registerTreeViewNavigationAction: () => Effect.void,
+        registerTreeViewTitleAction: () => Effect.void,
+        setVariable: () => Effect.void,
+        registerConfig: () => Effect.void,
+        readConfig
+      }
+    })
+  )

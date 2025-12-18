@@ -11,6 +11,8 @@ import type { VscodeTreeItem } from "../components/index.ts"
 import * as WebviewMessaging from "../WebviewMessaging.ts"
 import {
   Initialized,
+  MinimapDataInfo,
+  MinimapDataRequest,
   OutMessage,
   SpanDataForDetailsInfo,
   SpanDataForDetailsRequest,
@@ -25,13 +27,19 @@ import {
 } from "./messages.ts"
 
 export class TracerApp extends Effect.Service<TracerApp>()("TracerApp", {
-  dependencies: [WebviewMessaging.layer(Schema.encodeUnknownSync(Initialized)(new Initialized()))],
+  dependencies: [
+    WebviewMessaging.layer(
+      Schema.encodeUnknownSync(Initialized)(new Initialized())
+    )
+  ],
   scoped: Effect.gen(function*() {
     const { events, postMessage } = yield* WebviewMessaging.WebviewMessaging
 
     const currentTraceId = yield* SubscriptionRef.make(Option.none<string>())
     const selectedSpanId = yield* SubscriptionRef.make(Option.none<SpanId>())
-    const expandedSpanIds = yield* SubscriptionRef.make(HashSet.empty<SpanId>())
+    const expandedSpanIds = yield* SubscriptionRef.make(
+      HashSet.empty<SpanId>()
+    )
 
     const ofType = <A extends Schema.Schema.AnyNoContext>(
       schema: A
@@ -62,7 +70,9 @@ const tracerRuntime = Atom.runtime(TracerApp.Default).pipe(Atom.keepAlive)
 export const usedRangeAtom = tracerRuntime.atom(() =>
   Effect.gen(function*() {
     const tracerApp = yield* TracerApp
-    return Stream.succeed(new UsedRangeInfo({ startTime: BigInt(1), endTime: BigInt(-1) })).pipe(
+    return Stream.succeed(
+      new UsedRangeInfo({ startTime: BigInt(1), endTime: BigInt(-1) })
+    ).pipe(
       Stream.merge(tracerApp.ofType(UsedRangeInfo)),
       Stream.map((_) => [_.startTime, _.endTime]),
       Stream.onStart(tracerApp.request(new UsedRangeRequest()))
@@ -70,18 +80,19 @@ export const usedRangeAtom = tracerRuntime.atom(() =>
   }).pipe(Stream.unwrap)
 )
 
-export const refreshApp = tracerRuntime.fn((_: any) =>
+export const refreshApp = tracerRuntime.fn((_: any, ctx) =>
   Effect.gen(function*() {
     const tracerApp = yield* TracerApp
     yield* tracerApp.request(new TraceListRequest())
-    const traceId = yield* SubscriptionRef.get(tracerApp.currentTraceId)
-    const expandedSpanIds = yield* SubscriptionRef.get(tracerApp.expandedSpanIds)
-    yield* tracerApp.request(new SpanListRequest({ traceId, expandedSpanIds, timeRange: Option.none() }))
-    yield* tracerApp.request(new UsedRangeRequest())
+    ctx.refresh(currentSpanIdsAtom)
+    ctx.refresh(usedRangeAtom)
+    ctx.refresh(minimapDataAtom)
   })
 )
 
-export const currentSpanIdsAtom: Atom.Atom<Result.Result<ReadonlyArray<SpanId>, never>> = tracerRuntime.atom(() =>
+export const currentSpanIdsAtom: Atom.Atom<
+  Result.Result<ReadonlyArray<SpanId>, never>
+> = tracerRuntime.atom(() =>
   Effect.gen(function*() {
     const tracerApp = yield* TracerApp
     return Stream.zipLatestWith(
@@ -89,13 +100,24 @@ export const currentSpanIdsAtom: Atom.Atom<Result.Result<ReadonlyArray<SpanId>, 
       tracerApp.expandedSpanIds.changes,
       (traceId, expandedSpanIds) => ({ traceId, expandedSpanIds })
     ).pipe(
-      Stream.flatMap(({ expandedSpanIds, traceId }) =>
-        Stream.empty.pipe(
-          Stream.merge(tracerApp.ofType(SpanListInfo)),
-          Stream.filter((_) => Equal.equals(traceId, _.traceId)),
-          Stream.map((_) => _.spanIds),
-          Stream.onStart(tracerApp.request(new SpanListRequest({ traceId, expandedSpanIds, timeRange: Option.none() })))
-        ), { switch: true }),
+      Stream.flatMap(
+        ({ expandedSpanIds, traceId }) =>
+          Stream.empty.pipe(
+            Stream.merge(tracerApp.ofType(SpanListInfo)),
+            Stream.filter((_) => Equal.equals(traceId, _.traceId)),
+            Stream.map((_) => _.spanIds),
+            Stream.onStart(
+              tracerApp.request(
+                new SpanListRequest({
+                  traceId,
+                  expandedSpanIds,
+                  timeRange: Option.none()
+                })
+              )
+            )
+          ),
+        { switch: true }
+      ),
       Stream.merge(Stream.succeed([]))
     )
   }).pipe(Stream.unwrap)
@@ -107,7 +129,9 @@ export const spanDataForListAtom = Atom.family((spanId: SpanId) =>
       const tracerApp = yield* TracerApp
       return tracerApp.ofType(SpanDataForListInfo).pipe(
         Stream.filter((_) => Equal.equals(_.spanId, spanId)),
-        Stream.onStart(tracerApp.request(new SpanDataForListRequest({ spanId })))
+        Stream.onStart(
+          tracerApp.request(new SpanDataForListRequest({ spanId }))
+        )
       )
     }).pipe(Stream.unwrap)
   )
@@ -120,35 +144,46 @@ export const selectedSpanIdAtom = tracerRuntime.atom(() =>
   }).pipe(Stream.unwrap)
 )
 
-export const setSelectedSpanIdAtom = tracerRuntime.fn((e: CustomEvent<Array<VscodeTreeItem>>) =>
-  Effect.gen(function*() {
-    const tracerApp = yield* TracerApp
-    if (e.detail.length > 0) {
-      const spanId = e.detail[0].getAttribute("data-span-id")
-      const traceId = e.detail[0].getAttribute("data-trace-id")
-      if (spanId && traceId) {
-        return yield* SubscriptionRef.set(tracerApp.selectedSpanId, Option.some(new SpanId({ traceId, spanId })))
+export const setSelectedSpanIdAtom = tracerRuntime.fn(
+  (e: CustomEvent<Array<VscodeTreeItem>>) =>
+    Effect.gen(function*() {
+      const tracerApp = yield* TracerApp
+      if (e.detail.length > 0) {
+        const spanId = e.detail[0].getAttribute("data-span-id")
+        const traceId = e.detail[0].getAttribute("data-trace-id")
+        if (spanId && traceId) {
+          return yield* SubscriptionRef.set(
+            tracerApp.selectedSpanId,
+            Option.some(new SpanId({ traceId, spanId }))
+          )
+        }
       }
-    }
-    return yield* SubscriptionRef.set(tracerApp.selectedSpanId, Option.none<SpanId>())
-  })
+      return yield* SubscriptionRef.set(
+        tracerApp.selectedSpanId,
+        Option.none<SpanId>()
+      )
+    })
 )
 
 export const selectedSpanDetailsAtom = tracerRuntime.atom(() =>
   Effect.gen(function*() {
     const tracerApp = yield* TracerApp
-    return tracerApp.selectedSpanId.changes.pipe(Stream.flatMap(
-      Option.match({
-        onSome: (spanId) =>
-          tracerApp.ofType(SpanDataForDetailsInfo).pipe(
-            Stream.filter((_) => Equal.equals(_.spanId, spanId)),
-            Stream.map((_) => Option.some(_)),
-            Stream.onStart(tracerApp.request(new SpanDataForDetailsRequest({ spanId })))
-          ),
-        onNone: () => Stream.succeed(Option.none<SpanDataForDetailsInfo>())
-      }),
-      { switch: true }
-    ))
+    return tracerApp.selectedSpanId.changes.pipe(
+      Stream.flatMap(
+        Option.match({
+          onSome: (spanId) =>
+            tracerApp.ofType(SpanDataForDetailsInfo).pipe(
+              Stream.filter((_) => Equal.equals(_.spanId, spanId)),
+              Stream.map((_) => Option.some(_)),
+              Stream.onStart(
+                tracerApp.request(new SpanDataForDetailsRequest({ spanId }))
+              )
+            ),
+          onNone: () => Stream.succeed(Option.none<SpanDataForDetailsInfo>())
+        }),
+        { switch: true }
+      )
+    )
   }).pipe(Stream.unwrap)
 )
 
@@ -179,3 +214,22 @@ export const isSpanIdExpandedAtom = Atom.family((spanId: SpanId) =>
     }).pipe(Stream.unwrap)
   )
 )
+
+export const minimapDataAtom = tracerRuntime.atom(() =>
+  Effect.gen(function*() {
+    const tracerApp = yield* TracerApp
+    return Stream.succeed(
+      new MinimapDataInfo({ traceId: Option.none(), bars: [] })
+    ).pipe(
+      Stream.merge(tracerApp.ofType(MinimapDataInfo)),
+      Stream.onStart(
+        tracerApp.request(new MinimapDataRequest({ traceId: Option.none() }))
+      )
+    )
+  }).pipe(Stream.unwrap)
+)
+
+export interface ViewState {
+  startTime: bigint
+  endTime: bigint
+}

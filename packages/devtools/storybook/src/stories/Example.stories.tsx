@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react"
 
 /**
  * Example story demonstrating the Storybook setup.
@@ -10,10 +10,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 // Simple example component
 const ExampleComponent = ({
   text,
-  variant,
+  variant
 }: {
-  text: string;
-  variant?: "primary" | "secondary";
+  text: string
+  variant?: "primary" | "secondary"
 }) => {
   return (
     <div
@@ -22,42 +22,42 @@ const ExampleComponent = ({
         backgroundColor: variant === "primary" ? "#007acc" : "#5a5a5a",
         color: "white",
         borderRadius: "4px",
-        fontFamily: "var(--vscode-font-family)",
+        fontFamily: "var(--vscode-font-family)"
       }}
     >
       {text}
     </div>
-  );
-};
+  )
+}
 
 const meta = {
   title: "Example/Basic Component",
   component: ExampleComponent,
   parameters: {
-    layout: "centered",
+    layout: "centered"
   },
   tags: ["autodocs"],
   argTypes: {
     variant: {
       control: "select",
-      options: ["primary", "secondary"],
-    },
-  },
-} satisfies Meta<typeof ExampleComponent>;
+      options: ["primary", "secondary"]
+    }
+  }
+} satisfies Meta<typeof ExampleComponent>
 
-export default meta;
-type Story = StoryObj<typeof meta>;
+export default meta
+type Story = StoryObj<typeof meta>
 
 export const Primary: Story = {
   args: {
     text: "This is a primary example",
-    variant: "primary",
-  },
-};
+    variant: "primary"
+  }
+}
 
 export const Secondary: Story = {
   args: {
     text: "This is a secondary example",
-    variant: "secondary",
-  },
-};
+    variant: "secondary"
+  }
+}
