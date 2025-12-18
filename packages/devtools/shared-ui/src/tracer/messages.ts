@@ -22,7 +22,8 @@ export class TraceListInfo extends Schema.TaggedClass<TraceListInfo>("TraceListI
 
 export class SpanListRequest extends Schema.TaggedClass<SpanListRequest>("SpanListRequest")("SpanListRequest", {
   traceId: Schema.Option(Schema.NonEmptyTrimmedString),
-  expandedSpanIds: Schema.HashSet(SpanId)
+  expandedSpanIds: Schema.HashSet(SpanId),
+  timeRange: Schema.Option(Schema.Tuple(Schema.BigInt, Schema.BigInt))
 }) {}
 
 export class SpanListInfo extends Schema.TaggedClass<SpanListInfo>("SpanListInfo")("SpanListInfo", {

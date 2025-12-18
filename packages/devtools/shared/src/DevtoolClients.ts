@@ -4,11 +4,14 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
+import * as Function from "effect/Function"
 import * as Graph from "effect/Graph"
 import * as Hash from "effect/Hash"
+import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import type * as Mailbox from "effect/Mailbox"
+import * as MutableHashMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
 import * as PubSub from "effect/PubSub"
 import type { Dequeue } from "effect/Queue"
@@ -136,27 +139,25 @@ export const layerSpanCollector = Layer.scoped(
   DevtoolSpanCollector.ClientsSpanGraphCollector,
   Effect.gen(function*() {
     const clients = yield* DevtoolClients
-    const graphByTraceId = new Map<string, DevtoolSpanCollector.SpanGraphInfo>()
+    const nodeIndexBySpanAndTraceId = MutableHashMap.empty<DevtoolSpanCollector.SpanAndTraceId, Graph.NodeIndex>()
+    const graph = Graph.beginMutation(Graph.directed<DevtoolSpanCollector.GraphNodeInfo, void>())
+    const traceIds = new Set<string>()
     let usedRange = Option.none<[bigint, bigint]>()
 
-    function ensureSpan(traceId: string, spanId: string): [DevtoolSpanCollector.SpanGraph, number] {
-      let info = graphByTraceId.get(traceId)
-      if (info === undefined) {
-        info = {
-          graph: Graph.beginMutation(Graph.directed<DevtoolSpanCollector.GraphNodeInfo, void>()),
-          nodeIdBySpanId: new Map<string, number>()
-        }
-        graphByTraceId.set(traceId, info)
-      }
-      let nodeId = info.nodeIdBySpanId.get(spanId)
-      if (nodeId === undefined) {
-        nodeId = Graph.addNode(info.graph, {
+    function ensureSpan(traceId: string, spanId: string): Graph.NodeIndex {
+      const spanAndTraceId = DevtoolSpanCollector.SpanAndTraceId.make({ traceId, spanId })
+      const maybeNodeIndex = MutableHashMap.get(nodeIndexBySpanAndTraceId, spanAndTraceId)
+      let nodeIndex: Graph.NodeIndex
+      if (Option.isNone(maybeNodeIndex)) {
+        nodeIndex = Graph.addNode(graph, {
           span: Domain.ExternalSpan.make({ _tag: "ExternalSpan", spanId, traceId, sampled: false }),
           events: []
         })
-        info.nodeIdBySpanId.set(spanId, nodeId)
+        MutableHashMap.set(nodeIndexBySpanAndTraceId, spanAndTraceId, nodeIndex)
+      } else {
+        nodeIndex = maybeNodeIndex.value
       }
-      return [info.graph, nodeId]
+      return nodeIndex
     }
 
     function sortSpan(
@@ -169,12 +170,12 @@ export const layerSpanCollector = Layer.scoped(
     }
 
     function addNode(span: Domain.ParentSpan) {
-      const [mutableGraph, nodeId] = ensureSpan(span.traceId, span.spanId)
-      Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
+      const nodeIndex = ensureSpan(span.traceId, span.spanId)
+      Graph.updateNode(graph, nodeIndex, (previousInfo) => {
         const [latestInfo, upgraded] = sortSpan(previousInfo.span, span)
         if (upgraded && latestInfo._tag === "Span" && Option.isSome(latestInfo.parent)) {
           const parentNodeId = addNode(latestInfo.parent.value)
-          Graph.addEdge(mutableGraph, parentNodeId, nodeId, undefined)
+          Graph.addEdge(graph, parentNodeId, nodeIndex, undefined)
         }
         if (latestInfo !== previousInfo.span && latestInfo._tag === "Span") {
           const lowestStart = pipe(
@@ -200,15 +201,15 @@ export const layerSpanCollector = Layer.scoped(
         }
         return { ...previousInfo, span: latestInfo }
       })
-      return nodeId
+      return nodeIndex
     }
 
     function addEvent(event: Domain.SpanEvent) {
-      const [mutableGraph, nodeId] = ensureSpan(event.traceId, event.spanId)
-      Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
+      const nodeIndex = ensureSpan(event.traceId, event.spanId)
+      Graph.updateNode(graph, nodeIndex, (previousInfo) => {
         return { ...previousInfo, events: [...previousInfo.events, event] }
       })
-      return nodeId
+      return nodeIndex
     }
 
     const handleClient = (client: Client) =>
@@ -239,6 +240,13 @@ export const layerSpanCollector = Layer.scoped(
       Effect.forkScoped
     )
 
-    return { graphByTraceId: Effect.sync(() => graphByTraceId), usedRange: Effect.sync(() => usedRange) }
+    return Function.identity<typeof DevtoolSpanCollector.ClientsSpanGraphCollector.Service>({
+      usedRange: Effect.sync(() => usedRange),
+      traceIds: Effect.sync(() => Array.from(traceIds)),
+      graphByTraceId: Effect.sync(() => ({
+        graph: Graph.endMutation(graph),
+        nodeIndexBySpanAndTraceId: HashMap.make(...Array.from(nodeIndexBySpanAndTraceId))
+      }))
+    })
   })
 )

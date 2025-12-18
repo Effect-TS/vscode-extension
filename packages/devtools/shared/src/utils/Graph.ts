@@ -1,7 +1,10 @@
+import * as Array from "effect/Array"
 import * as Graph from "effect/Graph"
+import * as Order from "effect/Order"
 
 export interface DfsChooseContinueConfig<N> extends Graph.SearchConfig {
   chooseContinue: (data: N) => boolean
+  order: Order.Order<Graph.NodeIndex>
 }
 
 export const dfsChooseContinue = <N, E, T extends Graph.Kind = "directed">(
@@ -10,10 +13,12 @@ export const dfsChooseContinue = <N, E, T extends Graph.Kind = "directed">(
 ): Graph.NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
+  const order = config.order
 
   return new Graph.Walker((f) => ({
     [Symbol.iterator]: () => {
-      const stack = [...start]
+      const sortedStart = order ? Array.sort(start, Order.reverse(order)) : start
+      const stack = [...sortedStart]
       const discovered = new Set<Graph.NodeIndex>()
 
       const nextMapped = () => {
@@ -33,8 +38,9 @@ export const dfsChooseContinue = <N, E, T extends Graph.Kind = "directed">(
 
           if (config.chooseContinue(nodeDataOption)) {
             const neighbors = Graph.neighborsDirected(graph, current, direction)
-            for (let i = neighbors.length - 1; i >= 0; i--) {
-              const neighbor = neighbors[i]
+            const sortedNeighbors = order ? Array.sort(neighbors, order) : neighbors
+            for (let i = sortedNeighbors.length - 1; i >= 0; i--) {
+              const neighbor = sortedNeighbors[i]
               if (!discovered.has(neighbor)) {
                 stack.push(neighbor)
               }

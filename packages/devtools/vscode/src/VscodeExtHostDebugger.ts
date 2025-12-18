@@ -80,9 +80,7 @@ export const e = Effect.gen(function*() {
       yield* Deferred.fail(timeout, new Cause.TimeoutException()).pipe(Effect.delay(1000), Effect.forkScoped)
 
       while (true) {
-        yield* Effect.log("wait...")
         const response = yield* Effect.raceFirst(client.queue.take, Deferred.await(timeout))
-        yield* Effect.log("in ", response)
         if (
           Predicate.hasProperty(response, "method") && response.method === "Runtime.executionContextCreated" &&
           Predicate.hasProperty(response, "params") && Predicate.hasProperty(response.params, "context") &&

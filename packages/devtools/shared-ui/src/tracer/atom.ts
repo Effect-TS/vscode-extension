@@ -11,7 +11,6 @@ import type { VscodeTreeItem } from "../components/index.ts"
 import * as WebviewMessaging from "../WebviewMessaging.ts"
 import {
   Initialized,
-  InMessage,
   OutMessage,
   SpanDataForDetailsInfo,
   SpanDataForDetailsRequest,
@@ -44,16 +43,9 @@ export class TracerApp extends Effect.Service<TracerApp>()("TracerApp", {
 
     const request = (value: OutMessage) =>
       Schema.encodeUnknown(OutMessage)(value).pipe(
-        Effect.tap((_) => Effect.log("<--", _)),
         Effect.flatMap(postMessage),
         Effect.ignoreLogged
       )
-
-    yield* ofType(InMessage).pipe(
-      Stream.tap((_) => Effect.log("-->", _)),
-      Stream.runDrain,
-      Effect.forkScoped
-    )
 
     return {
       ofType,
@@ -84,7 +76,7 @@ export const refreshApp = tracerRuntime.fn((_: any) =>
     yield* tracerApp.request(new TraceListRequest())
     const traceId = yield* SubscriptionRef.get(tracerApp.currentTraceId)
     const expandedSpanIds = yield* SubscriptionRef.get(tracerApp.expandedSpanIds)
-    yield* tracerApp.request(new SpanListRequest({ traceId, expandedSpanIds }))
+    yield* tracerApp.request(new SpanListRequest({ traceId, expandedSpanIds, timeRange: Option.none() }))
     yield* tracerApp.request(new UsedRangeRequest())
   })
 )
@@ -100,10 +92,9 @@ export const currentSpanIdsAtom: Atom.Atom<Result.Result<ReadonlyArray<SpanId>, 
       Stream.flatMap(({ expandedSpanIds, traceId }) =>
         Stream.empty.pipe(
           Stream.merge(tracerApp.ofType(SpanListInfo)),
-          Stream.tap((_) => Effect.log("spans", _.spanIds.length)),
           Stream.filter((_) => Equal.equals(traceId, _.traceId)),
           Stream.map((_) => _.spanIds),
-          Stream.onStart(tracerApp.request(new SpanListRequest({ traceId, expandedSpanIds })))
+          Stream.onStart(tracerApp.request(new SpanListRequest({ traceId, expandedSpanIds, timeRange: Option.none() })))
         ), { switch: true }),
       Stream.merge(Stream.succeed([]))
     )

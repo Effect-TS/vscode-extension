@@ -3,10 +3,12 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Graph from "effect/Graph"
+import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Iterable from "effect/Iterable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Order from "effect/Order"
 import * as PubSub from "effect/PubSub"
 import * as Schema from "effect/Schema"
 import * as ExtWebView from "./core/ExtWebView.ts"
@@ -54,43 +56,47 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
                 )
               }
               case "TraceListRequest": {
-                const graphByTraceId = yield* spanCollector.graphByTraceId
+                const traceIds = yield* spanCollector.traceIds
                 return yield* request(
-                  new WebViewMessage.TraceListInfo({ traceIds: Array.fromIterable(graphByTraceId.keys()) })
+                  new WebViewMessage.TraceListInfo({ traceIds })
                 )
               }
               case "SpanListRequest": {
-                const graphByTraceId = yield* spanCollector.graphByTraceId
-                const graphs = Array.fromIterable(graphByTraceId.entries()).filter(([traceId]) =>
-                  Option.isNone(message.traceId) || Equal.equals(message.traceId, Option.some(traceId))
-                )
+                const info = yield* spanCollector.graphByTraceId
                 const explodedSet = HashSet.fromIterable(message.expandedSpanIds)
-                const spanIds = pipe(
-                  Array.fromIterable(graphs),
-                  Array.map(([traceId, info]) => {
-                    const spanIds: Array<WebViewMessage.SpanId> = []
-                    const rootIds = pipe(
-                      Graph.externals(info.graph, { direction: "incoming" }),
-                      Graph.indices,
-                      Array.fromIterable
-                    )
-                    for (
-                      const [_o, _] of GraphUtils.dfsChooseContinue(info.graph, {
-                        start: rootIds,
-                        direction: "outgoing",
-                        chooseContinue: (data) =>
-                          HashSet.has(
-                            explodedSet,
-                            new WebViewMessage.SpanId({ traceId: data.span.traceId, spanId: data.span.spanId })
-                          )
-                      })
-                    ) {
-                      spanIds.push(new WebViewMessage.SpanId({ traceId, spanId: _.span.spanId }))
-                    }
-                    return spanIds
-                  }),
-                  Array.flatten
+                const spanIds: Array<WebViewMessage.SpanId> = []
+                const spanOrder = Order.mapInput(
+                  Order.bigint,
+                  (nodeIndex: Graph.NodeIndex) => {
+                    const nodeInfo = info.graph.nodes.get(nodeIndex)!
+                    return nodeInfo.span._tag === "Span" ? nodeInfo.span.status.startTime : BigInt(0)
+                  }
                 )
+
+                const rootIds = pipe(
+                  Graph.externals(info.graph, { direction: "incoming" }),
+                  Graph.indices,
+                  Array.fromIterable,
+                  Array.filter((index) =>
+                    Option.isNone(message.traceId) ||
+                    Equal.equals(message.traceId, Option.some(info.graph.nodes.get(index)?.span.traceId))
+                  )
+                )
+                for (
+                  const [_o, _] of GraphUtils.dfsChooseContinue(info.graph, {
+                    start: rootIds,
+                    direction: "outgoing",
+                    order: spanOrder,
+                    chooseContinue: (data) =>
+                      HashSet.has(
+                        explodedSet,
+                        new WebViewMessage.SpanId({ traceId: data.span.traceId, spanId: data.span.spanId })
+                      )
+                  })
+                ) {
+                  spanIds.push(new WebViewMessage.SpanId({ traceId: _.span.traceId, spanId: _.span.spanId }))
+                }
+
                 return yield* request(
                   new WebViewMessage.SpanListInfo({
                     traceId: message.traceId,
@@ -99,30 +105,31 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
                 )
               }
               case "SpanDataForListRequest": {
-                const graphByTraceId = yield* spanCollector.graphByTraceId
-                const maybeInfo = pipe(
-                  Option.fromNullable(graphByTraceId.get(message.spanId.traceId)),
-                  Option.flatMap((graph) =>
-                    Option.fromNullable(graph.nodeIdBySpanId.get(message.spanId.spanId)).pipe(
-                      Option.flatMap((nodeId) =>
-                        Graph.getNode(graph.graph, nodeId).pipe(
-                          Option.map((info) =>
-                            new WebViewMessage.SpanDataForListInfo({
-                              spanId: message.spanId,
-                              name: Option.fromNullable(info.span._tag === "Span" ? info.span.name : undefined),
-                              depth: DevtoolSpanCollector.countParentSpans(info.span),
-                              hasChildren: !Iterable.isEmpty(Graph.neighborsDirected(graph.graph, nodeId, "outgoing")),
-                              startTime: Option.fromNullable(
-                                info.span._tag === "Span" ? info.span.status.startTime : undefined
-                              ),
-                              endTime: Option.fromNullable(
-                                info.span._tag === "Span" && info.span.status._tag === "Ended"
-                                  ? info.span.status.endTime
-                                  : undefined
-                              )
-                            })
+                const info = yield* spanCollector.graphByTraceId
+                const maybeInfo = HashMap.get(
+                  info.nodeIndexBySpanAndTraceId,
+                  DevtoolSpanCollector.SpanAndTraceId.make({
+                    traceId: message.spanId.traceId,
+                    spanId: message.spanId.spanId
+                  })
+                ).pipe(
+                  Option.flatMap((nodeId) =>
+                    Graph.getNode(info.graph, nodeId).pipe(
+                      Option.map((nodeInfo) =>
+                        new WebViewMessage.SpanDataForListInfo({
+                          spanId: message.spanId,
+                          name: Option.fromNullable(nodeInfo.span._tag === "Span" ? nodeInfo.span.name : undefined),
+                          depth: DevtoolSpanCollector.countParentSpans(nodeInfo.span),
+                          hasChildren: !Iterable.isEmpty(Graph.neighborsDirected(info.graph, nodeId, "outgoing")),
+                          startTime: Option.fromNullable(
+                            nodeInfo.span._tag === "Span" ? nodeInfo.span.status.startTime : undefined
+                          ),
+                          endTime: Option.fromNullable(
+                            nodeInfo.span._tag === "Span" && nodeInfo.span.status._tag === "Ended"
+                              ? nodeInfo.span.status.endTime
+                              : undefined
                           )
-                        )
+                        })
                       )
                     )
                   )
@@ -138,13 +145,17 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(Effect.gen(function*()
                   })))
               }
               case "SpanDataForDetailsRequest": {
-                const graphByTraceId = yield* spanCollector.graphByTraceId
-                const info = pipe(
-                  Option.fromNullable(graphByTraceId.get(message.spanId.traceId)),
-                  Option.flatMap((graph) =>
-                    Option.fromNullable(graph.nodeIdBySpanId.get(message.spanId.spanId)).pipe(
-                      Option.flatMap((nodeId) => Graph.getNode(graph.graph, nodeId)),
-                      Option.map((info) => info)
+                const data = yield* spanCollector.graphByTraceId
+                const info = HashMap.get(
+                  data.nodeIndexBySpanAndTraceId,
+                  DevtoolSpanCollector.SpanAndTraceId.make({
+                    traceId: message.spanId.traceId,
+                    spanId: message.spanId.spanId
+                  })
+                ).pipe(
+                  Option.flatMap((nodeId) =>
+                    Graph.getNode(data.graph, nodeId).pipe(
+                      Option.map((nodeInfo) => nodeInfo)
                     )
                   )
                 )
