@@ -71,13 +71,36 @@ export const usedRangeAtom = tracerRuntime.atom(() =>
   Effect.gen(function*() {
     const tracerApp = yield* TracerApp
     return Stream.succeed(
-      new UsedRangeInfo({ startTime: BigInt(1), endTime: BigInt(-1) })
+      Option.none<[bigint, bigint]>()
     ).pipe(
-      Stream.merge(tracerApp.ofType(UsedRangeInfo)),
-      Stream.map((_) => [_.startTime, _.endTime]),
+      Stream.merge(
+        tracerApp.ofType(UsedRangeInfo).pipe(Stream.map((_) => Option.some([_.startTime, _.endTime] as const)))
+      ),
       Stream.onStart(tracerApp.request(new UsedRangeRequest()))
     )
   }).pipe(Stream.unwrap)
+)
+
+export const userRangeDefaultEmpty = tracerRuntime.atom((get) =>
+  Effect.gen(function*() {
+    const usedRange = yield* get.result(usedRangeAtom)
+    return usedRange.pipe(
+      Option.getOrElse(() => [BigInt(1), BigInt(-1)] as const)
+    )
+  })
+)
+
+export const userRangeAtom = Atom.make(Option.none<readonly [bigint, bigint]>())
+
+export const viewRangeAtom = tracerRuntime.atom((get) =>
+  Effect.gen(function*() {
+    const userRange = get(userRangeAtom)
+    const usedRange = yield* get.result(usedRangeAtom)
+    return userRange.pipe(
+      Option.orElse(() => usedRange),
+      Option.getOrElse(() => [BigInt(1), BigInt(-1)] as const)
+    )
+  })
 )
 
 export const refreshApp = tracerRuntime.fn((_: any, ctx) =>
@@ -87,6 +110,7 @@ export const refreshApp = tracerRuntime.fn((_: any, ctx) =>
     ctx.refresh(currentSpanIdsAtom)
     ctx.refresh(usedRangeAtom)
     ctx.refresh(minimapDataAtom)
+    ctx.set(userRangeAtom, Option.none())
   })
 )
 

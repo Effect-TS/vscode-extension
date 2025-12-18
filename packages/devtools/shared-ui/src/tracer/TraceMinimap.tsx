@@ -7,10 +7,7 @@ export interface MinimapBar {
   color: string
 }
 
-export interface ViewState {
-  startTime: bigint // Start time of visible range in nanoseconds
-  endTime: bigint // End time of visible range in nanoseconds
-}
+export type ViewState = readonly [startTime: bigint, endTime: bigint]
 
 export interface MinimapOptions {
   minimapHeight?: number
@@ -75,7 +72,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
       // Check if bar is within current view
       const barStart = bar.startTime
       const barEnd = bar.endTime
-      const isInView = barEnd >= viewState.startTime && barStart <= viewState.endTime
+      const isInView = barEnd >= viewState[0] && barStart <= viewState[1]
 
       // Set transparency based on whether bar is in view
       ctx.globalAlpha = isInView ? 0.8 : 0.3
@@ -87,8 +84,8 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     ctx.globalAlpha = 1
     ctx.strokeStyle = "#ffffff"
     ctx.lineWidth = 2
-    const viewX = Number(viewState.startTime - fullTimeRange.start) * pixelsPerNano
-    const viewWidth = Number(viewState.endTime - viewState.startTime) * pixelsPerNano
+    const viewX = Number(viewState[0] - fullTimeRange.start) * pixelsPerNano
+    const viewWidth = Number(viewState[1] - viewState[0]) * pixelsPerNano
 
     // Draw horizontal time range
     ctx.strokeRect(viewX, 0, viewWidth, minimapHeight)
@@ -97,10 +94,6 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     ctx.lineWidth = 1
   }, [bars, startTime, endTime, viewState, minimapHeight])
 
-  // Emit unchanged view event on mount to ensure current view range is communicated
-  useEffect(() => {
-    onViewStateChange(viewState)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -133,7 +126,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     // Update view immediately on minimap click
     if (fullTimeRangeRef.current) {
       const totalDuration = fullTimeRangeRef.current.end - fullTimeRangeRef.current.start
-      const currentViewDuration = viewState.endTime - viewState.startTime
+      const currentViewDuration = viewState[1] - viewState[0]
 
       // Center the view on the clicked position
       const clickTime = fullTimeRangeRef.current.start +
@@ -141,10 +134,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
       const newStartTime = clickTime - currentViewDuration / 2n
       const newEndTime = clickTime + currentViewDuration / 2n
 
-      onViewStateChange({
-        startTime: newStartTime,
-        endTime: newEndTime
-      })
+      onViewStateChange([newStartTime, newEndTime])
     }
   }
 
@@ -159,7 +149,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     // Handle minimap dragging
     const mouseX = Math.max(0, Math.min(rect.width, x))
     const totalDuration = fullTimeRangeRef.current.end - fullTimeRangeRef.current.start
-    const currentViewDuration = viewState.endTime - viewState.startTime
+    const currentViewDuration = viewState[1] - viewState[0]
 
     // Center the view on the mouse position
     const mouseTime = fullTimeRangeRef.current.start +
@@ -167,10 +157,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     const newStartTime = mouseTime - currentViewDuration / 2n
     const newEndTime = mouseTime + currentViewDuration / 2n
 
-    onViewStateChange({
-      startTime: newStartTime,
-      endTime: newEndTime
-    })
+    onViewStateChange([newStartTime, newEndTime])
   }
 
   const handleMouseUp = () => {
@@ -195,7 +182,7 @@ const TraceMinimap: React.FC<MinimapProps> = ({
       BigInt(Math.round(Number(totalDuration) * (x / rect.width)))
 
     // Current view duration
-    const currentViewDuration = viewState.endTime - viewState.startTime
+    const currentViewDuration = viewState[1] - viewState[0]
 
     // Zoom factor: positive deltaY = zoom out, negative = zoom in
     // Use a smooth zoom factor (e.g., 10% per scroll notch)
@@ -205,17 +192,14 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     )
 
     // Calculate how far the mouse is within the current view (0 to 1)
-    const mouseOffsetInView = Number(mouseTime - viewState.startTime) / Number(currentViewDuration)
+    const mouseOffsetInView = Number(mouseTime - viewState[0]) / Number(currentViewDuration)
 
     // Calculate new start and end times, keeping the mouse position fixed
     const newStartTime = mouseTime -
       BigInt(Math.round(Number(newViewDuration) * mouseOffsetInView))
     const newEndTime = newStartTime + newViewDuration
 
-    onViewStateChange({
-      startTime: newStartTime,
-      endTime: newEndTime
-    })
+    onViewStateChange([newStartTime, newEndTime])
   }
 
   if (minimapHeight === 0) return null

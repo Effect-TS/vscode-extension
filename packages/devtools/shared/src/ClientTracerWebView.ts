@@ -223,6 +223,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
                 }
                 case "MinimapDataRequest": {
                   const info = yield* spanCollector.graphByTraceId
+                  const usedRange = yield* spanCollector.usedRange
                   const bars: Array<WebViewMessage.MinimapBar> = []
                   const spanOrder = Order.mapInput(
                     Order.bigint,
@@ -270,8 +271,8 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
                       // External spans are purple
                       color = "hsl(270, 70%, 60%)"
                       // External spans don't have timing info, use 0
-                      startTime = BigInt(0)
-                      endTime = BigInt(0)
+                      startTime = usedRange._tag === "Some" ? usedRange.value[0] : BigInt(0)
+                      endTime = usedRange._tag === "Some" ? usedRange.value[1] : BigInt(0)
                     } else if (nodeInfo.span._tag === "Span") {
                       startTime = nodeInfo.span.status.startTime
 
@@ -281,7 +282,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
                         color = "hsl(210, 70%, 60%)"
                       } else {
                         // Running spans are dark gray
-                        endTime = startTime
+                        endTime = usedRange._tag === "Some" ? usedRange.value[1] : BigInt(0)
                         color = "hsl(0, 0%, 40%)"
                       }
 

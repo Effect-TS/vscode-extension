@@ -1,4 +1,4 @@
-import { useAtomSet, useAtomSuspense } from "@effect-atom/atom-react"
+import {  useAtomSet, useAtomSuspense } from "@effect-atom/atom-react"
 import type * as Domain from "@effect/experimental/DevTools/Domain"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import type { VscTabsSelectEvent } from "@vscode-elements/elements/dist/vscode-tabs/vscode-tabs"
@@ -16,8 +16,9 @@ import {
   setSelectedSpanIdAtom,
   spanDataForListAtom,
   toggleSpanIdAtom,
-  usedRangeAtom,
-  type ViewState
+  userRangeAtom,
+  userRangeDefaultEmpty,
+  viewRangeAtom
 } from "./atom.ts"
 import type { SpanId } from "./messages.ts"
 import TraceMinimap from "./TraceMinimap.tsx"
@@ -80,9 +81,10 @@ const styles = {
 function SpanBar(props: {
   containerWidth: number
   startTime: Option.Option<bigint>
-  endTime: Option.Option<bigint>
+  endTime: Option.Option<bigint>,
+  alternate: boolean
 }) {
-  const { value: usedRange } = useAtomSuspense(usedRangeAtom)
+  const { value: usedRange } = useAtomSuspense(viewRangeAtom)
   const start = pipe(
     props.startTime,
     Option.map((startTime) =>
@@ -112,7 +114,7 @@ function SpanBar(props: {
         style={{
           width: Math.max(0.001, end - start) + "%",
           minWidth: "1px",
-          backgroundColor: "var(--vscode-list-focusOutline)"
+          backgroundColor: props.alternate ? "var(--vscode-list-deemphasizedForeground)" : "var(--vscode-list-focusOutline)"
         }}
       >
       </div>
@@ -163,6 +165,7 @@ function SpanRow(props: {
           containerWidth={props.barWidth}
           startTime={spanInfo.startTime}
           endTime={spanInfo.endTime}
+          alternate={spanInfo.endTime._tag === "None"}
         />
       </div>
     </vscode-tree-item>
@@ -171,27 +174,20 @@ function SpanRow(props: {
 
 function Minimap() {
   const { value: minimapData } = useAtomSuspense(minimapDataAtom)
-  const { value: usedRange } = useAtomSuspense(usedRangeAtom)
-  const [viewState, setViewState] = React.useState<ViewState>({
-    startTime: usedRange[0],
-    endTime: usedRange[1]
-  })
-
-  // Update view state when used range changes
-  React.useEffect(() => {
-    setViewState({
-      startTime: usedRange[0],
-      endTime: usedRange[1]
-    })
-  }, [usedRange])
+  const { value: viewRange } = useAtomSuspense(viewRangeAtom)
+  const { value: usedRange } = useAtomSuspense(userRangeDefaultEmpty)
+  const setViewState = useAtomSet(userRangeAtom)
+  const setUserViewRange = (range: readonly [bigint, bigint]) => {
+    setViewState(Option.some(range))
+  }
 
   return (
     <TraceMinimap
       bars={minimapData.bars}
       startTime={usedRange[0]}
       endTime={usedRange[1]}
-      viewState={viewState}
-      onViewStateChange={setViewState}
+      viewState={viewRange}
+      onViewStateChange={setUserViewRange}
       options={{ minimapHeight: 90 }}
     />
   )
@@ -204,8 +200,6 @@ function MainSpanList() {
   const { value: spanIds } = useAtomSuspense(currentSpanIdsAtom)
   const setSelectedSpanId = useAtomSet(setSelectedSpanIdAtom)
   const maxSize = React.useRef(10)
-
-  console.log("MainSpanList", spanIds.length)
 
   React.useEffect(() => {
     if (spanGraphColumnRef.current) {
@@ -341,6 +335,8 @@ function SelectedSpanInfo() {
         <vscode-tree>
           <SpanInfoTreeItem name="Trace ID" description={span.spanId.traceId} />
           <SpanInfoTreeItem name="Span ID" description={span.spanId.spanId} />
+          <SpanInfoTreeItem name="Type" description={span.data._tag} />
+          <SpanInfoTreeItem name="Sampled" description={span.data.sampled ? "Yes" : "No"} />
         </vscode-tree>
       )
     },
