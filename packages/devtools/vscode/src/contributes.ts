@@ -1,4 +1,3 @@
-import * as ExtHost from "@effect/devtools-shared/core/ExtHost"
 import * as ExtHostDebugger from "@effect/devtools-shared/core/ExtHostDebugger"
 import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import {
@@ -23,7 +22,6 @@ export const VscodeExtension = Layer.mergeAll(
   Contribs.treeView(TreeViews.ClientSpanTree, "effect"),
   // extended tracer
   Contribs.webView(WebViews.ClientTracer, "effect-tracer-panel"),
-  Contribs.webViewNavigationAction(WebViews.ClientTracer, Commands.ResetTracerExtended),
   // breakpoints
   Contribs.treeView(TreeViews.DebugBreakpointsTree, "debug"),
   // context
@@ -34,12 +32,7 @@ export const VscodeExtension = Layer.mergeAll(
   Contribs.treeView(TreeViews.DebugSpanStackTree, "debug")
 ).pipe(
   Layer.provideMerge(LiveServerCapabilities),
-  Layer.provideMerge(LiveCommonCapabilities),
-  Layer.provideMerge(Layer.mergeAll(
-    ExtHost.registerConfig(Configs.DevServerPort),
-    ExtHost.registerConfig(Configs.InstrumentationInjectDebugConfigurations),
-    ExtHost.registerConfig(Configs.InstrumentationInjectNodeOptions)
-  ))
+  Layer.provideMerge(LiveCommonCapabilities)
 )
 
 export const InitialContributes = Contribs.initial({
@@ -71,7 +64,7 @@ export const InitialContributes = Contribs.initial({
 export const getContributesObject = Contribs.getContributes.pipe(
   Effect.provide(VscodeExtension.pipe(
     Layer.provide(ExtHostDebugger.ExtHostDebugger.Mock),
-    Layer.provide(Contribs.VscodeContributesExtHost),
+    Layer.provide(Contribs.layer),
     Layer.provideMerge(InitialContributes)
   ))
 )

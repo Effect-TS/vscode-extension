@@ -1,11 +1,12 @@
-import type * as ExtCommand from "@effect/devtools-shared/core/ExtCommand"
-import type * as ExtConfig from "@effect/devtools-shared/core/ExtConfig"
-import * as ExtHost from "@effect/devtools-shared/core/ExtHost"
+import * as ExtCommand from "@effect/devtools-shared/core/ExtCommand"
+import * as ExtConfig from "@effect/devtools-shared/core/ExtConfig"
 import type * as ExtIcon from "@effect/devtools-shared/core/ExtIcon"
-import type * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
-import type * as ExtWebView from "@effect/devtools-shared/core/ExtWebView"
+import * as ExtTextEditor from "@effect/devtools-shared/core/ExtTextEditor"
+import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
+import * as ExtWebView from "@effect/devtools-shared/core/ExtWebView"
 import * as ExtWhenClause from "@effect/devtools-shared/core/ExtWhenClause"
 import type * as ExtWhenClauseAST from "@effect/devtools-shared/core/ExtWhenClauseAST"
+import * as ExtWorkspace from "@effect/devtools-shared/core/ExtWorkspace"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -176,174 +177,192 @@ export const initial = (opts: {
     menus: { "view/title": [], "view/item/context": [], "commandPalette": [] }
   })
 
-export const VscodeContributesExtHost = Layer.scoped(
-  ExtHost.ExtHost,
-  Effect.gen(function*() {
-    const contributes = yield* CurrentContributes
+const commandCapability = Layer.unwrapEffect(Effect.gen(function*() {
+  const contributes = yield* CurrentContributes
 
-    const asWorkspaceRelativePath = (uri: string): string => {
-      return uri
-    }
-
-    const registerCommand = (
-      command: ExtCommand.AnyWithProps,
-      _handler: ExtCommand.HandlerNoContext<string>
-    ): Effect.Effect<void, never, never> => {
-      const alreadyRegistered = contributes.commands.find((c) => c.command === command._id)
-      if (alreadyRegistered) return Effect.void
-      return Effect.sync(() => {
-        const base: ContributedCommand = {
-          command: command._id,
-          title: !command.palette ? command.title : contributes.extensionTitle + ": " + command.title
-        }
-        if (command.icon) {
-          base.icon = iconToVsCode(command.icon)
-        }
-        if (command.enablement) {
-          base.enablement = whenToVsCode(command.enablement as any)
-        }
-        contributes.commands.push(base)
-        contributes.menus["commandPalette"].push({
-          command: command._id,
-          when: command.palette ? (base.enablement || "true") : "false"
-        })
+  const registerCommand = (
+    command: ExtCommand.AnyWithProps,
+    _handler: ExtCommand.HandlerNoContext<string>
+  ): Effect.Effect<void, never, never> => {
+    const alreadyRegistered = contributes.commands.find((c) => c.command === command._id)
+    if (alreadyRegistered) return Effect.void
+    return Effect.sync(() => {
+      const base: ContributedCommand = {
+        command: command._id,
+        title: !command.palette ? command.title : contributes.extensionTitle + ": " + command.title
+      }
+      if (command.icon) {
+        base.icon = iconToVsCode(command.icon)
+      }
+      if (command.enablement) {
+        base.enablement = whenToVsCode(command.enablement as any)
+      }
+      contributes.commands.push(base)
+      contributes.menus["commandPalette"].push({
+        command: command._id,
+        when: command.palette ? (base.enablement || "true") : "false"
       })
-    }
+    })
+  }
 
-    const registerTreeView = (
-      _treeView: ExtTreeView.AnyWithProps,
-      _builder: ExtTreeView.ExtTreeViewBuilder<any, never>
-    ): Effect.Effect<void, never, never> => {
-      const section = contributes.views[_treeView._id]
-      if (section) return Effect.void
-      return Effect.sync(() => {
-        contributes.views[_treeView._id] = treeViewProviderToVsCode(_treeView)
+  return Layer.succeed(ExtCommand.ExtCommandHostCapability, {
+    registerCommand,
+    executeCommand: () => Effect.void
+  })
+}))
+
+const treeViewCapability = Layer.unwrapEffect(Effect.gen(function*() {
+  const contributes = yield* CurrentContributes
+
+  const registerTreeView = (
+    _treeView: ExtTreeView.AnyWithProps,
+    _builder: ExtTreeView.ExtTreeViewBuilder<any, never>
+  ): Effect.Effect<void, never, never> => {
+    const section = contributes.views[_treeView._id]
+    if (section) return Effect.void
+    return Effect.sync(() => {
+      contributes.views[_treeView._id] = treeViewProviderToVsCode(_treeView)
+    })
+  }
+
+  function registerTreeViewNavigationAction<
+    V extends ExtTreeView.AnyWithProps,
+    C extends ExtCommand.AnyWithProps
+  >(
+    _view: V,
+    _command: C
+  ) {
+    return Effect.gen(function*() {
+      let when = ExtWhenClause.equals(
+        ExtWhenClause.stringFromEnv("view"),
+        ExtWhenClause.stringLiteral(_view._id)
+      )
+      when = _command.enablement ? ExtWhenClause.and(when, _command.enablement) : when
+      contributes.menus["view/title"].push({
+        command: _command._id,
+        when: whenToVsCode(when),
+        group: "navigation"
       })
-    }
+    })
+  }
 
-    function registerTreeViewNavigationAction<
-      V extends ExtTreeView.AnyWithProps,
-      C extends ExtCommand.AnyWithProps
+  function registerTreeViewTitleAction<
+    V extends ExtTreeView.AnyWithProps,
+    C extends ExtCommand.AnyWithProps
+  >(
+    _view: V,
+    _command: C
+  ) {
+    return Effect.gen(function*() {
+      let when = ExtWhenClause.equals(
+        ExtWhenClause.stringFromEnv("view"),
+        ExtWhenClause.stringLiteral(_view._id)
+      )
+      when = _command.enablement ? ExtWhenClause.and(when, _command.enablement) : when
+      contributes.menus["view/title"].push({
+        command: _command._id,
+        when: whenToVsCode(when)
+      })
+    })
+  }
+
+  function registerTreeViewInlineAction<
+    V extends ExtTreeView.AnyWithProps,
+    C extends ExtCommand.AnyWithProps
+  >(
+    _view: V,
+    _command: C
+  ) {
+    return <
+      K extends Array<ExtTreeView.Keys<V, C>>
     >(
-      _view: V,
-      _command: C
-    ) {
-      return Effect.gen(function*() {
-        let when = ExtWhenClause.equals(
+      ..._keys: K
+    ) =>
+      Effect.gen(function*() {
+        const whenView = ExtWhenClause.equals(
           ExtWhenClause.stringFromEnv("view"),
           ExtWhenClause.stringLiteral(_view._id)
         )
-        when = _command.enablement ? ExtWhenClause.and(when, _command.enablement) : when
-        contributes.menus["view/title"].push({
+        let when = _command.enablement
+        when = when ? ExtWhenClause.and(whenView, when) : whenView
+        if (_keys.length > 0) {
+          let whenItemType: ExtWhenClause.AnyBoolean | undefined = undefined
+          for (const key of _keys) {
+            const whenItem = ExtWhenClause.equals(
+              ExtWhenClause.stringFromEnv("viewItem"),
+              ExtWhenClause.stringLiteral(String(key))
+            )
+            whenItemType = whenItemType ? ExtWhenClause.or(whenItemType, whenItem) : whenItem
+          }
+          if (whenItemType) when = ExtWhenClause.and(when, ExtWhenClause.parenthesized(whenItemType))
+        }
+        contributes.menus["view/item/context"].push({
           command: _command._id,
           when: whenToVsCode(when),
-          group: "navigation"
+          group: "inline"
         })
       })
-    }
+  }
 
-    function registerTreeViewTitleAction<
-      V extends ExtTreeView.AnyWithProps,
-      C extends ExtCommand.AnyWithProps
-    >(
-      _view: V,
-      _command: C
-    ) {
-      return Effect.gen(function*() {
-        let when = ExtWhenClause.equals(
-          ExtWhenClause.stringFromEnv("view"),
-          ExtWhenClause.stringLiteral(_view._id)
-        )
-        when = _command.enablement ? ExtWhenClause.and(when, _command.enablement) : when
-        contributes.menus["view/title"].push({
-          command: _command._id,
-          when: whenToVsCode(when)
-        })
-      })
-    }
-
-    function registerTreeViewInlineAction<
-      V extends ExtTreeView.AnyWithProps,
-      C extends ExtCommand.AnyWithProps
-    >(
-      _view: V,
-      _command: C
-    ) {
-      return <
-        K extends Array<ExtTreeView.Keys<V, C>>
-      >(
-        ..._keys: K
-      ) =>
-        Effect.gen(function*() {
-          const whenView = ExtWhenClause.equals(
-            ExtWhenClause.stringFromEnv("view"),
-            ExtWhenClause.stringLiteral(_view._id)
-          )
-          let when = _command.enablement
-          when = when ? ExtWhenClause.and(whenView, when) : whenView
-          if (_keys.length > 0) {
-            let whenItemType: ExtWhenClause.AnyBoolean | undefined = undefined
-            for (const key of _keys) {
-              const whenItem = ExtWhenClause.equals(
-                ExtWhenClause.stringFromEnv("viewItem"),
-                ExtWhenClause.stringLiteral(String(key))
-              )
-              whenItemType = whenItemType ? ExtWhenClause.or(whenItemType, whenItem) : whenItem
-            }
-            if (whenItemType) when = ExtWhenClause.and(when, ExtWhenClause.parenthesized(whenItemType))
-          }
-          contributes.menus["view/item/context"].push({
-            command: _command._id,
-            when: whenToVsCode(when),
-            group: "inline"
-          })
-        })
-    }
-
-    const registerWebView = (
-      _webView: ExtWebView.AnyWithProps,
-      _builder: ExtWebView.ExtWebViewBuilder<never>
-    ): Effect.Effect<void, never, never> => {
-      const section = contributes.views[_webView._id]
-      if (section) return Effect.void
-      return Effect.sync(() => {
-        contributes.views[_webView._id] = webViewProviderToVsCode(_webView)
-      })
-    }
-
-    const readConfig = (config: ExtConfig.AnyWithProps) => {
-      return Effect.gen(function*() {
-        const ref = yield* SubscriptionRef.make(config.defaultValue)
-        return {
-          get: SubscriptionRef.get(ref),
-          changes: ref.changes
-        }
-      })
-    }
-
-    const registerConfig = (config: ExtConfig.AnyWithProps) => {
-      const alreadyRegistered = contributes.configuration.properties[config._id]
-      if (alreadyRegistered) return Effect.void
-      return Effect.sync(() => {
-        contributes.configuration.properties[config._id] = configToVsCode(config)
-      })
-    }
-
-    return {
-      asWorkspaceRelativePath,
-      registerCommand,
-      executeCommand: () => Effect.void,
-      revealFileLineColumnRange: () => Effect.void,
-      registerTreeView,
-      registerWebView,
-      registerTreeViewInlineAction,
-      registerTreeViewNavigationAction,
-      registerTreeViewTitleAction,
-      setVariable: () => Effect.void,
-      registerConfig,
-      readConfig
-    }
+  return Layer.succeed(ExtTreeView.ExtTreeViewHostCapability, {
+    registerTreeView,
+    registerTreeViewTitleAction,
+    registerTreeViewNavigationAction,
+    registerTreeViewInlineAction
   })
+}))
+
+const configCapability = Layer.unwrapEffect(Effect.gen(function*() {
+  const contributes = yield* CurrentContributes
+  const readConfig = (config: ExtConfig.AnyWithProps) => {
+    return Effect.gen(function*() {
+      const ref = yield* SubscriptionRef.make(config.defaultValue)
+      return {
+        get: SubscriptionRef.get(ref),
+        changes: ref.changes
+      }
+    })
+  }
+
+  const registerConfig = (config: ExtConfig.AnyWithProps) => {
+    const alreadyRegistered = contributes.configuration.properties[config._id]
+    if (alreadyRegistered) return Effect.void
+    return Effect.sync(() => {
+      contributes.configuration.properties[config._id] = configToVsCode(config)
+    })
+  }
+
+  return Layer.succeed(ExtConfig.ExtConfigHostCapability, {
+    registerConfig,
+    readConfig
+  })
+}))
+
+const webViewCapability = Layer.unwrapEffect(Effect.gen(function*() {
+  const contributes = yield* CurrentContributes
+
+  const registerWebView = (
+    _webView: ExtWebView.AnyWithProps,
+    _builder: ExtWebView.ExtWebViewBuilder<never>
+  ): Effect.Effect<void, never, never> => {
+    const section = contributes.views[_webView._id]
+    if (section) return Effect.void
+    return Effect.sync(() => {
+      contributes.views[_webView._id] = webViewProviderToVsCode(_webView)
+    })
+  }
+
+  return Layer.succeed(ExtWebView.ExtWebViewHostCapability, {
+    registerWebView
+  })
+}))
+
+export const layer = Layer.empty.pipe(
+  Layer.provideMerge(treeViewCapability),
+  Layer.provideMerge(webViewCapability),
+  Layer.provideMerge(commandCapability),
+  Layer.provideMerge(configCapability),
+  Layer.provideMerge(ExtWorkspace.layerAsIs)
 )
 
 export function treeView<V extends ExtTreeView.Any>(
@@ -363,31 +382,5 @@ export function webView<V extends ExtWebView.Any>(
   return Layer.effectDiscard(Effect.gen(function*() {
     const contributes = yield* CurrentContributes
     contributes.viewToContainer.set(treeView._id, section)
-  }))
-}
-
-export function webViewNavigationAction<
-  V extends ExtWebView.AnyWithProps,
-  C extends ExtCommand.AnyWithProps
->(
-  _view: V,
-  _command: C
-): Layer.Layer<
-  never,
-  never,
-  CurrentContributes | ExtWebView.UnknownWebView<ExtWebView.Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
-> {
-  return Layer.effectDiscard(Effect.gen(function*() {
-    const contributes = yield* CurrentContributes
-    let when = ExtWhenClause.equals(
-      ExtWhenClause.stringFromEnv("view"),
-      ExtWhenClause.stringLiteral(_view._id)
-    )
-    when = _command.enablement ? ExtWhenClause.and(when, _command.enablement) : when
-    contributes.menus["view/title"].push({
-      command: _command._id,
-      when: whenToVsCode(when),
-      group: "navigation"
-    })
   }))
 }

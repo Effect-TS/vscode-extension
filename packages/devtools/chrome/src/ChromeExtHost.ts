@@ -3,8 +3,10 @@ import * as ExtConfig from "@effect/devtools-shared/core/ExtConfig"
 import * as ExtTextEditor from "@effect/devtools-shared/core/ExtTextEditor"
 import type * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import * as ExtWebView from "@effect/devtools-shared/core/ExtWebView"
+import * as ExtWhenClause from "@effect/devtools-shared/core/ExtWhenClause"
 import * as ExtWorkspace from "@effect/devtools-shared/core/ExtWorkspace"
 import * as ConfigAsExtWebView from "@effect/devtools-shared/replacements/ConfigAsExtWebView"
+import * as ExtTreeAsExtWebView from "@effect/devtools-shared/replacements/ExtTreeAsExtWebView"
 import * as ContainerWebViewHtml from "@effect/devtools-shared/webviews/container.generated"
 import { PubSub, Stream } from "effect"
 import * as Context from "effect/Context"
@@ -172,12 +174,15 @@ const webViewCapability = Layer.unwrapEffect(Effect.gen(function*() {
 }))
 
 export const layer = Layer.empty.pipe(
+  Layer.provideMerge(ExtTreeAsExtWebView.layer),
   Layer.provideMerge(configurationPage),
   Layer.provideMerge(webViewCapability),
   Layer.provideMerge(ExtCommand.layerInMemory),
   Layer.provideMerge(ExtWorkspace.layerAsIs),
   Layer.provideMerge(sourcesWorkspace),
-  Layer.provide(CurrentContributes.Live)
+  Layer.provideMerge(ExtWhenClause.layerInMemoryEvaluator),
+  Layer.provideMerge(ExtWhenClause.ExtWhenEvaluator.Default),
+  Layer.provideMerge(CurrentContributes.Live)
 )
 
 export const launch = Layer.scopedDiscard(Effect.gen(function*() {

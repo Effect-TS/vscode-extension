@@ -2,15 +2,12 @@ import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import * as DevtoolClients from "@effect/devtools-shared/DevtoolClients"
 import { Commands, LiveCommonCapabilities, TreeViews, WebViews } from "@effect/devtools-shared/extension"
 import * as ConfigAsExtWebView from "@effect/devtools-shared/replacements/ConfigAsExtWebView"
-import * as ExtTreeAsExtWebView from "@effect/devtools-shared/replacements/ExtTreeAsExtWebView"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Contribs from "./ChromeExtHost.ts"
 import * as ChromeExtHostDebugger from "./ChromeExtHostDebugger.ts"
 
-const ActivateDebugClientDefault = Layer.effectDiscard(Effect.gen(function*() {
-  yield* Commands.AttachDebugSessionClient.execute()
-}))
+const ActivateDebugClientDefault = Layer.effectDiscard(Commands.AttachDebugSessionClient.execute())
 
 const ChromeExtension = Layer.mergeAll(
   // behaviour
@@ -38,10 +35,8 @@ const ChromeExtension = Layer.mergeAll(
   Layer.provideMerge(LiveCommonCapabilities),
   Layer.provide(DevtoolClients.layerSpanCollector),
   Layer.provideMerge(DevtoolClients.DevtoolClients.Default),
-  Layer.provide(ExtTreeAsExtWebView.layer),
-  Layer.provide(Contribs.layer),
   Layer.provideMerge(ChromeExtHostDebugger.ChromeExtHostDebugger),
-  Layer.provideMerge(Contribs.CurrentContributes.Live)
+  Layer.provideMerge(Contribs.layer)
 )
 
 const program = Contribs.launch.pipe(
