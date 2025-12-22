@@ -1,9 +1,9 @@
-import type * as ExtCommand from "@effect/devtools-shared/core/ExtCommand"
-import type * as ExtConfig from "@effect/devtools-shared/core/ExtConfig"
-import * as ExtHost from "@effect/devtools-shared/core/ExtHost"
+import * as ExtCommand from "@effect/devtools-shared/core/ExtCommand"
+import * as ExtConfig from "@effect/devtools-shared/core/ExtConfig"
+import * as ExtTextEditor from "@effect/devtools-shared/core/ExtTextEditor"
 import type * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
-import type * as ExtWebView from "@effect/devtools-shared/core/ExtWebView"
-import * as ExtWhenEvaluator from "@effect/devtools-shared/core/ExtWhenEvaluator"
+import * as ExtWebView from "@effect/devtools-shared/core/ExtWebView"
+import * as ExtWorkspace from "@effect/devtools-shared/core/ExtWorkspace"
 import * as ConfigAsExtWebView from "@effect/devtools-shared/replacements/ConfigAsExtWebView"
 import * as ContainerWebViewHtml from "@effect/devtools-shared/webviews/container.generated"
 import { PubSub, Stream } from "effect"
@@ -15,6 +15,48 @@ import * as Mailbox from "effect/Mailbox"
 import * as Runtime from "effect/Runtime"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+
+const configurationPage = Layer.unwrapScoped(Effect.gen(function*() {
+  const configChanges = yield* PubSub.sliding<{ config: ExtConfig.AnyWithProps; value: any }>(2)
+
+  const readConfig = (config: ExtConfig.AnyWithProps) => {
+    return Effect.gen(function*() {
+      const get = Effect.tryPromise(() => chrome.storage.local.get(config._id)).pipe(
+        Effect.flatMap((_) => Schema.decodeUnknown(config.schema)(_[config._id])),
+        Effect.catchAllCause(() => Effect.succeed(config.defaultValue))
+      )
+      return {
+        get,
+        changes: Stream.fromEffect(get).pipe(
+          Stream.concat(
+            Stream.fromPubSub(configChanges).pipe(
+              Stream.filter((_) => _.config._id === config._id),
+              Stream.map((_) => _.value)
+            )
+          )
+        )
+      }
+    })
+  }
+
+  return ConfigAsExtWebView.layer((config, value) =>
+    Schema.encodeUnknown(config.schema)(value).pipe(
+      Effect.flatMap((encoded) => Effect.sync(() => chrome.storage.local.set({ [config._id]: encoded }))),
+      Effect.zipRight(PubSub.publish(configChanges, { config, value })),
+      Effect.ignoreLogged
+    )
+  ).pipe(
+    Layer.provideMerge(Layer.succeed(ExtConfig.ExtConfigHostCapability, {
+      registerConfig: () => Effect.void,
+      readConfig
+    }))
+  )
+}))
+
+const sourcesWorkspace = Layer.succeed(ExtTextEditor.ExtTextEditorHostCapability, {
+  revealFileLineColumnRange: (path, line, column) =>
+    Effect.sync(() => chrome.devtools.panels.openResource(path, line, column))
+})
 
 export class CurrentContributes
   extends Context.Tag("effect-chrome/ChromeExtHost/CurrentContributes")<CurrentContributes, {
@@ -30,12 +72,12 @@ export class CurrentContributes
     sidebarPanes: Map<string, chrome.devtools.panels.ExtensionSidebarPane>
   }>()
 {
-  static Live = Layer.succeed(this, {
+  static Live = Layer.sync(this, () => ({
     viewToContainer: new Map(),
     initializers: [],
     effectWebViews: [],
     sidebarPanes: new Map()
-  })
+  }))
 }
 
 const createWebViewBooter = (
@@ -82,6 +124,62 @@ const createWebViewBooter = (
   })
 }
 
+const webViewCapability = Layer.unwrapEffect(Effect.gen(function*() {
+  const contributes = yield* CurrentContributes
+
+  return Layer.succeed(ExtWebView.ExtWebViewHostCapability, {
+    registerWebView: (_webView, _builder) => {
+      const registration = Effect.gen(function*() {
+        // check if already registered
+        const existing = contributes.sidebarPanes.get(_webView._id)
+        if (existing) return
+
+        // get the target section
+        const targetSection = contributes.viewToContainer.get(_webView._id) || "effect"
+        let section: chrome.devtools.panels.SourcesPanel | chrome.devtools.panels.ElementsPanel | undefined = undefined
+        if (targetSection === "debug") {
+          section = chrome.devtools.panels.sources || chrome.devtools.panels.elements
+        }
+
+        // exit if this wants to go to a panel
+        if (!section) {
+          contributes.effectWebViews.push({
+            webView: _webView,
+            builder: _builder,
+            position: targetSection === "effect" ? "side" : "main"
+          })
+          return
+        }
+
+        // start the webview booter
+        const { onHidden, onShown } = yield* createWebViewBooter(
+          _webView,
+          _builder,
+          (_, port2) => Effect.sync(() => _.postMessage("", "*", [port2]))
+        )
+        section.createSidebarPane(_webView.title, (sidebar) => {
+          contributes.sidebarPanes.set(_webView._id, sidebar)
+          sidebar.setHeight("300px")
+          sidebar.setPage(chrome.runtime.getURL(`ui-${_webView.type}.html`))
+          sidebar.onHidden.addListener(onHidden)
+          sidebar.onShown.addListener(onShown)
+        })
+      })
+
+      return Effect.sync(() => contributes.initializers.push(registration))
+    }
+  })
+}))
+
+export const layer = Layer.empty.pipe(
+  Layer.provideMerge(configurationPage),
+  Layer.provideMerge(webViewCapability),
+  Layer.provideMerge(ExtCommand.layerInMemory),
+  Layer.provideMerge(ExtWorkspace.layerAsIs),
+  Layer.provideMerge(sourcesWorkspace),
+  Layer.provide(CurrentContributes.Live)
+)
+
 export const launch = Layer.scopedDiscard(Effect.gen(function*() {
   const contributes = yield* CurrentContributes
   yield* Effect.all(contributes.initializers)
@@ -112,149 +210,6 @@ export const launch = Layer.scopedDiscard(Effect.gen(function*() {
   })
 }))
 
-export const ChromeExtHost = Layer.unwrapEffect(Effect.gen(function*() {
-  const configChanges = yield* PubSub.sliding<{ config: ExtConfig.AnyWithProps; value: any }>(2)
-  const configAsWebview = ConfigAsExtWebView.layer((config, value) =>
-    Schema.encodeUnknown(config.schema)(value).pipe(
-      Effect.flatMap((encoded) => Effect.sync(() => chrome.storage.local.set({ [config._id]: encoded }))),
-      Effect.zipRight(PubSub.publish(configChanges, { config, value })),
-      Effect.ignoreLogged
-    )
-  )
-
-  const bareHost = Layer.scoped(
-    ExtHost.ExtHost,
-    Effect.gen(function*() {
-      const contributes = yield* CurrentContributes
-      const whenEvaluator = yield* ExtWhenEvaluator.ExtWhenEvaluator
-
-      const asWorkspaceRelativePath = (uri: string): string => {
-        return uri
-      }
-
-      const revealFileLineColumnRange = (
-        _path: string,
-        _line: number,
-        _column: number,
-        _endLine: number,
-        _endColumn: number
-      ) =>
-        Effect.sync(() => {
-          chrome.devtools.panels.openResource(_path, _line, _column)
-        })
-
-      const commandHandlers = new Map<string, ExtCommand.HandlerNoContext<string>>()
-
-      const registerCommand = (
-        _command: ExtCommand.AnyWithProps,
-        _handler: ExtCommand.HandlerNoContext<string>
-      ): Effect.Effect<void, never, never> => {
-        return Effect.sync(() => commandHandlers.set(_command._id, _handler))
-      }
-
-      const executeCommand = (
-        _command: ExtCommand.AnyWithProps,
-        _arg: any
-      ): Effect.Effect<any, any, never> => {
-        const handler = commandHandlers.get(_command._id)
-        if (!handler) return Effect.die(`Command ${_command._id} not found`)
-        return handler(_arg)
-      }
-
-      const registerWebView = (
-        _webView: ExtWebView.AnyWithProps,
-        _builder: ExtWebView.ExtWebViewBuilder<Scope.Scope>
-      ): Effect.Effect<void, never, never> => {
-        const registration = Effect.gen(function*() {
-          // check if already registered
-          const existing = contributes.sidebarPanes.get(_webView._id)
-          if (existing) return
-
-          // get the target section
-          const targetSection = contributes.viewToContainer.get(_webView._id) || "effect"
-          let section: chrome.devtools.panels.SourcesPanel | chrome.devtools.panels.ElementsPanel | undefined =
-            undefined
-          if (targetSection === "debug") {
-            section = chrome.devtools.panels.sources || chrome.devtools.panels.elements
-          }
-
-          // exit if this wants to go to a panel
-          if (!section) {
-            contributes.effectWebViews.push({
-              webView: _webView,
-              builder: _builder,
-              position: targetSection === "effect" ? "side" : "main"
-            })
-            return
-          }
-
-          // start the webview booter
-          const { onHidden, onShown } = yield* createWebViewBooter(
-            _webView,
-            _builder,
-            (_, port2) => Effect.sync(() => _.postMessage("", "*", [port2]))
-          )
-          section.createSidebarPane(_webView.title, (sidebar) => {
-            contributes.sidebarPanes.set(_webView._id, sidebar)
-            sidebar.setHeight("300px")
-            sidebar.setPage(chrome.runtime.getURL(`ui-${_webView.type}.html`))
-            sidebar.onHidden.addListener(onHidden)
-            sidebar.onShown.addListener(onShown)
-          })
-        })
-
-        return Effect.sync(() => contributes.initializers.push(registration))
-      }
-
-      const setVariable = (_id: string, _value: any) => whenEvaluator.setVar(_id, _value)
-
-      const readConfig = (config: ExtConfig.AnyWithProps) => {
-        return Effect.gen(function*() {
-          const get = Effect.tryPromise(() => chrome.storage.local.get(config._id)).pipe(
-            Effect.flatMap((_) => Schema.decodeUnknown(config.schema)(_[config._id])),
-            Effect.catchAllCause(() => Effect.succeed(config.defaultValue))
-          )
-          return {
-            get,
-            changes: Stream.fromEffect(get).pipe(
-              Stream.concat(
-                Stream.fromPubSub(configChanges).pipe(
-                  Stream.filter((_) => _.config._id === config._id),
-                  Stream.map((_) => _.value)
-                )
-              )
-            )
-          }
-        })
-      }
-
-      const registerConfig = (_config: ExtConfig.AnyWithProps) => {
-        return Effect.void
-      }
-
-      return {
-        asWorkspaceRelativePath,
-        registerCommand,
-        executeCommand,
-        revealFileLineColumnRange,
-        registerWebView,
-        registerTreeView: () => Effect.die("not supported"),
-        registerTreeViewNavigationAction: () => Effect.die("not supported"),
-        registerTreeViewTitleAction: () => Effect.die("not supported"),
-        registerTreeViewInlineAction: () => () => Effect.die("not supported"),
-        treeViewInlineAction: () => () => Effect.die("not supported"),
-        setVariable,
-        registerConfig,
-        readConfig
-      }
-    })
-  )
-
-  return configAsWebview.pipe(
-    Layer.provideMerge(bareHost)
-  )
-}))
-
 export function treeView<V extends ExtTreeView.Any>(
   treeView: V,
   section: string
@@ -273,19 +228,4 @@ export function webView<V extends ExtWebView.Any>(
     const contributes = yield* CurrentContributes
     contributes.viewToContainer.set(webView._id, section)
   }))
-}
-
-// TODO: no more actions on webviews, they should be inside the webview itself
-export function webViewNavigationAction<
-  V extends ExtWebView.AnyWithProps,
-  C extends ExtCommand.AnyWithProps
->(
-  _view: V,
-  _command: C
-): Layer.Layer<
-  never,
-  never,
-  CurrentContributes | ExtWebView.UnknownWebView<ExtWebView.Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
-> {
-  return Layer.empty
 }

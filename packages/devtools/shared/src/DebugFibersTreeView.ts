@@ -10,9 +10,9 @@ import * as Order from "effect/Order"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
-import * as ExtHost from "./core/ExtHost.ts"
 import type * as ExtHostDebuggerConnection from "./core/ExtHostDebuggerConnection.ts"
 import * as ExtIcon from "./core/ExtIcon.ts"
+import * as ExtTextEditor from "./core/ExtTextEditor.ts"
 import * as ExtTreeView from "./core/ExtTreeView.ts"
 import * as DevtoolCommands from "./DevtoolCommands.ts"
 import * as DevtoolDebugBridge from "./DevtoolDebugBridge.ts"
@@ -322,14 +322,14 @@ export const DebugFibersTreeViewLive = Layer.unwrapScoped(Effect.gen(function*()
   )
 
   const revealFiberCurrentSpan = DevtoolCommands.RevealFiberCurrentSpan.toLayer(Effect.gen(function*() {
-    const devtoolHost = yield* ExtHost.ExtHost
+    const textEditorCapability = yield* ExtTextEditor.ExtTextEditorHostCapability
     return (args) =>
       Effect.gen(function*() {
         const fibers = yield* SubscriptionRef.get(fibersRef)
         const fiberEntry = yield* Array.findFirst(fibers, (_) => _.fiberId === args.fiberId)
         const stackEntry = fiberEntry.currentSpanLocation()
         if (stackEntry) {
-          yield* devtoolHost.revealFileLineColumnRange(
+          yield* textEditorCapability.revealFileLineColumnRange(
             stackEntry.path,
             stackEntry.line,
             stackEntry.column,

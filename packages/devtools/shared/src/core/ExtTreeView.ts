@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Context_ from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
@@ -8,7 +9,6 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Scope from "effect/Scope"
 import type * as ExtCommand from "./ExtCommand.ts"
-import * as ExtHost from "./ExtHost.ts"
 import type * as ExtIcon from "./ExtIcon.ts"
 import * as ExtWhenClause from "./ExtWhenClause.ts"
 
@@ -90,7 +90,7 @@ export interface ExtTreeView<
   ): Layer.Layer<
     ExtTreeViewProvider<Id> | UnknownTreeView<Id>,
     never,
-    Exclude<RX, Scope.Scope> | R | ExtHost.ExtHost
+    Exclude<RX, Scope.Scope> | R | ExtTreeViewHostCapability
   >
 }
 
@@ -163,7 +163,7 @@ const Proto = {
     build: ExtTreeViewBuilder<any, any>
   ) {
     return Layer.effectDiscard(Effect.gen(this, function*() {
-      const host = yield* ExtHost.ExtHost
+      const host = yield* ExtTreeViewHostCapability
       const context = yield* Effect.context<any>()
       yield* host.registerTreeView(this, (refresh) => build(refresh).pipe(Effect.provide(context)))
     }))
@@ -219,10 +219,10 @@ export function treeViewNavigationAction<
 ): Layer.Layer<
   never,
   never,
-  ExtHost.ExtHost | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
+  ExtTreeViewHostCapability | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
 > {
   return Layer.effectDiscard(
-    Effect.flatMap(ExtHost.ExtHost, (_) => _.registerTreeViewNavigationAction(treeView, command))
+    Effect.flatMap(ExtTreeViewHostCapability, (_) => _.registerTreeViewNavigationAction(treeView, command))
   )
 }
 
@@ -235,10 +235,10 @@ export function treeViewTitleAction<
 ): Layer.Layer<
   never,
   never,
-  ExtHost.ExtHost | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
+  ExtTreeViewHostCapability | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
 > {
   return Layer.effectDiscard(
-    Effect.flatMap(ExtHost.ExtHost, (_) => _.registerTreeViewTitleAction(treeView, command))
+    Effect.flatMap(ExtTreeViewHostCapability, (_) => _.registerTreeViewTitleAction(treeView, command))
   )
 }
 
@@ -256,9 +256,46 @@ export function treeViewInlineAction<
   ): Layer.Layer<
     never,
     never,
-    ExtHost.ExtHost | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
+    ExtTreeViewHostCapability | UnknownTreeView<Id<V>> | ExtCommand.UnknownCommand<ExtCommand.Id<C>>
   > =>
     Layer.effectDiscard(
-      Effect.flatMap(ExtHost.ExtHost, (_) => _.registerTreeViewInlineAction(treeView, _command)(..._keys))
+      Effect.flatMap(ExtTreeViewHostCapability, (_) => _.registerTreeViewInlineAction(treeView, _command)(..._keys))
     )
 }
+
+export class ExtTreeViewHostCapability
+  extends Context_.Tag("@effect/devtools-shared/core/ExtTreeView/ExtTreeViewHostCapability")<
+    ExtTreeViewHostCapability,
+    {
+      registerTreeView(
+        treeView: AnyWithProps,
+        builder: ExtTreeViewBuilder<any, never>
+      ): Effect.Effect<void, never, never>
+      registerTreeViewNavigationAction<
+        V extends AnyWithProps,
+        C extends ExtCommand.AnyWithProps
+      >(
+        treeView: V,
+        command: C
+      ): Effect.Effect<void, never, never>
+      registerTreeViewTitleAction<
+        V extends AnyWithProps,
+        C extends ExtCommand.AnyWithProps
+      >(
+        treeView: V,
+        command: C
+      ): Effect.Effect<void, never, never>
+      registerTreeViewInlineAction<
+        V extends AnyWithProps,
+        C extends ExtCommand.AnyWithProps
+      >(
+        treeView: V,
+        _command: C
+      ): <
+        K extends Array<Keys<V, C>>
+      >(
+        ..._keys: K
+      ) => Effect.Effect<void, never, never>
+    }
+  >()
+{}

@@ -1,5 +1,4 @@
 import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
-import * as ExtWhenEvaluator from "@effect/devtools-shared/core/ExtWhenEvaluator"
 import * as DevtoolClients from "@effect/devtools-shared/DevtoolClients"
 import { Commands, LiveCommonCapabilities, TreeViews, WebViews } from "@effect/devtools-shared/extension"
 import * as ConfigAsExtWebView from "@effect/devtools-shared/replacements/ConfigAsExtWebView"
@@ -25,7 +24,6 @@ const ChromeExtension = Layer.mergeAll(
   Contribs.treeView(TreeViews.ClientMetricsTree, "effect"),
   // extended tracer
   Contribs.webView(WebViews.ClientTracer, "effect-tracer-panel"),
-  Contribs.webViewNavigationAction(WebViews.ClientTracer, Commands.ResetTracerExtended),
   // breakpoints
   Contribs.treeView(TreeViews.DebugBreakpointsTree, "debug"),
   // context
@@ -41,9 +39,8 @@ const ChromeExtension = Layer.mergeAll(
   Layer.provide(DevtoolClients.layerSpanCollector),
   Layer.provideMerge(DevtoolClients.DevtoolClients.Default),
   Layer.provide(ExtTreeAsExtWebView.layer),
-  Layer.provide(Contribs.ChromeExtHost),
+  Layer.provide(Contribs.layer),
   Layer.provideMerge(ChromeExtHostDebugger.ChromeExtHostDebugger),
-  Layer.provide(ExtWhenEvaluator.ExtWhenEvaluator.Default),
   Layer.provideMerge(Contribs.CurrentContributes.Live)
 )
 

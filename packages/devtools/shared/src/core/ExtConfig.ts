@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Context_ from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { type Pipeable } from "effect/Pipeable"
@@ -8,7 +9,6 @@ import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import * as ExtHost from "./ExtHost.ts"
 
 /**
  * @since 1.0.0
@@ -40,7 +40,7 @@ export class ExtConfig<
 > extends Effectable.Class<
   ConfigRef<Schema.Schema.Type<Type>>,
   never,
-  ExtHost.ExtHost | MissingConfig<Id> | Scope.Scope
+  ExtConfigHostCapability | MissingConfig<Id> | Scope.Scope
 > {
   readonly [TypeId]: TypeId = TypeId
   readonly schema: Type
@@ -66,7 +66,7 @@ export class ExtConfig<
 
   commit() {
     return Effect.gen(this, function*() {
-      const host = yield* ExtHost.ExtHost
+      const host = yield* ExtConfigHostCapability
       return yield* host.readConfig(this)
     })
   }
@@ -163,3 +163,10 @@ export const make = <const Id extends string, Type extends Schema.Schema.AnyNoCo
     defaultValue
   )
 }
+
+export class ExtConfigHostCapability
+  extends Context_.Tag("@effect/devtools-shared/core/ExtConfig/ExtConfigHostCapability")<ExtConfigHostCapability, {
+    registerConfig(config: AnyWithProps): Effect.Effect<void, never, never>
+    readConfig(confing: AnyWithProps): Effect.Effect<ConfigRef<any>, never, Scope.Scope>
+  }>()
+{}

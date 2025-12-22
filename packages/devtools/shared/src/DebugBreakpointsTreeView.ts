@@ -6,8 +6,8 @@ import * as Option from "effect/Option"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
-import * as ExtHost from "./core/ExtHost.ts"
 import type * as ExtHostDebuggerConnection from "./core/ExtHostDebuggerConnection.ts"
+import * as ExtTextEditor from "./core/ExtTextEditor.ts"
 import * as ExtTreeView from "./core/ExtTreeView.ts"
 import * as Commands from "./DevtoolCommands.ts"
 import * as DevtoolDebugBridge from "./DevtoolDebugBridge.ts"
@@ -100,7 +100,7 @@ export const DebugBreakpointsTree = ExtTreeView.make<TreeNode>()("effect-debug-b
 
 export const DebugBreakpointsTreeViewLive = Layer.unwrapScoped(Effect.gen(function*() {
   const debug = yield* DevtoolDebugBridge.DevtoolDebugBridge
-  const devtoolHost = yield* ExtHost.ExtHost
+  const textEditorCapability = yield* ExtTextEditor.ExtTextEditorHostCapability
 
   // state
   const pauseOnDefectsNodeRef = yield* SubscriptionRef.make<Option.Option<PauseOnDefectStatusNode>>(Option.none())
@@ -116,7 +116,7 @@ export const DebugBreakpointsTreeViewLive = Layer.unwrapScoped(Effect.gen(functi
         const pauseState = yield* session.getAndUnsetPauseStateToReveal(threadId)
         if (Option.isSome(pauseState.location)) {
           const location = pauseState.location.value
-          yield* devtoolHost.revealFileLineColumnRange(
+          yield* textEditorCapability.revealFileLineColumnRange(
             location.path,
             location.line,
             location.column,

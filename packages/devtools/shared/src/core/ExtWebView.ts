@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
+import * as Context_ from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Mailbox from "effect/Mailbox"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as Scope from "effect/Scope"
-import * as ExtHost from "./ExtHost.ts"
 import * as ExtWhenClause from "./ExtWhenClause.ts"
 
 export interface ExtWebViewBuilder<RX = never> {
@@ -63,7 +63,7 @@ export interface ExtWebView<
   ): Layer.Layer<
     UnknownWebView<Id>,
     never,
-    Exclude<RX, Scope.Scope> | R | ExtHost.ExtHost
+    Exclude<RX, Scope.Scope> | R | ExtWebViewHostCapability
   >
 }
 
@@ -123,7 +123,7 @@ const Proto = {
     build: ExtWebViewBuilder<any>
   ) {
     return Layer.effectDiscard(Effect.gen(this, function*() {
-      const host = yield* ExtHost.ExtHost
+      const host = yield* ExtWebViewHostCapability
       const context = yield* Effect.context<any>()
       yield* host.registerWebView(this, (...args) => build(...args).pipe(Effect.provide(context)))
     }))
@@ -172,3 +172,12 @@ export const make = <
     type: options.type
   }) as any
 }
+
+export class ExtWebViewHostCapability
+  extends Context_.Tag("@effect/devtools-shared/core/ExtWebView/ExtWebViewHostCapability")<ExtWebViewHostCapability, {
+    registerWebView(
+      webView: AnyWithProps,
+      builder: ExtWebViewBuilder<Scope.Scope>
+    ): Effect.Effect<void, never, never>
+  }>()
+{}

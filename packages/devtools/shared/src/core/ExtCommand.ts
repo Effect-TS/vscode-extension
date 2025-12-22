@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
+import * as Context_ from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
-import * as ExtHost from "./ExtHost.ts"
 import type { ExtIcon } from "./ExtIcon.ts"
 import * as ExtWhenClause from "./ExtWhenClause.ts"
 
@@ -62,7 +62,7 @@ export interface ExtCommand<
   ): Effect.Effect<
     Schema.Schema.Type<Success>,
     Schema.Schema.Type<Error>,
-    UnknownCommand<Id> | ExtHost.ExtHost
+    UnknownCommand<Id> | ExtCommandHostCapability
   >
 
   withArgs(
@@ -88,7 +88,7 @@ export interface ExtCommand<
   ): Layer.Layer<
     UnknownCommand<Id>,
     EX,
-    Exclude<RX, Scope.Scope> | ExtHost.ExtHost
+    Exclude<RX, Scope.Scope> | ExtCommandHostCapability
   >
 }
 
@@ -304,7 +304,7 @@ const Proto = {
   toLayer(this: AnyWithProps, build: Effect.Effect<Handler<string>>) {
     return Layer.effectDiscard(
       Effect.gen(this, function*() {
-        const host = yield* ExtHost.ExtHost
+        const host = yield* ExtCommandHostCapability
         const context = yield* Effect.context<any>()
         const handler = yield* build
         yield* host.registerCommand(this, (arg) => handler(arg).pipe(Effect.provide(context)))
@@ -313,7 +313,7 @@ const Proto = {
   },
   execute(this: AnyWithProps, arg: any) {
     return Effect.gen(this, function*() {
-      const host = yield* ExtHost.ExtHost
+      const host = yield* ExtCommandHostCapability
       yield* host.executeCommand(this, arg)
     })
   },
@@ -398,3 +398,33 @@ export const make = <
     enablement
   }) as any
 }
+
+export class ExtCommandHostCapability
+  extends Context_.Tag("@effect/devtools-shared/core/ExtCommand/ExtCommandHostCapability")<
+    ExtCommandHostCapability,
+    {
+      registerCommand(
+        command: AnyWithProps,
+        handler: HandlerNoContext<string>
+      ): Effect.Effect<void, never, never>
+      executeCommand(
+        command: AnyWithProps,
+        payloadEncoded: any
+      ): Effect.Effect<any, any, never>
+    }
+  >()
+{}
+
+export const layerInMemory = Layer.unwrapEffect(Effect.gen(function*() {
+  const commandHandlers = new Map<string, HandlerNoContext<string>>()
+
+  return Layer.succeed(ExtCommandHostCapability, {
+    registerCommand: (command, handler) => Effect.sync(() => commandHandlers.set(command._id, handler)),
+    executeCommand: (command, payloadEncoded) =>
+      Effect.sync(() => {
+        const handler = commandHandlers.get(command._id)
+        if (!handler) return Effect.die(`Command ${command._id} not found`)
+        return handler(payloadEncoded)
+      })
+  })
+}))

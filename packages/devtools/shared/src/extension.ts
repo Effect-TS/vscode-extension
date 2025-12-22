@@ -7,7 +7,6 @@ import { ClientsCommandsLive } from "./ClientsCommands.ts"
 import { ClientSpanTree, ClientSpanTreeViewLive } from "./ClientSpanTreeView.ts"
 import { ClientsTree, ClientsTreeViewLive } from "./ClientsTreeView.ts"
 import { ClientTracerWebView, ClientTracerWebViewLive } from "./ClientTracerWebView.ts"
-import * as ExtHost from "./core/ExtHost.ts"
 import * as ExtHostDebugger from "./core/ExtHostDebugger.ts"
 import * as ExtTreeView from "./core/ExtTreeView.ts"
 import { DebugBreakpointsTree, DebugBreakpointsTreeViewLive } from "./DebugBreakpointsTreeView.ts"
@@ -66,11 +65,6 @@ export const LiveCommonCapabilities = Layer.mergeAll(
   Layer.provide(DevtoolClients.layerSpanCollector),
   Layer.provideMerge(DevtoolClients.DevtoolClients.Default),
   Layer.provideMerge(DevtoolDebugBridge.DevtoolDebugBridge.Default),
-  Layer.provideMerge(Layer.mergeAll(
-    ExtHost.registerConfig(DevtoolConfigs.MetricsPollInterval),
-    ExtHost.registerConfig(DevtoolConfigs.SpanStackIgnoreList),
-    ExtHost.registerConfig(DevtoolConfigs.TracerPollInterval)
-  )),
   Layer.provideMerge(Layer.mergeAll(
     DevtoolInputs.inDebugMode.layerDefault(false),
     DevtoolInputs.running.layerDefault(false),
