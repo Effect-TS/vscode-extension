@@ -248,4 +248,4 @@ export const ClientMetricsTreeViewLive = Layer.unwrapScoped(Effect.gen(function*
     Layer.provideMerge(resetMetrics),
     Layer.provideMerge(treeViewProvider)
   )
-})).pipe(Layer.provideMerge(Configs.MetricsPollInterval.toLayer()))
+}))

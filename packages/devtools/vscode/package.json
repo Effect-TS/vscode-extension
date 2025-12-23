@@ -27,7 +27,55 @@
   "contributes": {
     "configuration": {
       "title": "Effect Dev Tools",
-      "properties": {}
+      "properties": {
+        "effect.metrics.pollInterval": {
+          "type": "integer",
+          "description": "The time in milliseconds between polling for metrics",
+          "title": "Metrics Poll Interval",
+          "default": 500
+        },
+        "effect.tracer.pollInterval": {
+          "type": "integer",
+          "description": "The time in milliseconds between polling for span data while using the debug protocol transport",
+          "title": "Tracer Poll Interval",
+          "default": 250
+        },
+        "effect.spanStack.ignoreList": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "description": "A list of span patterns to ignore when showing the span stack",
+          "title": "Span Stack Ignore List",
+          "default": []
+        },
+        "effect.instrumentation.injectDebugConfigurations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of debug configuration types to inject the instrumentation into when injectNodeOptions is enabled",
+          "title": "Inject Debug Configurations",
+          "default": [
+            "node",
+            "node-terminal",
+            "pwa-node"
+          ]
+        },
+        "effect.instrumentation.injectNodeOptions": {
+          "type": "boolean",
+          "description": "If enabled, the effect instrumentation code will be injected into node debug configurations by appending a NODE_OPTIONS environment variable",
+          "title": "Inject Node Options",
+          "default": false
+        },
+        "effect.devServer.port": {
+          "type": "integer",
+          "description": "The port to run the Effect dev server on",
+          "title": "Dev Server Port",
+          "default": 34437
+        }
+      }
     },
     "commands": [
       {

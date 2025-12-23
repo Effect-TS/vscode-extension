@@ -75,7 +75,7 @@ export class ExtConfig<
   toLayer(): Layer.Layer<MissingConfig<Id>, never, ExtConfigHostCapability> {
     return Layer.scopedDiscard(Effect.gen(this, function*() {
       const host = yield* ExtConfigHostCapability
-      return yield* host.readConfig(this)
+      return yield* host.registerConfig(this)
     })) as any
   }
 }

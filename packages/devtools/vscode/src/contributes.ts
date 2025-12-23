@@ -2,6 +2,7 @@ import * as ExtHostDebugger from "@effect/devtools-shared/core/ExtHostDebugger"
 import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import {
   Commands,
+  Configs,
   LiveCommonCapabilities,
   LiveServerCapabilities,
   TreeViews,
@@ -31,7 +32,13 @@ export const VscodeExtension = Layer.mergeAll(
   Contribs.treeView(TreeViews.DebugSpanStackTree, "debug")
 ).pipe(
   Layer.provideMerge(LiveServerCapabilities),
-  Layer.provideMerge(LiveCommonCapabilities)
+  Layer.provideMerge(LiveCommonCapabilities),
+  Layer.provideMerge(Configs.DevServerPort.toLayer()),
+  Layer.provideMerge(Configs.InstrumentationInjectNodeOptions.toLayer()),
+  Layer.provideMerge(Configs.InstrumentationInjectDebugConfigurations.toLayer()),
+  Layer.provideMerge(Configs.SpanStackIgnoreList.toLayer()),
+  Layer.provideMerge(Configs.TracerPollInterval.toLayer()),
+  Layer.provideMerge(Configs.MetricsPollInterval.toLayer())
 )
 
 export const InitialContributes = Contribs.initial({

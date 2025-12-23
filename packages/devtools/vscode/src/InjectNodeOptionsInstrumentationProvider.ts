@@ -47,7 +47,5 @@ export const InjectNodeOptionsInstrumentationLive = Effect.gen(function*() {
     (disposer) => Effect.sync(() => disposer.dispose())
   )
 }).pipe(
-  Layer.scopedDiscard,
-  Layer.provideMerge(Configs.InstrumentationInjectNodeOptions.toLayer()),
-  Layer.provideMerge(Configs.InstrumentationInjectDebugConfigurations.toLayer())
+  Layer.scopedDiscard
 )

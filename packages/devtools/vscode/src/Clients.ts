@@ -62,4 +62,4 @@ export const ClientsLive = Layer.scopedDiscard(
       Effect.forkScoped
     )
   })
-).pipe(Layer.provideMerge(Configs.DevServerPort.toLayer()))
+)
