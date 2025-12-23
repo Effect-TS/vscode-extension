@@ -7,11 +7,7 @@ import * as Layer from "effect/Layer"
 import * as Contribs from "./ChromeExtHost.ts"
 import * as ChromeExtHostDebugger from "./ChromeExtHostDebugger.ts"
 
-const ActivateDebugClientDefault = Layer.effectDiscard(Commands.AttachDebugSessionClient.execute())
-
 const ChromeExtension = Layer.mergeAll(
-  // behaviour
-  ActivateDebugClientDefault,
   // clients
   Contribs.treeView(TreeViews.ClientsTree, "effect"),
   ExtTreeView.treeViewNavigationAction(TreeViews.ClientsTree, Commands.AttachDebugSessionClient),

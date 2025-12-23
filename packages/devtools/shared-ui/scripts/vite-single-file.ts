@@ -132,14 +132,12 @@ export function viteSingleFile({
         for (const filename of files.js) {
           const jsChunk = bundle[filename] as OutputChunk
           if (jsChunk.code != null) {
-            this.info(`Inlining: ${filename}`)
             bundlesToDelete.push(filename)
             replacedHtml = replaceScript(replacedHtml, jsChunk.fileName, jsChunk.code, removeViteModuleLoader)
           }
         }
         for (const filename of files.css) {
           const cssChunk = bundle[filename] as OutputAsset
-          this.info(`Inlining: ${filename}`)
           bundlesToDelete.push(filename)
           replacedHtml = replaceCss(replacedHtml, cssChunk.fileName, cssChunk.source as string)
         }

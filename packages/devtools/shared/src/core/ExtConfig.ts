@@ -4,6 +4,7 @@
 import * as Context_ from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
+import * as Layer from "effect/Layer"
 import { type Pipeable } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -69,6 +70,13 @@ export class ExtConfig<
       const host = yield* ExtConfigHostCapability
       return yield* host.readConfig(this)
     })
+  }
+
+  toLayer(): Layer.Layer<MissingConfig<Id>, never, ExtConfigHostCapability> {
+    return Layer.scopedDiscard(Effect.gen(this, function*() {
+      const host = yield* ExtConfigHostCapability
+      return yield* host.readConfig(this)
+    })) as any
   }
 }
 

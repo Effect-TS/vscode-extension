@@ -16,6 +16,7 @@ export default defineConfig({
   sourcemap: true,
   external: ["vscode"],
   treeshake: "smallest",
+  ignoreWatch: ["!**/node_modules/@effect/devtools-shared/**"],
   onSuccess: () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

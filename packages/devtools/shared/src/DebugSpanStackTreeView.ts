@@ -303,4 +303,6 @@ export const DebugSpanStackTreeViewLive = Layer.unwrapScoped(Effect.gen(function
     Layer.provideMerge(revealSpanLocation),
     Layer.provideMerge(refreshSpanStackCommand)
   )
-}))
+})).pipe(
+  Layer.provideMerge(Configs.SpanStackIgnoreList.toLayer())
+)

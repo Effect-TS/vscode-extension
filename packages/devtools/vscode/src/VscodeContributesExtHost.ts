@@ -362,7 +362,10 @@ export const layer = Layer.empty.pipe(
   Layer.provideMerge(webViewCapability),
   Layer.provideMerge(commandCapability),
   Layer.provideMerge(configCapability),
-  Layer.provideMerge(ExtWorkspace.layerAsIs)
+  Layer.provideMerge(ExtWhenClause.layerInMemoryEvaluator),
+  Layer.provideMerge(ExtWorkspace.layerAsIs),
+  Layer.provideMerge(ExtTextEditor.layerNoop),
+  Layer.provideMerge(ExtWhenClause.ExtWhenEvaluator.Default)
 )
 
 export function treeView<V extends ExtTreeView.Any>(

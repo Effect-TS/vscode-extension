@@ -421,7 +421,7 @@ export const layerInMemory = Layer.unwrapEffect(Effect.gen(function*() {
   return Layer.succeed(ExtCommandHostCapability, {
     registerCommand: (command, handler) => Effect.sync(() => commandHandlers.set(command._id, handler)),
     executeCommand: (command, payloadEncoded) =>
-      Effect.sync(() => {
+      Effect.suspend(() => {
         const handler = commandHandlers.get(command._id)
         if (!handler) return Effect.die(`Command ${command._id} not found`)
         return handler(payloadEncoded)

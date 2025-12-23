@@ -6,7 +6,7 @@ import { InitialContributes, VscodeExtension } from "./contributes.ts"
 import { InjectNodeOptionsInstrumentationLive } from "./InjectNodeOptionsInstrumentationProvider.ts"
 import { LayerHoverProviderLive } from "./LayerHoverProvider.ts"
 import { launch, logger, VsCodeContext } from "./VsCode.ts"
-import { VscodeExtHost } from "./VscodeExtHost.ts"
+import * as VscodeExtHost from "./VscodeExtHost.ts"
 import { VscodeExtHostDebugger } from "./VscodeExtHostDebugger.ts"
 
 const MainLive = Layer.mergeAll(
@@ -15,7 +15,7 @@ const MainLive = Layer.mergeAll(
   InjectNodeOptionsInstrumentationLive
 ).pipe(
   Layer.provideMerge(VscodeExtension),
-  Layer.provide(VscodeExtHost),
+  Layer.provide(VscodeExtHost.layer),
   Layer.provide(VscodeExtHostDebugger),
   Layer.provide(logger("Effect Dev Tools")),
   Layer.provideMerge(InitialContributes)

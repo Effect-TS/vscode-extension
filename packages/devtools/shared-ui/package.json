@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "codegen": "tsx scripts/build.mts",
+    "dev": "tsx scripts/watch.mts",
     "check": "tsc -b tsconfig.json",
     "test": "vitest"
   },

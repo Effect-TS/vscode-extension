@@ -2,7 +2,6 @@ import * as ExtHostDebugger from "@effect/devtools-shared/core/ExtHostDebugger"
 import * as ExtTreeView from "@effect/devtools-shared/core/ExtTreeView"
 import {
   Commands,
-  Configs,
   LiveCommonCapabilities,
   LiveServerCapabilities,
   TreeViews,

@@ -119,4 +119,4 @@ export const ClientsCommandsLive = Layer.unwrapScoped(Effect.gen(function*() {
   }))
 
   return attachCommand
-}))
+})).pipe(Layer.provideMerge(Configs.TracerPollInterval.toLayer()))

@@ -1,5 +1,6 @@
 import * as Context_ from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 
 export class ExtTextEditorHostCapability
   extends Context_.Tag("@effect/devtools-shared/core/ExtTextEditor/ExtTextEditorHostCapability")<
@@ -15,3 +16,7 @@ export class ExtTextEditorHostCapability
     }
   >()
 {}
+
+export const layerNoop = Layer.succeed(ExtTextEditorHostCapability, {
+  revealFileLineColumnRange: () => Effect.void
+})

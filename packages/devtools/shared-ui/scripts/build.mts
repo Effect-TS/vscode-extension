@@ -11,7 +11,7 @@ import { viteSingleFile } from "./vite-single-file.ts"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-function getConfing(name: string) {
+export function getConfing(name: string, watch: boolean = false) {
   const copyOnEnd: PluginOption = {
     name: "copy-on-end",
     enforce: "post",
@@ -43,6 +43,7 @@ function getConfing(name: string) {
       copyOnEnd
     ],
     build: {
+      ...(watch ? { watch: {} } : {}),
       minify: false,
       sourcemap: false,
       outDir: path.join(__dirname, "..", "dist"),

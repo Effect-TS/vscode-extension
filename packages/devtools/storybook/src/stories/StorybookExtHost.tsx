@@ -1,6 +1,4 @@
-import type * as ExtConfig from "@effect/devtools/shared/core/ExtConfig"
-import * as ExtHost from "@effect/devtools/shared/core/ExtHost"
-import type * as ExtWebView from "@effect/devtools/shared/core/ExtWebView"
+import * as ExtWebView from "@effect/devtools/shared/core/ExtWebView"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -8,10 +6,9 @@ import * as Mailbox from "effect/Mailbox"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
-import * as SubscriptionRef from "effect/SubscriptionRef"
 import React from "react"
 
-export function RenderToComponent<ROut>(props: { layer: Layer.Layer<ROut, never, ExtHost.ExtHost> }) {
+export function RenderToComponent<ROut, E>(props: { layer: Layer.Layer<ROut, E, ExtWebView.ExtWebViewHostCapability> }) {
   const rootRef = React.useRef<HTMLIFrameElement>(null)
 
   React.useEffect(() => {
@@ -75,13 +72,10 @@ const createWebViewBooter = (
 
 const StorybookExtHost = (iframe: HTMLIFrameElement) =>
   Layer.scoped(
-    ExtHost.ExtHost,
+    ExtWebView.ExtWebViewHostCapability,
     Effect.gen(function*() {
       const appScope = yield* Effect.scope
 
-      const asWorkspaceRelativePath = (uri: string): string => {
-        return uri
-      }
 
       const registerWebView = (
         _webView: ExtWebView.AnyWithProps,
@@ -105,30 +99,8 @@ const StorybookExtHost = (iframe: HTMLIFrameElement) =>
           return Effect.void
         })
 
-      const readConfig = (config: ExtConfig.AnyWithProps) => {
-        return Effect.gen(function*() {
-          const ref = yield* SubscriptionRef.make(config.defaultValue)
-          return {
-            get: SubscriptionRef.get(ref),
-            changes: ref.changes
-          }
-        })
-      }
-
       return {
-        asWorkspaceRelativePath,
-        registerCommand: () =>
-          Effect.void,
-        executeCommand: () => Effect.void,
-        revealFileLineColumnRange: () => Effect.void,
-        registerWebView,
-        registerTreeView: () => Effect.void,
-        registerTreeViewInlineAction: () => () => Effect.void,
-        registerTreeViewNavigationAction: () => Effect.void,
-        registerTreeViewTitleAction: () => Effect.void,
-        setVariable: () => Effect.void,
-        registerConfig: () => Effect.void,
-        readConfig
+        registerWebView
       }
     })
   )
