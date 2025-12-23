@@ -33,6 +33,17 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
 
     const treeView = ClientTracerWebView.toLayer((send, queue) =>
       Effect.gen(function*() {
+        let currentGraph: DevtoolSpanCollector.SpanGraphInfo | undefined = undefined
+        let currentUsedRange: Option.Option<[bigint, bigint]> | undefined = undefined
+        const currentCapture = Effect.gen(function*() {
+          if (currentGraph && currentUsedRange) return { graph: currentGraph, usedRange: currentUsedRange }
+          const graph = yield* spanCollector.graphByTraceId
+          const usedRange = yield* spanCollector.usedRange
+          currentGraph = graph
+          currentUsedRange = usedRange
+          return { graph, usedRange }
+        })
+
         const request = (message: WebViewMessage.InMessage) =>
           Schema.encodeUnknown(WebViewMessage.InMessage)(message).pipe(
             Effect.flatMap(send),
@@ -44,9 +55,14 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
           Effect.flatMap((message) =>
             Effect.gen(function*() {
               switch (message._tag) {
+                case "RefreshRequest": {
+                  currentGraph = undefined
+                  return yield* currentCapture
+                }
                 case "UsedRangeRequest": {
+                  const { usedRange } = yield* currentCapture
                   const range = pipe(
-                    yield* spanCollector.usedRange,
+                    usedRange,
                     Option.map(
                       ([startTime, endTime]) =>
                         new WebViewMessage.UsedRangeInfo({
@@ -71,7 +87,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
                   )
                 }
                 case "SpanListRequest": {
-                  const info = yield* spanCollector.graphByTraceId
+                  const { graph: info } = yield* currentCapture
                   const explodedSet = HashSet.fromIterable(
                     message.expandedSpanIds
                   )
@@ -135,7 +151,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
                   )
                 }
                 case "SpanDataForListRequest": {
-                  const info = yield* spanCollector.graphByTraceId
+                  const { graph: info } = yield* currentCapture
                   const maybeInfo = HashMap.get(
                     info.nodeIndexBySpanAndTraceId,
                     DevtoolSpanCollector.SpanAndTraceId.make({
@@ -196,7 +212,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
                   )
                 }
                 case "SpanDataForDetailsRequest": {
-                  const data = yield* spanCollector.graphByTraceId
+                  const { graph: data } = yield* currentCapture
                   const info = HashMap.get(
                     data.nodeIndexBySpanAndTraceId,
                     DevtoolSpanCollector.SpanAndTraceId.make({
@@ -222,8 +238,7 @@ export const ClientTracerWebViewLive = Layer.unwrapScoped(
                   return yield* Effect.void
                 }
                 case "MinimapDataRequest": {
-                  const info = yield* spanCollector.graphByTraceId
-                  const usedRange = yield* spanCollector.usedRange
+                  const { graph: info, usedRange } = yield* currentCapture
                   const bars: Array<WebViewMessage.MinimapBar> = []
                   const spanOrder = Order.mapInput(
                     Order.bigint,

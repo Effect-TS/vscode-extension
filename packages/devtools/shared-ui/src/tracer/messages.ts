@@ -15,6 +15,8 @@ export class SpanId extends Schema.TaggedClass<SpanId>("SpanId")("SpanId", {
   }
 }
 
+export class RefreshRequest extends Schema.TaggedClass<RefreshRequest>("RefreshRequest")("RefreshRequest", {}) {}
+
 export class TraceListRequest extends Schema.TaggedClass<TraceListRequest>(
   "TraceListRequest"
 )("TraceListRequest", {}) {}
@@ -113,6 +115,7 @@ export type InMessage = Schema.Schema.Type<typeof InMessage>
 
 export const OutMessage = Schema.Union(
   Initialized,
+  RefreshRequest,
   TraceListRequest,
   SpanListRequest,
   SpanDataForListRequest,

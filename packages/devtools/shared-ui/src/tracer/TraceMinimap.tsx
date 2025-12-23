@@ -187,9 +187,11 @@ const TraceMinimap: React.FC<MinimapProps> = ({
     // Zoom factor: positive deltaY = zoom out, negative = zoom in
     // Use a smooth zoom factor (e.g., 10% per scroll notch)
     const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9
-    const newViewDuration = BigInt(
+    const candidateNewViewDuration = BigInt(
       Math.round(Number(currentViewDuration) * zoomFactor)
     )
+    const newViewDuration = candidateNewViewDuration < BigInt((endTime - startTime) / 100n) ? 
+      BigInt((endTime - startTime) / 100n) : candidateNewViewDuration
 
     // Calculate how far the mouse is within the current view (0 to 1)
     const mouseOffsetInView = Number(mouseTime - viewState[0]) / Number(currentViewDuration)
@@ -199,7 +201,10 @@ const TraceMinimap: React.FC<MinimapProps> = ({
       BigInt(Math.round(Number(newViewDuration) * mouseOffsetInView))
     const newEndTime = newStartTime + newViewDuration
 
-    onViewStateChange([newStartTime, newEndTime])
+    const normalizedStartTime = newStartTime < startTime ? startTime : newStartTime
+    const normalizedEndTime = newEndTime > endTime ? endTime : newEndTime
+
+    onViewStateChange([normalizedStartTime < normalizedEndTime ? normalizedStartTime : normalizedEndTime, normalizedStartTime < normalizedEndTime ? normalizedEndTime : normalizedStartTime])
   }
 
   if (minimapHeight === 0) return null

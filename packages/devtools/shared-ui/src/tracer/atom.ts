@@ -14,6 +14,7 @@ import {
   MinimapDataInfo,
   MinimapDataRequest,
   OutMessage,
+  RefreshRequest,
   SpanDataForDetailsInfo,
   SpanDataForDetailsRequest,
   SpanDataForListInfo,
@@ -96,7 +97,13 @@ export const viewRangeAtom = tracerRuntime.atom((get) =>
   Effect.gen(function*() {
     const userRange = get(userRangeAtom)
     const usedRange = yield* get.result(usedRangeAtom)
+
     return userRange.pipe(
+      Option.zipWith(usedRange, (userRange, usedRange) =>
+        [
+          userRange[0] < usedRange[0] ? usedRange[0] : userRange[0],
+          userRange[1] > usedRange[1] ? usedRange[1] : userRange[1]
+        ] as const),
       Option.orElse(() => usedRange),
       Option.getOrElse(() => [BigInt(1), BigInt(-1)] as const)
     )
@@ -106,6 +113,7 @@ export const viewRangeAtom = tracerRuntime.atom((get) =>
 export const refreshApp = tracerRuntime.fn((_: any, ctx) =>
   Effect.gen(function*() {
     const tracerApp = yield* TracerApp
+    yield* tracerApp.request(new RefreshRequest())
     yield* tracerApp.request(new TraceListRequest())
     ctx.refresh(currentSpanIdsAtom)
     ctx.refresh(usedRangeAtom)
