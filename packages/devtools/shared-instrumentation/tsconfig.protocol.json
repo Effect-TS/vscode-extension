@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json.schemastore.org/tsconfig",
+  "extends": "../../../tsconfig.base.jsonc",
+  "include": ["protocol"],
+  "references": [],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/protocol.tsbuildinfo",
+    "outDir": ".tsbuildinfo/protocol",
+    "types": ["node"],
+    "rootDir": "protocol"
+  }
+}

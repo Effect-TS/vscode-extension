@@ -1,349 +1,231 @@
-/* eslint-disable object-shorthand */
-import type * as Domain from "@effect/experimental/DevTools/Domain"
-import type { Fiber } from "effect/Fiber"
-import type * as MetricPair from "effect/MetricPair"
-import type * as Option from "effect/Option"
-import type * as Schema from "effect/Schema"
+import type * as Fiber from "effect/Fiber"
 import type * as Tracer from "effect/Tracer"
-import type { StackLocation } from "./encoders.ts"
-import { encodeMetricPair, encodeOption, encodeSpan, encodeStackLocation, makeStackLocation } from "./encoders.ts"
-import {
-  causeDieOption,
-  globalMetricRegistrySymbol,
-  globalStores,
-  interruptible,
-  isExitFailure,
-  optionNone,
-  optionSome,
-  originalInstance
-} from "./shims.ts"
+import * as ProtocolDecoder from "./ProtocolDecoder.generated.ts"
+import * as ProtocolEncoder from "./ProtocolEncoder.generated.ts"
 import { addSetInterceptor } from "./utils.ts"
 
-interface DebuggerState {
-  pauseOnDefects: boolean
-  lastDefect: Option.Option<{ span: Tracer.AnySpan | undefined; value: unknown }>
-  locationToReveal: Option.Option<StackLocation>
-  valuesToReveal: Array<{
-    label: string
-    value: unknown
-  }>
+type GlobalWithFiberCurrent = {
+  "effect/FiberCurrent": Fiber.RuntimeFiber<any, any> | undefined
+  __EFFECT_DEVTOOLS_BINDING_BRIDGE?: (message: string) => void
+  "@effect/devtools-instrumentation"?: {
+    send: (message: string) => void
+    onmessage: (message: string) => void
+  }
 }
 
-const instrumentationKey = "effect/devtools/instrumentation"
-const currentInstrumentationTracerKey = "effect/instrumentation/currentTracer"
+const _globalThis: GlobalWithFiberCurrent = globalThis as any
 
-// first inject the logic to track current and newly created fibers
-if (!(instrumentationKey in globalThis)) {
-  const _globalThis = globalThis as any
-  // local state of the instrumentation
-  const fibers: Array<Fiber.Runtime<any, any>> = []
+function ensureInstrumentationIsInitialized() {
+  if ("@effect/devtools-instrumentation" in _globalThis) return
+  const instrumentation = createInstrumentation((message) => {
+    _globalThis["@effect/devtools-instrumentation"]?.onmessage(message)
+  })
+  _globalThis["@effect/devtools-instrumentation"] = {
+    send: instrumentation.handleMessage,
+    onmessage: (message: string) => {
+      if (_globalThis.__EFFECT_DEVTOOLS_BINDING_BRIDGE) {
+        _globalThis.__EFFECT_DEVTOOLS_BINDING_BRIDGE(message)
+      }
+    }
+  }
+  addSetInterceptor(_globalThis, "effect/FiberCurrent", (newFiber) => {
+    if (newFiber) instrumentation.ensureFiberIsTracked(newFiber)
+  })
+  if (_globalThis["effect/FiberCurrent"]) {
+    instrumentation.ensureFiberIsTracked(_globalThis["effect/FiberCurrent"])
+  }
+  instrumentation.sendPingNotification()
+}
+
+function createInstrumentation(
+  onMessage: (notification: string) => void
+) {
+  // generate a unique instrumentation id
   const instrumentationId = Math.random().toString(36).substring(2, 15)
-  let debuggerState: DebuggerState = {
-    pauseOnDefects: false,
-    lastDefect: optionNone(),
-    locationToReveal: optionNone(),
-    valuesToReveal: []
-  }
-
-  // set the instrumentation
-  _globalThis[instrumentationKey] = {
-    "fibers": fibers,
-    "debugProtocolDevtoolsClient": debugProtocolDevtoolsClient,
-    "getFiberCurrentSpanStack": getFiberCurrentSpanStack,
-    "getFiberCurrentContext": getFiberCurrentContext,
-    "getAliveFibers": getAliveFibers,
-    "interruptFiber": interruptFiber,
-    "getAutoPauseConfig": getAutoPauseConfig,
-    "togglePauseOnDefects": togglePauseOnDefects,
-    "getAndUnsetPauseStateToReveal": getAndUnsetPauseStateToReveal
-  }
-
-  function metricsSnapshot(): Schema.Schema.Encoded<typeof Domain.MetricsSnapshot> {
-    const metrics: Array<Schema.Schema.Encoded<typeof Domain.Metric>> = []
-
-    const stores = globalStores()
-    for (let i = 0; i < stores.length; i++) {
-      const store = stores[i]
-      const metricRegistry = store.get(globalMetricRegistrySymbol)
-      if (!metricRegistry) continue
-      const snapshot: Array<MetricPair.MetricPair.Untyped> = metricRegistry.snapshot()
-      for (let i = 0, len = snapshot.length; i < len; i++) {
-        const encoded = encodeMetricPair(snapshot[i])
-        if (encoded) {
-          metrics.push(encoded)
-        }
+  const protocolVersion = 1
+  // emits a response/notification to the devtools client
+  function sendBack(event: ProtocolEncoder.OutMessage) {
+    try {
+      const encodedEvent = ProtocolEncoder.OutMessage(event)
+      if (encodedEvent._tag === "Success") {
+        const message = JSON.stringify(encodedEvent)
+        onMessage(message)
       }
-    }
-
-    return {
-      "_tag": "MetricsSnapshot",
-      "metrics": metrics
+    } finally {
+      /* empty */
     }
   }
 
-  function getSpanStack(span: Tracer.AnySpan): Array<StackLocation> {
-    const stackString = globalStores().reduce((acc, store) => {
-      if (acc || !store) return acc
-      const spanToTrace = store.get("effect/Tracer/spanToTrace")
-      const stackFn = spanToTrace ? spanToTrace.get(span) : acc
-      return stackFn ? stackFn() : acc
-    }, undefined) || ""
-    const stack = stackString.split("\n").filter((_) => String(_).length > 0)
-    const out: Array<StackLocation> = []
-    for (let i = 0; i < stack.length; i++) {
-      const line = stack[i]
-      const match = line.match(/^at (.*) \((.*):(\d+):(\d+)\)$/)
-      if (match) {
-        out.push(makeStackLocation(match[2], parseInt(match[3], 10) - 1, parseInt(match[4], 10) - 1))
-      } else {
-        const matchOnlyAt = line.match(/^at (.*):(\d+):(\d+)$/)
-        if (matchOnlyAt) {
-          out.push(
-            makeStackLocation(matchOnlyAt[1], parseInt(matchOnlyAt[2], 10) - 1, parseInt(matchOnlyAt[3], 10) - 1)
-          )
-        }
+  // handles incoming messages from the devtools client
+  function handleMessage(message: string) {
+    // decode the message
+    let request: ProtocolDecoder.InMessage | undefined = undefined
+    try {
+      const decodedMessage = ProtocolDecoder.InMessage(message)
+      if (decodedMessage._tag === "Success") {
+        request = decodedMessage.value
       }
+    } finally {
+      /* empty */
     }
-    return out
-  }
-
-  function getFiberCurrentSpanStack(fiber: Fiber.Runtime<any, any>, maxDepth: number) {
-    const spans: Array<any> = []
-    if (!fiber || !fiber.currentSpan) return spans
-    let current: Tracer.AnySpan | undefined = fiber.currentSpan
-    let currentDepth = 0
-    while (current) {
-      if (maxDepth !== 0 && currentDepth >= maxDepth) break
-      currentDepth++
-      spans.push({
-        "_tag": current._tag,
-        "spanId": current.spanId,
-        "traceId": current.traceId,
-        "name": current._tag === "Span" ? current.name : current.spanId,
-        "attributes": current._tag === "Span" && current.attributes
-          ? Array.from(current.attributes.entries())
-          : [],
-        "stack": getSpanStack(current)
-      })
-      current = current._tag === "Span" && current.parent && current.parent._tag === "Some"
-        ? current.parent.value
-        : undefined
-    }
-    return spans
-  }
-
-  function getFiberCurrentContext(fiber: Fiber.Runtime<any, any>) {
-    if (!fiber) return []
-    return [...(fiber as any)._fiberRefs.locals.values() ?? []]
-      .map((_) => _[0][1])
-      .filter((_) => typeof _ === "object" && _ !== null && Symbol.for("effect/Context") in _)
-      .flatMap((context) => [...context.unsafeMap.entries()])
-  }
-
-  function encodeFiberId(fiber: Fiber.Runtime<any, any>) {
-    return fiber.id().id.toString()
-  }
-
-  function getAliveFibers() {
-    return fibers.map((fiber) => {
-      const currentSpan = getFiberCurrentSpanStack(fiber, 1)
-      return ({
-        "_tag": "FiberEntry",
-        "id": encodeFiberId(fiber),
-        "isCurrent": fiber === (globalThis as any)["effect/FiberCurrent"],
-        "isInterruptible": fiber && "currentRuntimeFlags" in fiber && interruptible(fiber.currentRuntimeFlags as any),
-        "isInterrupted": fiber && "isInterrupted" in fiber && typeof fiber.isInterrupted === "function" &&
-          fiber.isInterrupted(),
-        "children": "getChildren" in fiber && typeof fiber.getChildren === "function"
-          ? [...fiber.getChildren()].map(encodeFiberId)
-          : [],
-        "startTimeMillis": fiber.id().startTimeMillis,
-        "lifeTimeMillis": Date.now() - fiber.id().startTimeMillis,
-        "currentSpan": currentSpan.length > 0 ? { _tag: "Some", value: currentSpan[0] } : { _tag: "None" }
-      })
-    })
-  }
-
-  function interruptFiber(fiberId: string) {
-    fibers.forEach((fiber) => encodeFiberId(fiber) === fiberId && fiber.unsafeInterruptAsFork(fiber.id()))
-  }
-
-  function getAutoPauseConfig() {
-    return {
-      "pauseOnDefects": debuggerState.pauseOnDefects
+    if (!request) return
+    // handle the request
+    switch (request._tag) {
+      case "CaptureCurrentFibersRequest":
+        return handleCaptureCurrentFibersRequest(request)
+      case "VariableReferenceInfoRequest":
+        return handleRequestVariableReferenceInfo(request)
+      case "ReleaseResourcesForRequest":
+        return handleReleaseResourcesForRequest(request)
+      default:
+        break
     }
   }
 
-  function togglePauseOnDefects() {
-    debuggerState = {
-      ...debuggerState,
-      pauseOnDefects: !debuggerState.pauseOnDefects,
-      lastDefect: optionNone()
-    }
-  }
-
-  function getAndUnsetPauseStateToReveal() {
-    const stackEntryToReveal = debuggerState.locationToReveal
-    const valuesToReveal = debuggerState.valuesToReveal
-    debuggerState = {
-      ...debuggerState,
-      locationToReveal: optionNone(),
-      valuesToReveal: []
-    }
-    return ({
-      location: encodeOption(stackEntryToReveal, encodeStackLocation),
-      values: valuesToReveal
-    })
-  }
-
-  function pauseDebugger(stackEntry: StackLocation | undefined) {
-    /**
-     * READ ME!
-     * This is a hack to pause the debugger when something happens.
-     * The VSCode extension should redirect you to the location of the span,
-     * if that does not happen, you can check the current span stack
-     * to find out where the execution paused.
-     */
-    debuggerState = {
-      ...debuggerState,
-      locationToReveal: stackEntry ? optionSome(stackEntry) : optionNone()
-    }
-    // eslint-disable-next-line no-debugger
-    debugger
-  }
-
-  // replace the current tracer in a fiber with a new tracer that sends events to the devtools
-  const addTracerInterceptorToFiber = (fiber: Fiber.Runtime<any, any>) => {
-    const _fiber = fiber as any
-    // avoid to double patch the same fiber
-    if (currentInstrumentationTracerKey in _fiber) return
-    _fiber[currentInstrumentationTracerKey] = undefined
-
-    const previousTracer = fiber.currentTracer
-    addSetInterceptor(fiber, "currentTracer", (tracer) => {
-      // avoid to double patch the same tracer
-      if (!tracer) return
-      if (tracer && currentInstrumentationTracerKey in tracer) return
-      const _tracer = tracer as any
-      _tracer[currentInstrumentationTracerKey] = true
-
-      // patch the span method to send start and end events
-      const _span = tracer.span.bind(tracer)
-      tracer.span = (...args) => {
-        const span = _span(...args)
-        pushNotification(encodeSpan(span))
-
-        // patch the event method to send events
-        const _event = span.event.bind(span)
-        span.event = (name, startTime, attributes, ...args) => {
-          const result = _event(name, startTime, attributes, ...args)
-          pushNotification({
-            "_tag": "SpanEvent",
-            "spanId": span.spanId,
-            "traceId": span.traceId,
-            "name": name,
-            "startTime": String(startTime),
-            "attributes": attributes || {}
-          })
-          return result
-        }
-
-        // patch the end method to send end events
-        const _end = span.end.bind(span)
-        span.end = (...args) => {
-          const result = _end(...args)
-          pushNotification(encodeSpan(span))
-          return result
-        }
-        return span
-      }
-
-      // patch the context method to pause on errors
-      const _context = tracer.context.bind(tracer)
-      tracer.context = (f, fiber, ...args) => {
-        const result = _context(f, fiber, ...args)
-
-        // pause on defects
-        if (debuggerState.pauseOnDefects && isExitFailure(result)) {
-          const maybeDefect = causeDieOption(result.cause)
-          if (maybeDefect._tag === "Some") {
-            // may be wrapped in a proxy for the spanSymbol
-            const currentDefect = originalInstance(maybeDefect.value)
-            // only if both the defect and the span changed since the last defect
-            const isSameAsLastDefect = debuggerState.lastDefect._tag === "Some" &&
-              currentDefect === debuggerState.lastDefect.value.value &&
-              fiber.currentSpan === debuggerState.lastDefect.value.span
-            // if they changed, update the last defect and pause the debugger
-            if (!isSameAsLastDefect) {
-              debuggerState = {
-                ...debuggerState,
-                lastDefect: optionSome({ span: fiber.currentSpan, value: currentDefect }),
-                valuesToReveal: [{ label: "Fiber Defect", value: currentDefect }]
-              }
-              const stack = fiber.currentSpan ? getSpanStack(fiber.currentSpan) : []
-              pauseDebugger(stack[0])
-            }
-          }
-        }
-
-        return result
-      }
-    })
-    _fiber.currentTracer = previousTracer
-  }
-
-  // notifications are with a sliding window
-  const notifications: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
-  const pushNotification = (notification: Schema.Schema.Encoded<typeof Domain.Request>) => {
-    notifications.push(notification)
-    if (notifications.length > 10000) {
-      notifications.shift()
-    }
-  }
-
-  function debugProtocolDevtoolsClient(
-    requests: Array<Schema.Schema.Encoded<typeof Domain.Response>>
-  ): string {
-    const responses: Array<Schema.Schema.Encoded<typeof Domain.Request>> = []
-
-    // handle the requests
-    const hasRequestedMetrics = requests.filter((_) => _._tag === "MetricsRequest").length > 0
-    if (hasRequestedMetrics) responses.push(metricsSnapshot())
-
-    // send the responses back
-    const notificationsToSend = notifications.splice(0)
-    return JSON.stringify({ responses: responses.concat(notificationsToSend), instrumentationId })
-  }
-
-  // invoked each time a fiber is running
-  function addTrackedFiber(fiber: Fiber.Runtime<any, any>) {
+  // ensure we keep a list of all fibers that are running
+  const fibers: Array<Fiber.RuntimeFiber<any, any>> = []
+  function ensureFiberIsTracked(fiber: Fiber.RuntimeFiber<any, any>) {
+    if (!fiber) return
     if (fibers.indexOf(fiber) === -1) {
-      // recursively track all children fibers and update the list
-      addTracerInterceptorToFiber(fiber)
       fibers.push(fiber)
+      // patch the fiber so that
+      ensureTracerIsTracked(fiber.currentTracer)
+      // recursively track all children fibers and update the list
       if ("_children" in fiber && fiber._children !== null) {
-        ;(fiber._children as Set<Fiber.Runtime<any, any>>).forEach(addTrackedFiber)
+        ;(fiber._children as Set<Fiber.RuntimeFiber<any, any>>).forEach(ensureFiberIsTracked)
       }
       // add an observer to the fiber to remove it from the list when it is completed
       fiber.addObserver(() => {
         const index = fibers.indexOf(fiber)
-        if (index > -1) {
-          fibers.splice(index, 1)
-        }
+        if (index > -1) fibers.splice(index, 1)
       })
     }
   }
 
-  // replace the effect/FiberCurrent with a getter/setter so we can detect fibers
-  // starting for the first time
-  const _previousFiber = _globalThis["effect/FiberCurrent"]
-  addSetInterceptor(
-    _globalThis,
-    "effect/FiberCurrent",
-    (_: Fiber.Runtime<any, any> | undefined) => {
-      if (_) addTrackedFiber(_)
+  // ensure we patch all the tracers that we find
+  const patchedTracer = new WeakSet<Tracer.Tracer>()
+  function ensureTracerIsTracked(currentTracer: Tracer.Tracer) {
+    if (!currentTracer) return
+    if (patchedTracer.has(currentTracer)) return
+    patchedTracer.add(currentTracer)
+
+    const oldSpanConstructor = currentTracer.span
+    currentTracer.span = function() {
+      const span = oldSpanConstructor.apply(this, arguments as any)
+      // addNode(span)
+
+      const oldSpanEnd = span.end
+      span.end = function() {
+        oldSpanEnd.apply(this, arguments as any)
+        // addNodeExit(this.traceId, this.spanId, exit)
+      }
+
+      const oldSpanEvent = span.event
+      span.event = function() {
+        oldSpanEvent.apply(this, arguments as any)
+        // addEvent(this.traceId, this.spanId, { name, startTime, attributes })
+      }
+
+      return span
     }
-  )
-  // trigger the setter by re-setting its value
-  _globalThis["effect/FiberCurrent"] = _previousFiber
+
+    const oldContext = currentTracer.context
+    currentTracer.context = function(f, fiber) {
+      const context = oldContext.apply(this, arguments as any)
+      ensureFiberIsTracked(fiber)
+      ensureTracerIsTracked(fiber.currentTracer)
+      return context as any
+    }
+  }
+
+  const resources = new Map<ProtocolDecoder.RequestId, Array<[name: string | null, value: any]>>()
+  function _captureResource(
+    requestId: ProtocolDecoder.RequestId,
+    propertyName: string | null,
+    value: any
+  ): ProtocolEncoder.VariableReferenceId {
+    const vars = resources.get(requestId) || []
+    const index = vars.push([propertyName, value])
+    return {
+      _tag: "VariableReference",
+      instrumentationId,
+      requestId,
+      index: String(index)
+    }
+  }
+
+  function handleRequestVariableReferenceInfo(
+    req: ProtocolDecoder.VariableReferenceInfoRequest
+  ) {
+    if (req.variableReferenceId.instrumentationId !== instrumentationId) return
+    const vars = resources.get(req.requestId)
+    if (!vars) {
+      return sendBack({
+        _tag: "VariableReferenceInfo",
+        protocolVersion,
+        instrumentationId,
+        variableReferenceId: req.variableReferenceId,
+        value: null
+      })
+    }
+    // const [name, _value] = vars[Number(req.variableReferenceId.index)]
+
+    return sendBack({
+      _tag: "VariableReferenceInfo",
+      protocolVersion,
+      instrumentationId,
+      variableReferenceId: req.variableReferenceId,
+      value: {
+        name: null,
+        value: "",
+        children: []
+      }
+    })
+  }
+
+  function handleReleaseResourcesForRequest(
+    req: ProtocolDecoder.ReleaseResourcesForRequest
+  ) {
+    req.associatedRequestIds.forEach((requestId) => resources.delete(requestId))
+    return sendBack({
+      _tag: "ResourcesForRequestReleased",
+      protocolVersion,
+      instrumentationId,
+      associatedRequestIds: req.associatedRequestIds
+    })
+  }
+
+  function handleCaptureCurrentFibersRequest(
+    req: ProtocolDecoder.CaptureCurrentFibersRequest
+  ) {
+    return sendBack({
+      _tag: "CurrentFibersInfo",
+      protocolVersion,
+      instrumentationId,
+      requestId: req.requestId,
+      fibers: fibers.map((fiber) => ({
+        _tag: "FiberInfo",
+        id: globalThis.String(fiber.id().id),
+        isCurrent: _globalThis["effect/FiberCurrent"] === fiber
+      }))
+    })
+  }
+
+  function sendPingNotification() {
+    return sendBack({
+      _tag: "PingNotification",
+      protocolVersion,
+      instrumentationId
+    })
+  }
+
+  return {
+    ensureFiberIsTracked,
+    ensureTracerIsTracked,
+    instrumentationId,
+    handleMessage,
+    sendPingNotification
+  }
 }
+
+ensureInstrumentationIsInitialized()
