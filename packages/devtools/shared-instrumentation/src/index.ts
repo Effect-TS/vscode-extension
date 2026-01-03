@@ -16,7 +16,9 @@ type GlobalWithFiberCurrent = {
 const _globalThis: GlobalWithFiberCurrent = globalThis as any
 
 function ensureInstrumentationIsInitialized() {
+  // if the instrumentation is already initialized, return
   if ("@effect/devtools-instrumentation" in _globalThis) return
+  // create the instrumentation
   const instrumentation = createInstrumentation((message) => {
     _globalThis["@effect/devtools-instrumentation"]?.onmessage(message)
   })
@@ -26,14 +28,17 @@ function ensureInstrumentationIsInitialized() {
       if (_globalThis.__EFFECT_DEVTOOLS_BINDING_BRIDGE) {
         _globalThis.__EFFECT_DEVTOOLS_BINDING_BRIDGE(message)
       }
+      // TODO: use globalThis.process.env to get the websocket url
     }
   }
+  // track all fibers that are created as they are running
   addSetInterceptor(_globalThis, "effect/FiberCurrent", (newFiber) => {
     if (newFiber) instrumentation.ensureFiberIsTracked(newFiber)
   })
   if (_globalThis["effect/FiberCurrent"]) {
     instrumentation.ensureFiberIsTracked(_globalThis["effect/FiberCurrent"])
   }
+  // notify the devtools client that we are ready
   instrumentation.sendPingNotification()
 }
 
@@ -112,12 +117,12 @@ function createInstrumentation(
     const oldSpanConstructor = currentTracer.span
     currentTracer.span = function() {
       const span = oldSpanConstructor.apply(this, arguments as any)
-      // addNode(span)
+      sendTracerSpanNotification(span)
 
       const oldSpanEnd = span.end
       span.end = function() {
         oldSpanEnd.apply(this, arguments as any)
-        // addNodeExit(this.traceId, this.spanId, exit)
+        sendTracerSpanNotification(span)
       }
 
       const oldSpanEvent = span.event
@@ -130,11 +135,55 @@ function createInstrumentation(
     }
 
     const oldContext = currentTracer.context
-    currentTracer.context = function(f, fiber) {
+    currentTracer.context = function(_f, fiber) {
       const context = oldContext.apply(this, arguments as any)
       ensureFiberIsTracked(fiber)
       ensureTracerIsTracked(fiber.currentTracer)
       return context as any
+    }
+  }
+
+  function sendTracerSpanNotification(span: Tracer.AnySpan) {
+    let currentSpan: Tracer.AnySpan | undefined = span
+    while (currentSpan) {
+      switch (span._tag) {
+        case "ExternalSpan": {
+          sendBack({
+            _tag: "TracerSpanNotification",
+            protocolVersion,
+            instrumentationId,
+            span: {
+              _tag: "ExternalSpan",
+              spanId: span.spanId,
+              traceId: span.traceId,
+              sampled: span.sampled
+            }
+          })
+          currentSpan = undefined
+          continue
+        }
+        case "Span": {
+          sendBack({
+            _tag: "TracerSpanNotification",
+            protocolVersion,
+            instrumentationId,
+            span: {
+              _tag: "Span",
+              spanId: span.spanId,
+              traceId: span.traceId,
+              sampled: span.sampled,
+              name: span.name,
+              attributes: [],
+              status: span.status,
+              parent: span.parent._tag === "Some"
+                ? { traceId: span.parent.value.traceId, spanId: span.parent.value.spanId }
+                : null
+            }
+          })
+          currentSpan = span.parent._tag === "Some" ? span.parent.value : undefined
+          continue
+        }
+      }
     }
   }
 
@@ -168,7 +217,17 @@ function createInstrumentation(
         value: null
       })
     }
-    // const [name, _value] = vars[Number(req.variableReferenceId.index)]
+    const index = Number(req.variableReferenceId.index)
+    const variable = vars[index]
+    if (!variable) {
+      return sendBack({
+        _tag: "VariableReferenceInfo",
+        protocolVersion,
+        instrumentationId,
+        variableReferenceId: req.variableReferenceId,
+        value: null
+      })
+    }
 
     return sendBack({
       _tag: "VariableReferenceInfo",
@@ -176,8 +235,8 @@ function createInstrumentation(
       instrumentationId,
       variableReferenceId: req.variableReferenceId,
       value: {
-        name: null,
-        value: "",
+        name: variable[0],
+        value: variable[1],
         children: []
       }
     })

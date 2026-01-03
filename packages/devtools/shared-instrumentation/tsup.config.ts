@@ -28,7 +28,7 @@ export default defineConfig({
       const outputPath = path.join(__dirname, "..", "shared", "src", "DevtoolDebugBridgeString.generated.ts")
       const compiled = yield* fs.readFileString(compiledPath)
       const code =
-        `(function(){ var Array = globalThis.Array; var Object = globalThis.Object; var String = globalThis.String; var Date = globalThis.Date; var BigInt = globalThis.BigInt; \n${compiled}} )()`
+        `(function(){ var Array = globalThis.Array; var Object = globalThis.Object; var String = globalThis.String; var Date = globalThis.Date; var BigInt = globalThis.BigInt; var String = globalThis.String; \n${compiled}} )()`
       yield* fs.writeFileString(
         outputPath,
         `/* eslint-disable @effect/dprint */\nexport const compiledInstrumentationString = ${JSON.stringify(code)}`

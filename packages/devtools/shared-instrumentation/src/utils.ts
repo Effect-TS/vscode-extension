@@ -3,7 +3,7 @@ export function addSetInterceptor<T extends object, K extends keyof T>(
   property: K,
   interceptor: (value: T[K]) => void
 ): void {
-  const descriptor = Object.getOwnPropertyDescriptor(obj, property)
+  const descriptor = globalThis.Object.getOwnPropertyDescriptor(obj, property)
 
   const previousSetter = descriptor?.set
 

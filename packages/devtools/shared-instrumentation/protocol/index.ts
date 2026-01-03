@@ -14,17 +14,61 @@ const commonResponseFields = {
   instrumentationId: InstrumentationId
 }
 
-// sent by the instrumentation to say hello to the client
-export const PingNotification = Schema.TaggedStruct("PingNotification", {
-  ...commonResponseFields
-}).annotations({ identifier: "PingNotification" })
-
 // a variable reference is identified by instrumentationId + requestId + index
 export const VariableReferenceId = Schema.TaggedStruct("VariableReference", {
   instrumentationId: InstrumentationId,
   requestId: RequestId,
   index: Schema.String
 }).annotations({ identifier: "VariableReferenceId" })
+
+// span information
+const SpanAttributesSchema = Schema.Array(
+  Schema.Tuple(Schema.String, VariableReferenceId)
+)
+
+const SpanAndTraceId = Schema.Struct({
+  traceId: Schema.String,
+  spanId: Schema.String
+}).annotations({ identifier: "SpanAndTraceId" })
+
+const SpanStatusSchema = Schema.Union(
+  Schema.Struct({ _tag: Schema.Literal("Started"), startTime: Schema.BigInt }).annotations({
+    identifier: "SpanStatusStarted"
+  }),
+  Schema.Struct({ _tag: Schema.Literal("Ended"), startTime: Schema.BigInt, endTime: Schema.BigInt }).annotations({
+    identifier: "SpanStatusEnded"
+  })
+).annotations({ identifier: "SpanStatus" })
+
+const ExternalSpanSchema = Schema.Struct({
+  _tag: Schema.Literal("ExternalSpan"),
+  spanId: Schema.String,
+  traceId: Schema.String,
+  sampled: Schema.Boolean
+}).annotations({ identifier: "ExternalSpan" })
+
+const SpanSchema = Schema.Struct({
+  _tag: Schema.Literal("Span"),
+  spanId: Schema.String,
+  traceId: Schema.String,
+  name: Schema.String,
+  sampled: Schema.Boolean,
+  attributes: SpanAttributesSchema,
+  status: SpanStatusSchema,
+  parent: Schema.NullOr(SpanAndTraceId)
+}).annotations({ identifier: "Span" })
+
+export const AnySpanSchema = Schema.Union(SpanSchema, ExternalSpanSchema).annotations({ identifier: "AnySpan" })
+
+export const TracerSpanNotification = Schema.TaggedStruct("TracerSpanNotification", {
+  ...commonResponseFields,
+  span: AnySpanSchema
+}).annotations({ identifier: "TracerSpanNotification" })
+
+// sent by the instrumentation to say hello to the client
+export const PingNotification = Schema.TaggedStruct("PingNotification", {
+  ...commonResponseFields
+}).annotations({ identifier: "PingNotification" })
 
 // requests information for a given variable reference
 export const VariableReferenceInfoRequest = Schema.TaggedStruct("VariableReferenceInfoRequest", {
@@ -65,7 +109,8 @@ export const InMessage = Schema.Union(
 
 export const FiberInfo = Schema.TaggedStruct("FiberInfo", {
   id: Schema.String,
-  isCurrent: Schema.Boolean
+  isCurrent: Schema.Boolean,
+  currentSpan: Schema.NullOr(AnySpanSchema)
 }).annotations({ identifier: "FiberInfo" })
 
 export const CurrentFibersInfo = Schema.TaggedStruct("CurrentFibersInfo", {
@@ -79,5 +124,6 @@ export const OutMessage = Schema.Union(
   VariableReferenceInfo,
   ResourcesForRequestReleased,
   PingNotification,
+  TracerSpanNotification,
   Schema.Struct({ _: VariableReferenceId })
 ).annotations({ identifier: "OutMessage" })

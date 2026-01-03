@@ -28,6 +28,10 @@ function goWorker(ast: SchemaAST.AST): Effect.Effect<string, never, GoContext> {
       case "Literal":
         return `${mod}.literal(${JSON.stringify(ast.literal)})`
       case "TupleType": {
+        if (ast.elements.length > 0) {
+          const results = yield* Effect.all(ast.elements.map((_) => go(_.type)))
+          return `${mod}.tuple(${results.join(", ")})`
+        }
         const results = yield* Effect.all(ast.rest.map((_) => go(_.type)))
         return `${mod}.array(${results.join(", ")})`
       }
@@ -62,11 +66,17 @@ function hostStatement(
 
 function go(ast: SchemaAST.AST): Effect.Effect<string, never, GoContext> {
   return Effect.gen(function*() {
-    const { hoistedNames } = yield* GoContext
+    const { hoistedNames, mod } = yield* GoContext
     const hoistedName = hoistedNames.get(ast)
     if (hoistedName) return hoistedName
-    const worker = yield* goWorker(ast)
     const identifier = SchemaAST.getIdentifierAnnotation(ast)
+    if (Option.isSome(identifier)) {
+      const identifierValue = identifier.value
+      if (identifierValue === "BigInt") {
+        return `${mod}.bigint`
+      }
+    }
+    const worker = yield* goWorker(ast)
     if (Option.isSome(identifier)) return yield* hostStatement(worker, identifier.value, ast)
     return worker
   })
