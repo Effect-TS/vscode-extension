@@ -1,0 +1,53 @@
+{
+  "private": true,
+  "name": "effect-chrome",
+  "type": "module",
+  "displayName": "Effect Dev Tools",
+  "description": "Tools to assist development with the Effect Typescript framework",
+  "version": "0.8.0",
+  "packageManager": "pnpm@9.0.6",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/vscode-extension.git"
+  },
+  "license": "MIT",
+  "categories": [
+    "Debuggers",
+    "Visualization"
+  ],
+  "publisher": "effectful-tech",
+  "scripts": {
+    "vscode:prepublish": "pnpm build",
+    "build": "tsup",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage",
+    "dev": "tsup --watch"
+  },
+  "devDependencies": {
+    "@effect/experimental": "catalog:",
+    "@effect/devtools-shared": "workspace:^",
+    "@swc/core": "^1.15.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "~24.10.1",
+    "@types/chrome": "^0.1.29",
+    "@types/ws": "^8.18.1",
+    "glob": "^11.0.3",
+    "minimatch": "^10.1.1",
+    "mocha": "^11.7.5",
+    "prettier": "^3.6.2",
+    "tslib": "^2.8.1",
+    "ws": "^8.18.3"
+  },
+  "sideEffects": false,
+  "pnpm": {
+    "updateConfig": {
+      "ignoreDependencies": [
+        "@types/vscode"
+      ]
+    }
+  }
+}

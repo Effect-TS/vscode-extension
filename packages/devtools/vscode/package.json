@@ -1,0 +1,457 @@
+{
+  "name": "effect-vscode",
+  "type": "module",
+  "displayName": "Effect Dev Tools",
+  "description": "Tools to assist development with the Effect Typescript framework",
+  "icon": "resources/icons/effect-dark.png",
+  "version": "0.8.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.6",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/vscode-extension.git"
+  },
+  "license": "MIT",
+  "categories": [
+    "Debuggers",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onDebug"
+  ],
+  "main": "./dist/extension.cjs",
+  "publisher": "effectful-tech",
+  "contributes": {
+    "configuration": {
+      "title": "Effect Dev Tools",
+      "properties": {
+        "effect.metrics.pollInterval": {
+          "type": "integer",
+          "description": "The time in milliseconds between polling for metrics",
+          "title": "Metrics Poll Interval",
+          "default": 500
+        },
+        "effect.tracer.pollInterval": {
+          "type": "integer",
+          "description": "The time in milliseconds between polling for span data while using the debug protocol transport",
+          "title": "Tracer Poll Interval",
+          "default": 250
+        },
+        "effect.spanStack.ignoreList": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "description": "A list of span patterns to ignore when showing the span stack",
+          "title": "Span Stack Ignore List",
+          "default": []
+        },
+        "effect.instrumentation.injectDebugConfigurations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of debug configuration types to inject the instrumentation into when injectNodeOptions is enabled",
+          "title": "Inject Debug Configurations",
+          "default": [
+            "node",
+            "node-terminal",
+            "pwa-node"
+          ]
+        },
+        "effect.instrumentation.injectNodeOptions": {
+          "type": "boolean",
+          "description": "If enabled, the effect instrumentation code will be injected into node debug configurations by appending a NODE_OPTIONS environment variable",
+          "title": "Inject Node Options",
+          "default": false
+        },
+        "effect.devServer.port": {
+          "type": "integer",
+          "description": "The port to run the Effect dev server on",
+          "title": "Dev Server Port",
+          "default": 34437
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "effect.debugFibersSortBySpanName",
+        "title": "Sort by Span Name",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.debugFibersSortByLifeTimeMillis",
+        "title": "Sort by Longest Life Time",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.debugFibersSortByStartTimeMillis",
+        "title": "Sort by Start Time",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.debugFibersRefresh",
+        "title": "Refresh Debug Fibers",
+        "icon": "$(refresh)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.interruptDebugFiber",
+        "title": "Interrupt Fiber",
+        "icon": "$(debug-stop)",
+        "enablement": "effect:inDebugMode"
+      },
+      {
+        "command": "effect.revealFiberCurrentSpan",
+        "title": "Reveal Fiber Current Span Location",
+        "icon": "$(go-to-file)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.debugContextRefresh",
+        "title": "Refresh Debug Context",
+        "icon": "$(refresh)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.debugSpanStackRefresh",
+        "title": "Refresh Debug Span Stack",
+        "icon": "$(refresh)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.revealSpanLocation",
+        "title": "Reveal Span Location",
+        "icon": "$(go-to-file)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.disableSpanStackIgnoreList",
+        "title": "Effect Dev Tools: Disable Span Stack Ignore List",
+        "icon": "$(eye)",
+        "enablement": "effect:spanStackIgnoreListEnabled === true"
+      },
+      {
+        "command": "effect.enableSpanStackIgnoreList",
+        "title": "Effect Dev Tools: Enable Span Stack Ignore List",
+        "icon": "$(eye-closed)",
+        "enablement": "effect:spanStackIgnoreListEnabled === false"
+      },
+      {
+        "command": "effect.togglePauseOnDefects",
+        "title": "Toggle Pause on Defects",
+        "enablement": "effect:inDebugMode"
+      },
+      {
+        "command": "effect.selectClient",
+        "title": "Select Client",
+        "enablement": "effect:hasClients"
+      },
+      {
+        "command": "effect.attachDebugSessionClient",
+        "title": "Effect Dev Tools: Attach Debug Session Client",
+        "icon": "$(debug)",
+        "enablement": "effect:hasDebugTargets"
+      },
+      {
+        "command": "effect.resetMetrics",
+        "title": "Reset Metrics",
+        "icon": "$(refresh)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.resetTracer",
+        "title": "Reset Tracer",
+        "icon": "$(refresh)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.resetTracerExtended",
+        "title": "Reset Tracer Extended",
+        "icon": "$(refresh)",
+        "enablement": "true"
+      },
+      {
+        "command": "effect.startServer",
+        "title": "Effect Dev Tools: Start Server",
+        "icon": "$(play)",
+        "enablement": "effect:running === false"
+      },
+      {
+        "command": "effect.stopServer",
+        "title": "Effect Dev Tools: Stop Server",
+        "icon": "$(debug-stop)",
+        "enablement": "effect:running === true"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "effect",
+          "title": "Effect Dev Tools",
+          "icon": "resources/icons/effect-light.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "effect-tracer-panel",
+          "title": "Effect Tracer",
+          "icon": "resources/icons/effect-light.svg"
+        }
+      ]
+    },
+    "views": {
+      "debug": [
+        {
+          "id": "effect-debug-fibers",
+          "name": "Effect Fibers",
+          "when": "effect:inDebugMode"
+        },
+        {
+          "id": "effect-context",
+          "name": "Effect Context",
+          "when": "effect:inDebugMode"
+        },
+        {
+          "id": "effect-debug-span-stack",
+          "name": "Effect Span Stack",
+          "when": "effect:inDebugMode"
+        },
+        {
+          "id": "effect-debug-breakpoints",
+          "name": "Effect Breakpoints",
+          "when": "effect:inDebugMode"
+        }
+      ],
+      "effect": [
+        {
+          "id": "effect-clients",
+          "name": "Clients",
+          "when": "true"
+        },
+        {
+          "id": "effect-metrics",
+          "name": "Metrics",
+          "when": "true"
+        },
+        {
+          "id": "effect-tracer",
+          "name": "Tracer",
+          "when": "true"
+        }
+      ],
+      "effect-tracer-panel": [
+        {
+          "type": "webview",
+          "id": "effect-tracer-extended",
+          "name": "Tracer",
+          "when": "true"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "effect-clients",
+        "contents": "The Effect Dev Tools server is currently stopped.\n[Start the server](command:effect.startServer)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "effect.debugContextRefresh",
+          "when": "view === effect-context && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.resetMetrics",
+          "when": "view === effect-metrics && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.resetTracer",
+          "when": "view === effect-tracer && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.debugFibersRefresh",
+          "when": "view === effect-debug-fibers && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.debugFibersSortByStartTimeMillis",
+          "when": "view === effect-debug-fibers && true"
+        },
+        {
+          "command": "effect.debugFibersSortByLifeTimeMillis",
+          "when": "view === effect-debug-fibers && true"
+        },
+        {
+          "command": "effect.debugFibersSortBySpanName",
+          "when": "view === effect-debug-fibers && true"
+        },
+        {
+          "command": "effect.debugSpanStackRefresh",
+          "when": "view === effect-debug-span-stack && true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.enableSpanStackIgnoreList",
+          "when": "view === effect-debug-span-stack && effect:spanStackIgnoreListEnabled === false",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.disableSpanStackIgnoreList",
+          "when": "view === effect-debug-span-stack && effect:spanStackIgnoreListEnabled === true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.startServer",
+          "when": "view === effect-clients && effect:running === false",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.stopServer",
+          "when": "view === effect-clients && effect:running === true",
+          "group": "navigation"
+        },
+        {
+          "command": "effect.attachDebugSessionClient",
+          "when": "view === effect-clients && effect:hasDebugTargets",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "effect.interruptDebugFiber",
+          "when": "view === effect-debug-fibers && effect:inDebugMode && (viewItem === FiberId)",
+          "group": "inline"
+        },
+        {
+          "command": "effect.revealFiberCurrentSpan",
+          "when": "view === effect-debug-fibers && true && (viewItem === FiberId)",
+          "group": "inline"
+        },
+        {
+          "command": "effect.revealSpanLocation",
+          "when": "view === effect-debug-span-stack && true && (viewItem === SpanNode)",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "effect.debugFibersSortBySpanName",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugFibersSortByLifeTimeMillis",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugFibersSortByStartTimeMillis",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugFibersRefresh",
+          "when": "false"
+        },
+        {
+          "command": "effect.interruptDebugFiber",
+          "when": "false"
+        },
+        {
+          "command": "effect.revealFiberCurrentSpan",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugContextRefresh",
+          "when": "false"
+        },
+        {
+          "command": "effect.debugSpanStackRefresh",
+          "when": "false"
+        },
+        {
+          "command": "effect.revealSpanLocation",
+          "when": "false"
+        },
+        {
+          "command": "effect.disableSpanStackIgnoreList",
+          "when": "effect:spanStackIgnoreListEnabled === true"
+        },
+        {
+          "command": "effect.enableSpanStackIgnoreList",
+          "when": "effect:spanStackIgnoreListEnabled === false"
+        },
+        {
+          "command": "effect.togglePauseOnDefects",
+          "when": "false"
+        },
+        {
+          "command": "effect.selectClient",
+          "when": "false"
+        },
+        {
+          "command": "effect.attachDebugSessionClient",
+          "when": "effect:hasDebugTargets"
+        },
+        {
+          "command": "effect.resetMetrics",
+          "when": "false"
+        },
+        {
+          "command": "effect.resetTracer",
+          "when": "false"
+        },
+        {
+          "command": "effect.resetTracerExtended",
+          "when": "false"
+        },
+        {
+          "command": "effect.startServer",
+          "when": "effect:running === false"
+        },
+        {
+          "command": "effect.stopServer",
+          "when": "effect:running === true"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm build",
+    "build": "tsup",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage",
+    "dev": "tsup --watch"
+  },
+  "devDependencies": {
+    "@effect/experimental": "catalog:",
+    "@effect/devtools-shared": "workspace:^",
+    "@swc/core": "^1.15.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "~24.10.1",
+    "@types/vscode": "^1.84.0",
+    "@types/ws": "^8.18.1",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.0",
+    "glob": "^11.0.3",
+    "minimatch": "^10.1.1",
+    "mocha": "^11.7.5",
+    "prettier": "^3.6.2",
+    "tslib": "^2.8.1",
+    "ws": "^8.18.3"
+  },
+  "sideEffects": false,
+  "pnpm": {
+    "updateConfig": {
+      "ignoreDependencies": [
+        "@types/vscode"
+      ]
+    }
+  }
+}

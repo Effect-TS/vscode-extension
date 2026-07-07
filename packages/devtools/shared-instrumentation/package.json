@@ -1,0 +1,49 @@
+{
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/vscode-extension.git",
+    "directory": "packages/devtools/shared-instrumentation"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/vscode-extension/issues"
+  },
+  "tags": [
+    "typescript",
+    "openapi",
+    "codegen"
+  ],
+  "keywords": [
+    "typescript",
+    "openapi",
+    "codegen"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.compiled.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null,
+    "./*/index": null
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map"
+  ],
+  "scripts": {
+    "codegen": "tsup",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@effect/experimental": "catalog:"
+  }
+}

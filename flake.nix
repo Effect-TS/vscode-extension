@@ -1,18 +1,24 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    flake-parts.url = "github:hercules-ci/flake-parts";
   };
-  outputs = inputs @ {flake-parts, ...}:
-    flake-parts.lib.mkFlake {inherit inputs;} {
-      systems = inputs.nixpkgs.lib.systems.flakeExposed;
-      perSystem = {pkgs, ...}: {
-        devShells.default = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [
-            corepack
-            nodejs_22
-          ];
-        };
+  outputs = {nixpkgs, ...}: let
+    forAllSystems = function:
+      nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
+        system: function nixpkgs.legacyPackages.${system}
+      );
+  in {
+    formatter = forAllSystems (pkgs: pkgs.alejandra);
+    devShells = forAllSystems (pkgs: {
+      default = pkgs.mkShell {
+        packages = with pkgs; [
+          bun
+          deno
+          corepack
+          nodejs_24
+          python3
+        ];
       };
-    };
+    });
+  };
 }

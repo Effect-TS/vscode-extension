@@ -1,3 +1,8 @@
 packages:
-  - .
-  - tracer
+  - packages/**/*
+
+catalog:
+  effect: ^3.19.7
+  "@effect/experimental": ^0.57.5
+  "@effect-atom/atom": ^0.4.3
+  "@effect-atom/atom-react": ^0.4.0

@@ -1,327 +1,78 @@
 {
-  "name": "effect-vscode",
-  "displayName": "Effect Dev Tools",
-  "description": "Tools to assist development with the Effect Typescript framework",
-  "icon": "resources/icons/effect-dark.png",
-  "version": "0.9.0",
   "private": true,
-  "packageManager": "pnpm@9.0.6",
-  "engines": {
-    "vscode": "^1.84.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/effect-ts/vscode-extension.git"
-  },
-  "license": "MIT",
-  "categories": [
-    "Debuggers",
-    "Visualization"
-  ],
-  "activationEvents": [
-    "onDebug"
-  ],
-  "main": "./out/extension.js",
-  "publisher": "effectful-tech",
-  "contributes": {
-    "configuration": {
-      "title": "Effect Dev Tools",
-      "properties": {
-        "effect.devServer.port": {
-          "type": "integer",
-          "default": 34437,
-          "description": "The port to run the Effect dev server on"
-        },
-        "effect.metrics.pollInterval": {
-          "type": "integer",
-          "default": 500,
-          "description": "The time in milliseconds between polling for metrics"
-        },
-        "effect.tracer.pollInterval": {
-          "type": "integer",
-          "default": 250,
-          "description": "The time in milliseconds between polling for span data while using the debug protocol transport"
-        },
-        "effect.spanStack.ignoreList": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          },
-          "default": [],
-          "description": "A list of span patterns to ignore when showing the span stack"
-        },
-        "effect.instrumentation.injectNodeOptions": {
-          "type": "boolean",
-          "default": false,
-          "description": "If enabled, the effect instrumentation code will be injected into node debug configurations by appending a NODE_OPTIONS environment variable"
-        },
-        "effect.instrumentation.injectDebugConfigurations": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          },
-          "default": [
-            "node",
-            "node-terminal",
-            "pwa-node"
-          ],
-          "description": "A list of debug configuration types to inject the instrumentation into when injectNodeOptions is enabled"
-        }
-      }
-    },
-    "commands": [
-      {
-        "command": "effect.startServer",
-        "title": "Effect Dev Tools: Start Server",
-        "icon": "$(play)"
-      },
-      {
-        "command": "effect.stopServer",
-        "title": "Effect Dev Tools: Stop Server",
-        "icon": "$(debug-stop)"
-      },
-      {
-        "command": "effect.attachDebugSessionClient",
-        "title": "Effect Dev Tools: Attach Debug Session Client",
-        "icon": "$(debug)"
-      },
-      {
-        "command": "effect.resetMetrics",
-        "title": "Effect Dev Tools: Reset Metrics",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "effect.resetTracer",
-        "title": "Effect Dev Tools: Reset Tracer",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "effect.copyInfoValue",
-        "title": "Copy value",
-        "icon": "$(copy)"
-      },
-      {
-        "command": "effect.revealSpanLocation",
-        "title": "Effect Dev Tools: Reveal Span Location",
-        "icon": "$(go-to-file)"
-      },
-      {
-        "command": "effect.revealFiberCurrentSpan",
-        "title": "Effect Dev Tools: Reveal Fiber Current Span Location",
-        "icon": "$(go-to-file)"
-      },
-      {
-        "command": "effect.interruptDebugFiber",
-        "title": "Effect Dev Tools: Interrupt Fiber",
-        "icon": "$(debug-stop)"
-      },
-      {
-        "command": "effect.resetTracerExtended",
-        "title": "Effect Dev Tools: Reset Tracer Extended",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "effect.enableSpanStackIgnoreList",
-        "title": "Effect Dev Tools: Enable Span Stack Ignore List",
-        "icon": "$(eye-closed)"
-      },
-      {
-        "command": "effect.disableSpanStackIgnoreList",
-        "title": "Effect Dev Tools: Disable Span Stack Ignore List",
-        "icon": "$(eye)"
-      },
-      {
-        "command": "effect.showLayerMermaid",
-        "title": "Effect Dev Tools: Show Layer Mermaid Graph (locally)"
-      },
-      {
-        "command": "effect.togglePauseOnDefects",
-        "title": "Effect Dev Tools: Toggle Pause on Defects"
-      }
-    ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "effect",
-          "title": "Effect Dev Tools",
-          "icon": "resources/icons/effect-light.svg"
-        }
-      ],
-      "panel": [
-        {
-          "id": "effect-tracer-panel",
-          "title": "Effect Tracer",
-          "icon": "resources/icons/effect-light.svg"
-        }
-      ]
-    },
-    "views": {
-      "effect": [
-        {
-          "id": "effect-clients",
-          "name": "Clients"
-        },
-        {
-          "id": "effect-tracer",
-          "name": "Tracer"
-        },
-        {
-          "id": "effect-metrics",
-          "name": "Metrics"
-        }
-      ],
-      "debug": [
-        {
-          "id": "effect-context",
-          "name": "Effect Context",
-          "when": "inDebugMode"
-        },
-        {
-          "id": "effect-debug-span-stack",
-          "name": "Effect Span Stack",
-          "when": "inDebugMode"
-        },
-        {
-          "id": "effect-debug-fibers",
-          "name": "Effect Fibers",
-          "when": "inDebugMode"
-        },
-        {
-          "id": "effect-debug-breakpoints",
-          "name": "Effect Breakpoints",
-          "when": "inDebugMode"
-        }
-      ],
-      "effect-tracer-panel": [
-        {
-          "type": "webview",
-          "id": "effect-tracer-extended",
-          "name": "Effect Tracer"
-        }
-      ]
-    },
-    "viewsWelcome": [
-      {
-        "view": "effect-clients",
-        "contents": "The Effect Dev Tools server is currently stopped.\n[Start the server](command:effect.startServer)"
-      }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "effect.startServer",
-          "when": "view === effect-clients && effect:running === false",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.stopServer",
-          "when": "view === effect-clients && effect:running === true",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.attachDebugSessionClient",
-          "when": "view === effect-clients && inDebugMode",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.resetMetrics",
-          "when": "view === effect-metrics",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.resetTracer",
-          "when": "view === effect-tracer",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.resetTracerExtended",
-          "when": "view === effect-tracer-extended",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.enableSpanStackIgnoreList",
-          "when": "view === effect-debug-span-stack && effect:spanStackIgnoreListEnabled === false",
-          "group": "navigation"
-        },
-        {
-          "command": "effect.disableSpanStackIgnoreList",
-          "when": "view === effect-debug-span-stack && effect:spanStackIgnoreListEnabled === true",
-          "group": "navigation"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "effect.copyInfoValue",
-          "when": "viewItem == info"
-        },
-        {
-          "command": "effect.revealSpanLocation",
-          "when": "inDebugMode && view === effect-debug-span-stack && viewItem === span",
-          "group": "inline"
-        },
-        {
-          "command": "effect.revealFiberCurrentSpan",
-          "when": "inDebugMode && view === effect-debug-fibers && (viewItem === fiber || viewItem === fiber-interrupting)",
-          "group": "inline"
-        },
-        {
-          "command": "effect.interruptDebugFiber",
-          "when": "inDebugMode && view === effect-debug-fibers && viewItem === fiber",
-          "group": "inline"
-        }
-      ]
-    }
-  },
+  "type": "module",
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
-    "vscode:prepublish": "pnpm build",
-    "build": "pnpm --filter \"tracer\" run build && tsup --config tsup.instrumentation.config.ts && tsup",
-    "dev": "tsup --watch",
-    "lint": "eslint src",
-    "lint-fix": "eslint src --fix",
+    "clean": "node scripts/clean.mjs",
+    "codegen": "pnpm --recursive --parallel --filter \"./packages/**/*\" run codegen",
+    "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel --filter \"./packages/**/*\" run build",
+    "dev": "pnpm --recursive --parallel --filter \"./packages/**/*\" run dev",
+    "test": "vitest",
+    "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
-    "test": "node ./out/test/runTest.js"
+    "check-recursive": "pnpm --recursive --filter \"./packages/**/*\" exec tsc -b tsconfig.json",
+    "lint": "eslint \"**/{src,test,examples,dtslint}/**/*.{ts,tsx,mjs}\"",
+    "lint-fix": "pnpm lint --fix",
+    "changeset-version": "changeset version",
+    "changeset-publish": "pnpm codemod && pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.5",
+    "@babel/plugin-transform-export-namespace-from": "^7.27.1",
+    "@babel/plugin-transform-modules-commonjs": "^7.27.1",
     "@changesets/changelog-github": "^0.5.1",
-    "@changesets/cli": "^2.29.5",
+    "@changesets/cli": "^2.29.7",
+    "@edge-runtime/vm": "^5.0.0",
+    "@effect/build-utils": "^0.8.9",
+    "@effect/docgen": "https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@49e99a2",
     "@effect/eslint-plugin": "^0.3.2",
-    "@effect/experimental": "^0.54.1",
-    "@effect/language-service": "^0.40.0",
-    "@effect/platform": "^0.90.0",
-    "@effect/platform-node": "^0.94.0",
-    "@swc/core": "^1.13.3",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "~24.1.0",
-    "@types/vscode": "^1.84.0",
-    "@types/ws": "^8.18.1",
-    "@typescript-eslint/eslint-plugin": "^8.38.0",
-    "@typescript-eslint/parser": "^8.38.0",
-    "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^3.6.0",
-    "effect": "^3.17.3",
-    "eslint": "^9.32.0",
+    "@effect/language-service": "^0.57.0",
+    "@effect/platform": "^0.93.4",
+    "@effect/platform-node": "^0.101.2",
+    "@eslint/js": "^9.39.1",
+    "@faker-js/faker": "^10.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-replace": "^6.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@types/jscodeshift": "^17.3.0",
+    "@types/node": "^24.10.1",
+    "@vitest/browser": "4.0.14",
+    "@vitest/coverage-v8": "4.0.14",
+    "@vitest/expect": "4.0.14",
+    "@vitest/web-worker": "4.0.14",
+    "ast-types": "^0.14.2",
+    "babel-plugin-annotate-pure-calls": "^0.5.0",
+    "effect": "^3.19.7",
+    "eslint": "^9.39.1",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import-x": "^4.16.1",
+    "eslint-plugin-local-rules": "^3.0.2",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
-    "glob": "^11.0.3",
-    "mocha": "^11.7.1",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "glob": "^13.0.0",
+    "happy-dom": "^20.0.10",
+    "i18next": "^25.6.3",
+    "jscodeshift": "^17.3.0",
+    "madge": "^8.0.0",
+    "playwright": "^1.57.0",
     "prettier": "^3.6.2",
-    "tslib": "^2.8.1",
-    "tsup": "^8.5.0",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.38.0",
-    "ws": "^8.18.3",
-    "minimatch": "^10.0.3"
-  },
-  "sideEffects": false,
-  "pnpm": {
-    "updateConfig": {
-      "ignoreDependencies": [
-        "@types/vscode"
-      ]
-    }
+    "rimraf": "^6.1.2",
+    "rollup": "^4.53.3",
+    "rollup-plugin-bundle-stats": "^4.21.7",
+    "rollup-plugin-esbuild": "^6.2.1",
+    "rollup-plugin-visualizer": "^6.0.5",
+    "terser": "^5.44.1",
+    "tstyche": "^5.0.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "vite": "^7.2.4",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "4.0.14",
+    "vitest-websocket-mock": "^0.5.0",
+    "zod": "^4.1.13"
   }
 }
