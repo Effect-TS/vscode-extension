@@ -10,7 +10,7 @@ import {
   isGaugeState,
   isHistogramState,
   isSummaryState
-} from "./shims"
+} from "./shims-v3"
 
 export function encodeOption<T, E>(
   option: Option.Option<T>,
@@ -45,7 +45,7 @@ export function makeStackLocation(
 
 export const encodeStackLocation = (x: StackLocation) => x
 
-export function encodeMetricPair(
+export function encodeMetricPairV3(
   metricPair: MetricPair.MetricPair.Untyped
 ): Schema.Schema.Encoded<typeof Domain.Metric> | undefined {
   if (isCounterState(metricPair.metricState)) {
@@ -98,6 +98,66 @@ export function encodeMetricPair(
         "occurrences": Object.fromEntries(metricPair.metricState.occurrences.entries())
       }
     }
+  }
+}
+
+export interface MetricSnapshotV4 {
+  readonly id: string
+  readonly type: "Counter" | "Frequency" | "Gauge" | "Histogram" | "Summary"
+  readonly description: string | undefined
+  readonly attributes: Readonly<Record<string, string>> | undefined
+  readonly state: any
+}
+
+export function encodeMetricSnapshotV4(
+  snapshot: MetricSnapshotV4
+): Schema.Schema.Encoded<typeof Domain.Metric> | undefined {
+  const base = {
+    "_tag": snapshot.type,
+    "name": snapshot.id,
+    "description": snapshot.description,
+    "tags": Object.entries(snapshot.attributes ?? {}).map(([key, value]) => ({ key, value }))
+  }
+  switch (snapshot.type) {
+    case "Counter":
+      return {
+        ...base,
+        "_tag": "Counter",
+        "state": {
+          "count": typeof snapshot.state.count === "bigint" ? snapshot.state.count.toString() : snapshot.state.count
+        }
+      }
+    case "Frequency":
+      return {
+        ...base,
+        "_tag": "Frequency",
+        "state": {
+          "occurrences": Object.fromEntries(snapshot.state.occurrences.entries())
+        }
+      }
+    case "Gauge":
+      return {
+        ...base,
+        "_tag": "Gauge",
+        "state": {
+          "value": typeof snapshot.state.value === "bigint" ? snapshot.state.value.toString() : snapshot.state.value
+        }
+      }
+    case "Histogram":
+      return { ...base, "_tag": "Histogram", "state": snapshot.state }
+    case "Summary":
+      return {
+        ...base,
+        "_tag": "Summary",
+        "state": {
+          ...snapshot.state,
+          "error": 0,
+          "quantiles": snapshot.state.quantiles.map(([quantile, value]: [number, number | undefined]) => [
+            quantile,
+            value === undefined ? { _tag: "None" } : { _tag: "Some", value }
+          ])
+        }
+      }
   }
 }
 
