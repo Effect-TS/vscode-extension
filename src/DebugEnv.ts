@@ -136,7 +136,7 @@ const getContext = (threadId: number | undefined) =>
     yield* ensureInstrumentationInjected(true, threadId)
     const result = yield* DebugChannel.DebugChannel.evaluate({
       expression:
-        `globalThis["effect/devtools/instrumentation"].getFiberCurrentContext(globalThis["effect/FiberCurrent"])`,
+        `globalThis["effect/devtools/instrumentation"].getFiberCurrentContext(globalThis["effect/devtools/instrumentation"].getCurrentFiber())`,
       guessFrameId: true,
       threadId
     })
@@ -258,7 +258,7 @@ function getFiberCurrentSpan(currentFiberExpression: string, maxDepth: number, t
 }
 
 export const getCurrentSpanStack = (threadId: number | undefined) =>
-  getFiberCurrentSpan(`globalThis["effect/FiberCurrent"]`, 0, threadId)
+  getFiberCurrentSpan(`globalThis["effect/devtools/instrumentation"].getCurrentFiber()`, 0, threadId)
 
 // --
 

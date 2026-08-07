@@ -97,6 +97,7 @@ export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary
 
 /** @internal */
 export const globalMetricRegistrySymbol = Symbol.for("effect/Metric/globalMetricRegistry")
+export const currentFiberKeyV3 = "effect/FiberCurrent"
 
 export const EffectTypeId: Effect.EffectTypeId = Symbol.for("effect/Effect") as Effect.EffectTypeId
 
@@ -150,7 +151,7 @@ export const find = <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => 
   return optionNone()
 }
 
-export const causeDieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
+export const causeDieOptionV3 = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
   find(
     self,
     (cause) =>
@@ -159,7 +160,7 @@ export const causeDieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> 
         optionNone()
   )
 
-export function isExitFailure(value: unknown): value is Exit.Failure<unknown, unknown> {
+export function isExitFailureV3(value: unknown): value is Exit.Failure<unknown, unknown> {
   return typeof value === "object" && value !== null && EffectTypeId in value && "_tag" in value &&
     value._tag === "Failure" && "cause" in value
 }
