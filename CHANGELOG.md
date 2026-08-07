@@ -1,5 +1,11 @@
 # effect-vscode
 
+## 0.10.0
+
+### Minor Changes
+
+- [#86](https://github.com/Effect-TS/vscode-extension/pull/86) [`19e2b1a`](https://github.com/Effect-TS/vscode-extension/commit/19e2b1a1aeae639fda56799cc5233e888f1e17fb) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - support both effect v3 and v4
+
 ## 0.9.0
 
 ### Minor Changes
